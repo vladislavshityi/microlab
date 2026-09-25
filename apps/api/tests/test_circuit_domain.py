@@ -17,6 +17,7 @@ from microlab_api.domain.circuit import (
     has_errors,
     parse_circuit,
 )
+from microlab_api.domain.circuit.issues import component_ref, connection_ref, field_ref, pin_ref
 
 
 @pytest.fixture
@@ -64,8 +65,8 @@ def test_invalid_document_reports_field_paths(external_led: dict[str, Any]) -> N
     assert result.document is None
     assert {issue.code for issue in result.issues} == {IssueCode.INVALID_DOCUMENT}
     refs = {issue.refs[0] for issue in result.issues}
-    assert "board" in refs
-    assert "components.0.rotation" in refs
+    assert field_ref("board") in refs
+    assert field_ref("components.0.rotation") in refs
 
 
 def test_valid_document_has_no_reference_issues(external_led: dict[str, Any]) -> None:
@@ -77,11 +78,11 @@ def test_duplicate_ids(external_led: dict[str, Any]) -> None:
     external_led["connections"][1]["id"] = "w1"
     issues = check_references(_parse(external_led), get_definition_registry())
     assert [(i.code, i.refs) for i in issues] == [
-        (IssueCode.DUPLICATE_COMPONENT_ID, ("uno1",)),
-        (IssueCode.DUPLICATE_CONNECTION_ID, ("w1",)),
+        (IssueCode.DUPLICATE_COMPONENT_ID, (component_ref("uno1"),)),
+        (IssueCode.DUPLICATE_CONNECTION_ID, (connection_ref("w1"),)),
         # led1 переименован: соединения (второе теперь тоже w1) ссылаются на исчезнувший компонент.
-        (IssueCode.BROKEN_CONNECTION_REFERENCE, ("w1", "led1")),
-        (IssueCode.BROKEN_CONNECTION_REFERENCE, ("w3", "led1")),
+        (IssueCode.BROKEN_CONNECTION_REFERENCE, (connection_ref("w1"), component_ref("led1"))),
+        (IssueCode.BROKEN_CONNECTION_REFERENCE, (connection_ref("w3"), component_ref("led1"))),
     ]
     assert all(issue.severity is Severity.ERROR for issue in issues)
 
@@ -101,7 +102,9 @@ def test_unknown_types_and_board_misuse(external_led: dict[str, Any]) -> None:
 def test_unknown_pin(external_led: dict[str, Any]) -> None:
     external_led["connections"][0]["from"]["pinId"] = "D14"
     issues = check_references(_parse(external_led), get_definition_registry())
-    assert [(i.code, i.refs) for i in issues] == [(IssueCode.UNKNOWN_PIN, ("w1", "uno1.D14"))]
+    assert [(i.code, i.refs) for i in issues] == [
+        (IssueCode.UNKNOWN_PIN, (connection_ref("w1"), pin_ref("uno1.D14")))
+    ]
 
 
 @pytest.mark.parametrize(

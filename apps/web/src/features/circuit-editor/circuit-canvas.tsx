@@ -31,6 +31,8 @@ import { isTextInputTarget } from "@/lib/platform";
 import { useCircuitStore } from "@/stores/circuit-store";
 import { useUiStore } from "@/stores/ui-store";
 
+import { breadboardHoleFromPoint } from "./breadboard";
+import { BreadboardNode } from "./breadboard-node";
 import { PinActionsContext, type PinActions } from "./canvas-context";
 import { CanvasToolbar } from "./canvas-toolbar";
 import { ComponentNode } from "./component-node";
@@ -46,7 +48,7 @@ import { PinHint, type PinHintState } from "./pin-hint";
 import { WireEdge } from "./wire-edge";
 
 // Типы узлов и рёбер вынесены из компонента, чтобы ссылки были стабильными между рендерами.
-const NODE_TYPES = { circuit: ComponentNode };
+const NODE_TYPES = { circuit: ComponentNode, breadboard: BreadboardNode };
 const EDGE_TYPES = { wire: WireEdge };
 const SNAP_GRID: [number, number] = [GRID_PX, GRID_PX];
 /** Панорамирование: средняя кнопка мыши или Space + перетаскивание левой кнопкой. */
@@ -93,7 +95,11 @@ function useHasSize(ref: RefObject<HTMLElement | null>): boolean {
 }
 
 function pinFromPoint(x: number, y: number): PinRef | null {
-  const element = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-pin-id]");
+  const target = document.elementFromPoint(x, y);
+  if (target === null) return null;
+  const hole = breadboardHoleFromPoint(target, x, y);
+  if (hole !== null) return hole;
+  const element = target.closest<HTMLElement>("[data-pin-id]");
   const componentId = element?.dataset["pinComponent"];
   const pinId = element?.dataset["pinId"];
   return componentId === undefined || pinId === undefined ? null : { componentId, pinId };
@@ -230,8 +236,7 @@ function CircuitFlow({ containerRef }: { containerRef: RefObject<HTMLDivElement 
         event.stopPropagation();
         activatePin(pin);
       },
-      showPinHint: (pin, element) => {
-        const rect = element.getBoundingClientRect();
+      showPinHint: (pin, rect) => {
         setHint({ pin, rect: { left: rect.left, top: rect.top, width: rect.width } });
       },
       hidePinHint: () => {
@@ -244,6 +249,13 @@ function CircuitFlow({ containerRef }: { containerRef: RefObject<HTMLDivElement 
   const fit = useCallback(() => {
     void fitView({ padding: 0.15, duration: 0 });
   }, [fitView]);
+
+  // Показ объектов по запросу (щелчок на замечании в панели «Проблемы»).
+  const canvasFocus = useUiStore((state) => state.canvasFocus);
+  useEffect(() => {
+    if (canvasFocus === null || canvasFocus.ids.length === 0) return;
+    void fitView({ nodes: canvasFocus.ids.map((id) => ({ id })), padding: 0.4, maxZoom: 1.5, duration: 0 });
+  }, [canvasFocus, fitView]);
 
   const updateCenter = useCallback(() => {
     const element = containerRef.current;

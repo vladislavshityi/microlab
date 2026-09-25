@@ -1,0 +1,8 @@
+[
+  {"id": "NET_001", "members": ["uno1.D13", "bb1.a5", "bb1.b5", "bb1.c5", "bb1.d5", "bb1.e5", "r1.1"]},
+  {"id": "NET_002", "members": ["uno1.A4", "uno1.SDA"]},
+  {"id": "NET_003", "members": ["uno1.A5", "uno1.SCL"]},
+  {"id": "NET_004", "members": ["uno1.IOREF", "uno1.5V"]},
+  {"id": "NET_005", "members": ["uno1.GND1", "uno1.GND2", "uno1.GND3", "bb1.f9", "bb1.g9", "bb1.h9", "bb1.i9", "bb1.j9", "bb1.bn1", "bb1.bn2", "bb1.bn3", "bb1.bn4", "bb1.bn5", "bb1.bn6", "bb1.bn7", "bb1.bn8", "bb1.bn9", "bb1.bn10", "bb1.bn11", "bb1.bn12", "bb1.bn13", "bb1.bn14", "bb1.bn15", "bb1.bn16", "bb1.bn17", "bb1.bn18", "bb1.bn19", "bb1.bn20", "bb1.bn21", "bb1.bn22", "bb1.bn23", "bb1.bn24", "bb1.bn25", "led1.K"]},
+  {"id": "NET_006", "members": ["bb1.a9", "bb1.b9", "bb1.c9", "bb1.d9", "bb1.e9", "r1.2", "led1.A"]}
+]

@@ -19,6 +19,7 @@ describe("ComponentsSidebar", () => {
       .getAllByRole("button")
       .map((item) => item.getAttribute("aria-label"));
     expect(names).toEqual([
+      "Добавить на схему: Макетная плата",
       "Добавить на схему: Светодиод",
       "Добавить на схему: Кнопка",
       "Добавить на схему: Резистор",

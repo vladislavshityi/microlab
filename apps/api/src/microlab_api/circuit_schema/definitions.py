@@ -8,7 +8,9 @@ from pathlib import Path
 from microlab_api.circuit_schema.generated.component_definition import (
     ComponentDefinition,
     EnumPropertyDefinition,
+    LedModel,
     NumberPropertyDefinition,
+    ResistorModel,
 )
 from microlab_api.circuit_schema.paths import definitions_dir
 
@@ -84,12 +86,65 @@ def check_definition(definition: ComponentDefinition) -> list[str]:
 
     if (definition.category == "board") != (definition.board is not None):
         problems.append(f"{prefix}: board info is required for boards and only for boards")
+    problems.extend(_check_socket(definition))
+    problems.extend(_check_electrical_model(definition))
+    problems.extend(_check_board_limits(definition))
 
     property_ids = [prop.id for prop in definition.properties]
     if len(set(property_ids)) != len(property_ids):
         problems.append(f"{prefix}: duplicate property ids")
     for prop in definition.properties:
         problems.extend(_check_property(prefix, prop))
+    return problems
+
+
+def _check_socket(definition: ComponentDefinition) -> list[str]:
+    if not definition.socket:
+        return []
+    if definition.category == "board":
+        return [f"{definition.type}: a board cannot be a socket"]
+    points = [(p.x, p.y) for p in definition.visual.pins.values()]
+    if len(set(points)) != len(points):
+        return [f"{definition.type}: socket pins must have distinct positions"]
+    return []
+
+
+def _check_board_limits(definition: ComponentDefinition) -> list[str]:
+    if definition.board is None or definition.board.electrical_limits is None:
+        return []
+    mcu_pins = {pin.mcu_pin for pin in definition.pins if pin.mcu_pin is not None}
+    problems: list[str] = []
+    for limit in definition.board.electrical_limits.gpio_group_current_limits:
+        unknown = sorted(p.root for p in limit.mcu_pins if p.root not in mcu_pins)
+        if unknown:
+            problems.append(f"{definition.type}: current limit group references unknown {unknown}")
+    return problems
+
+
+def _check_electrical_model(definition: ComponentDefinition) -> list[str]:
+    model = definition.electrical_model
+    if model is None:
+        return []
+    prefix = f"{definition.type}.electricalModel"
+    pin_set = {pin.id for pin in definition.pins}
+    number_props = {
+        prop.id for prop in definition.properties if isinstance(prop, NumberPropertyDefinition)
+    }
+    if isinstance(model, LedModel):
+        pins = [model.anode, model.cathode]
+        props = [model.forward_voltage_property]
+    elif isinstance(model, ResistorModel):
+        pins = [pin.root for pin in model.terminals]
+        props = [model.resistance_property]
+    else:
+        pins = [pin.root for pin in model.terminals]
+        props = []
+    problems = [f"{prefix}: unknown pin {pin}" for pin in pins if pin not in pin_set]
+    if len(set(pins)) != len(pins):
+        problems.append(f"{prefix}: terminals must be distinct pins")
+    problems += [
+        f"{prefix}: {prop} is not a number property" for prop in props if prop not in number_props
+    ]
     return problems
 
 

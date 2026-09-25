@@ -3,6 +3,9 @@ import { PanelBottomClose, PanelBottomOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CodeEditorPanel } from "@/features/code-editor/code-editor-panel";
+import { countIssues } from "@/features/problems/issue-format";
+import { ProblemCountsBadge, ProblemsPanel } from "@/features/problems/problems-panel";
+import { useCircuitValidation } from "@/features/problems/use-circuit-validation";
 import { t, type PlainTranslationKey } from "@/i18n/t";
 import { BOTTOM_TABS, useUiStore, type BottomTab } from "@/stores/ui-store";
 
@@ -16,7 +19,7 @@ const TAB_LABEL: Record<BottomTab, PlainTranslationKey> = {
 };
 
 /** Вкладки, функциональность которых ещё не реализована. */
-const COMING_SOON: ReadonlySet<BottomTab> = new Set(["serial", "problems"]);
+const COMING_SOON: ReadonlySet<BottomTab> = new Set(["serial"]);
 
 function isBottomTab(value: string): value is BottomTab {
   return BOTTOM_TABS.some((tab) => tab === value);
@@ -32,6 +35,9 @@ interface BottomPanelProps {
 export function BottomPanel({ collapsed, onCollapse, onExpand }: BottomPanelProps) {
   const tab = useUiStore((state) => state.bottomTab);
   const setBottomTab = useUiStore((state) => state.setBottomTab);
+  // Проверка схемы идёт независимо от активной вкладки: счётчики видны на вкладке всегда.
+  const validation = useCircuitValidation();
+  const counts = countIssues(validation.data?.issues ?? []);
 
   return (
     <Tabs
@@ -53,6 +59,7 @@ export function BottomPanel({ collapsed, onCollapse, onExpand }: BottomPanelProp
               className="h-8 flex-none rounded-none px-3 text-xs text-muted-foreground after:bottom-0 data-[state=active]:text-foreground"
             >
               {t(TAB_LABEL[value])}
+              {value === "problems" && <ProblemCountsBadge counts={counts} />}
               {COMING_SOON.has(value) && (
                 <Badge variant="outline" className="px-1 py-0 text-[11px] font-normal text-muted-foreground">
                   {t("bottom.comingSoon")}
@@ -83,7 +90,14 @@ export function BottomPanel({ collapsed, onCollapse, onExpand }: BottomPanelProp
         <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("serial.comingSoon")}</p>
       </TabsContent>
       <TabsContent value="problems" className="min-h-0 overflow-auto">
-        <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("problems.comingSoon")}</p>
+        <ProblemsPanel
+          data={validation.data}
+          error={validation.error}
+          isFetching={validation.isFetching}
+          onRetry={() => {
+            void validation.refetch();
+          }}
+        />
       </TabsContent>
     </Tabs>
   );

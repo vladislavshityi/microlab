@@ -31,3 +31,12 @@ export function t<K extends TranslationKey>(key: K, ...args: ParamsFor<K>): stri
   }
   return template.replace(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match);
 }
+
+/**
+ * Перевод с параметрами, известными только во время выполнения (например, параметры
+ * замечаний проверки схемы). Не найденный параметр остаётся плейсхолдером.
+ */
+export function translateWith(key: TranslationKey, params: Readonly<Record<string, string>>): string {
+  const template: string = ru[key];
+  return template.replace(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match);
+}

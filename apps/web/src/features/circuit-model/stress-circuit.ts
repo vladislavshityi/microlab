@@ -12,14 +12,20 @@ const TYPES = ["resistor", "led", "push-button"] as const;
 /**
  * Детерминированная нагрузочная схема для проверки отзывчивости редактора:
  * плата, `componentCount` компонентов в сетке и `connectionCount` соединений между
- * случайными (с фиксированным seed) выводами без повторов.
+ * случайными (с фиксированным seed) выводами без повторов. С `withBreadboard` под
+ * компонентами лежит макетная плата: часть выводов попадает в её отверстия.
  *
  * В dev-режиме её можно загрузить из консоли браузера:
  *   const { createStressCircuit } = await import("/src/features/circuit-model/stress-circuit.ts");
  *   const { useCircuitStore } = await import("/src/stores/circuit-store.ts");
  *   useCircuitStore.getState().loadDocument(createStressCircuit());
  */
-export function createStressCircuit(componentCount = 100, connectionCount = 300, seed = 1): CircuitDocument {
+export function createStressCircuit(
+  componentCount = 100,
+  connectionCount = 300,
+  seed = 1,
+  withBreadboard = false,
+): CircuitDocument {
   let state = seed;
   // LCG (Numerical Recipes): одинаковый seed — одинаковая схема.
   const random = () => {
@@ -58,6 +64,10 @@ export function createStressCircuit(componentCount = 100, connectionCount = 300,
     if (a === b || seen.has(`${a}|${b}`) || seen.has(`${b}|${a}`)) continue;
     seen.add(`${a}|${b}`);
     connections.push({ id: `w${connections.length + 1}`, from, to });
+  }
+
+  if (withBreadboard) {
+    components.unshift({ id: "bb1", type: "breadboard", position: { x: 19, y: 0 }, rotation: 0, properties: {} });
   }
 
   return {

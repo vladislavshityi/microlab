@@ -68,6 +68,13 @@ export type PropertyId = string;
  */
 export type PropertyUnit = "ohm" | "volt" | "percent";
 /**
+ * Electrical model used by circuit validation and simulation.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "ElectricalModel".
+ */
+export type ElectricalModel = ResistorModel | LedModel | SwitchModel;
+/**
  * DIGITAL: logic levels only; BASIC_ELECTRICAL: simple electrical model; BEHAVIORAL: behavioral model; CONNECTIVITY: connectivity only.
  *
  * This interface was referenced by `ComponentDefinition`'s JSON-Schema
@@ -92,7 +99,12 @@ export interface ComponentDefinition {
    * Groups of pin ids that are always the same net (inside the component itself).
    */
   internalConnections?: [string, string, ...string[]][];
+  /**
+   * true for socket components such as a breadboard: a pin of another component (not a board and not a socket) that lies exactly on the same grid point as a socket pin is electrically connected to it. Visual proximity without exact coincidence never connects.
+   */
+  socket?: boolean;
   properties: PropertyDefinition[];
+  electricalModel?: ElectricalModel;
   simulationAccuracy: SimulationAccuracy;
   /**
    * Known limitations of the model, short sentences in Russian.
@@ -118,6 +130,38 @@ export interface BoardInfo {
   mcu: string;
   fqbn: string;
   clockHz: number;
+  electricalLimits?: BoardElectricalLimits;
+}
+/**
+ * Electrical values used by circuit validation. Operating limits only, never absolute maximum ratings.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "BoardElectricalLimits".
+ */
+export interface BoardElectricalLimits {
+  /**
+   * Nominal I/O logic voltage, V.
+   */
+  ioVoltage: number;
+  /**
+   * Operating current limit per GPIO pin (source or sink), mA.
+   */
+  gpioPinCurrentMa: number;
+  gpioGroupCurrentLimits: GpioGroupCurrentLimit[];
+}
+/**
+ * Limit for the sum of currents of a group of MCU port pins.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "GpioGroupCurrentLimit".
+ */
+export interface GpioGroupCurrentLimit {
+  direction: "source" | "sink";
+  /**
+   * @minItems 1
+   */
+  mcuPins: [string, ...string[]];
+  maxMa: number;
 }
 /**
  * This interface was referenced by `ComponentDefinition`'s JSON-Schema
@@ -184,6 +228,47 @@ export interface EnumPropertyDefinition {
 export interface EnumOption {
   value: string;
   label: LocalizedText;
+}
+/**
+ * Two-terminal resistor; resistance in ohms comes from a number property.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "ResistorModel".
+ */
+export interface ResistorModel {
+  kind: "resistor";
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  terminals: [PinId, PinId];
+  resistanceProperty: PropertyId;
+}
+/**
+ * Light-emitting diode; forward voltage in volts comes from a number property.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "LedModel".
+ */
+export interface LedModel {
+  kind: "led";
+  anode: PinId;
+  cathode: PinId;
+  forwardVoltageProperty: PropertyId;
+}
+/**
+ * Switch between two terminals; open or closed at run time.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "SwitchModel".
+ */
+export interface SwitchModel {
+  kind: "switch";
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  terminals: [PinId, PinId];
 }
 /**
  * Symbol size and pin positions relative to the top-left corner, in grid units.

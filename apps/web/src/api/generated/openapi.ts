@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/circuits/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate a circuit document */
+        post: operations["validateCircuit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/compile": {
         parameters: {
             query?: never;
@@ -76,14 +93,63 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * BoardElectricalLimits
+         * @description Electrical values used by circuit validation. Operating limits only, never absolute maximum ratings.
+         */
+        BoardElectricalLimits: {
+            /** Gpiogroupcurrentlimits */
+            gpioGroupCurrentLimits: components["schemas"]["GpioGroupCurrentLimit"][];
+            /** Gpiopincurrentma */
+            gpioPinCurrentMa: number;
+            /** Iovoltage */
+            ioVoltage: number;
+        };
         /** BoardInfo */
         BoardInfo: {
             /** Clockhz */
             clockHz: number;
+            electricalLimits?: components["schemas"]["BoardElectricalLimits"] | null;
             /** Fqbn */
             fqbn: string;
             /** Mcu */
             mcu: string;
+        };
+        /** CircuitIssue */
+        CircuitIssue: {
+            code: components["schemas"]["IssueCode"];
+            /**
+             * Message
+             * @description English text for logs and API clients; the UI uses code.
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values for the localized UI message, e.g. estimated current.
+             */
+            params: {
+                [key: string]: string | number;
+            };
+            /** Refs */
+            refs: components["schemas"]["IssueRef"][];
+            severity: components["schemas"]["Severity"];
+        };
+        /** CircuitNet */
+        CircuitNet: {
+            /** Id */
+            id: string;
+            /**
+             * Members
+             * @description Pin references componentId.pinId.
+             */
+            members: string[];
+        };
+        /** CircuitValidationResponse */
+        CircuitValidationResponse: {
+            /** Issues */
+            issues: components["schemas"]["CircuitIssue"][];
+            /** Nets */
+            nets: components["schemas"]["CircuitNet"][];
         };
         /** CompileDiagnostic */
         CompileDiagnostic: {
@@ -152,6 +218,8 @@ export interface components {
             category: "board" | "basic" | "passive" | "output" | "sensors" | "displays";
             description: components["schemas"]["LocalizedText"];
             displayName: components["schemas"]["LocalizedText"];
+            /** ElectricalModel */
+            electricalModel?: components["schemas"]["ResistorModel"] | components["schemas"]["LedModel"] | components["schemas"]["SwitchModel"] | null;
             /** Internalconnections */
             internalConnections?: components["schemas"]["InternalConnection"][] | null;
             /** Limitations */
@@ -165,6 +233,8 @@ export interface components {
              * @enum {string}
              */
             simulationAccuracy: "DIGITAL" | "BASIC_ELECTRICAL" | "BEHAVIORAL" | "CONNECTIVITY";
+            /** Socket */
+            socket?: boolean | null;
             /** Type */
             type: string;
             visual: components["schemas"]["VisualModel"];
@@ -250,6 +320,21 @@ export interface components {
              */
             sha256: string;
         };
+        /**
+         * GpioGroupCurrentLimit
+         * @description Limit for the sum of currents of a group of MCU port pins.
+         */
+        GpioGroupCurrentLimit: {
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "source" | "sink";
+            /** Maxma */
+            maxMa: number;
+            /** Mcupins */
+            mcuPins: components["schemas"]["McuPin"][];
+        };
         /** HealthChecks */
         HealthChecks: {
             database: components["schemas"]["DatabaseCheck"];
@@ -268,6 +353,36 @@ export interface components {
         /** InternalConnection */
         InternalConnection: string[];
         /**
+         * IssueCode
+         * @description Stable machine-readable circuit issue codes. The UI relies only on these values.
+         * @enum {string}
+         */
+        IssueCode: "INVALID_DOCUMENT" | "UNSUPPORTED_SCHEMA_VERSION" | "DUPLICATE_COMPONENT_ID" | "DUPLICATE_CONNECTION_ID" | "UNKNOWN_COMPONENT_TYPE" | "NOT_A_BOARD" | "BOARD_AS_COMPONENT" | "UNKNOWN_PROPERTY" | "INVALID_PROPERTY" | "BROKEN_CONNECTION_REFERENCE" | "UNKNOWN_PIN" | "NON_ORTHOGONAL_ROUTE" | "POWER_SHORT_TO_GROUND" | "POWER_RAILS_SHORTED" | "VIN_CONNECTED_TO_RAIL" | "OUTPUT_TO_RAIL" | "OUTPUTS_CONNECTED" | "LED_WITHOUT_RESISTOR" | "LED_REVERSED" | "GPIO_CURRENT_EXCEEDS_LIMIT" | "GPIO_GROUP_CURRENT_EXCEEDS_LIMIT" | "MISSING_GROUND" | "FLOATING_POWER_PIN" | "POWER_DOMAIN_MISMATCH" | "SERIAL_PINS_USED" | "I2C_PINS_USED" | "SPI_PINS_USED";
+        /** IssueRef */
+        IssueRef: {
+            /** Id */
+            id: string;
+            /** @description component: board or component id; connection: wire id; pin: componentId.pinId; net: netlist id; field: document field path. */
+            kind: components["schemas"]["RefKind"];
+        };
+        /**
+         * LedModel
+         * @description Light-emitting diode; forward voltage in volts comes from a number property.
+         */
+        LedModel: {
+            /** PinId */
+            anode: string;
+            /** PinId */
+            cathode: string;
+            /** PropertyId */
+            forwardVoltageProperty: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "led";
+        };
+        /**
          * LocalizedText
          * @description UI text: translation key plus the Russian text.
          */
@@ -277,6 +392,8 @@ export interface components {
             /** Ru */
             ru: string;
         };
+        /** McuPin */
+        McuPin: string;
         /** NumberPropertyDefinition */
         NumberPropertyDefinition: {
             /** Default */
@@ -323,6 +440,8 @@ export interface components {
             /** VoltageDomain */
             voltageDomain?: ("5V" | "3V3" | "VIN") | null;
         };
+        /** PinId */
+        PinId: string;
         /**
          * PinPosition
          * @description Pin position in grid units, relative to the top-left corner of the symbol.
@@ -332,6 +451,46 @@ export interface components {
             x: number;
             /** Y */
             y: number;
+        };
+        /**
+         * RefKind
+         * @description Kind of the object an issue refers to.
+         * @enum {string}
+         */
+        RefKind: "component" | "connection" | "pin" | "net" | "field";
+        /**
+         * ResistorModel
+         * @description Two-terminal resistor; resistance in ohms comes from a number property.
+         */
+        ResistorModel: {
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "resistor";
+            /** PropertyId */
+            resistanceProperty: string;
+            /** Terminals */
+            terminals: components["schemas"]["PinId"][];
+        };
+        /**
+         * Severity
+         * @description Issue severity: ERROR blocks compilation and simulation, WARNING and INFO do not.
+         * @enum {string}
+         */
+        Severity: "ERROR" | "WARNING" | "INFO";
+        /**
+         * SwitchModel
+         * @description Switch between two terminals; open or closed at run time.
+         */
+        SwitchModel: {
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "switch";
+            /** Terminals */
+            terminals: components["schemas"]["PinId"][];
         };
         /** Toolchain */
         Toolchain: {
@@ -365,6 +524,50 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    validateCircuit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircuitValidationResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     compileSketch: {
         parameters: {
             query?: never;

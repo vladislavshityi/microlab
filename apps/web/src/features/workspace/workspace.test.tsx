@@ -15,7 +15,13 @@ function renderApp() {
 
 describe("Workspace", () => {
   beforeEach(() => {
-    stubFetch(() => Promise.resolve(jsonResponse(HEALTH_OK, 200)));
+    stubFetch((input) =>
+      Promise.resolve(
+        (typeof input === "string" ? input : input instanceof URL ? input.href : input.url).endsWith("/circuits/validate")
+          ? jsonResponse({ issues: [], nets: [] }, 200)
+          : jsonResponse(HEALTH_OK, 200),
+      ),
+    );
   });
 
   it("renders all regions with accessible names and honest empty states", async () => {
@@ -74,13 +80,14 @@ describe("Workspace", () => {
       "Монитор порта появится вместе с симуляцией.",
     );
 
+    // «Проблемы» работает: проверка схемы идёт на backend.
     const problems = within(tabs).getByRole("tab", { name: /Проблемы/ });
-    expect(problems).toHaveTextContent("Скоро");
+    expect(problems).not.toHaveTextContent("Скоро");
     await user.keyboard("{ArrowRight}");
     expect(problems).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel", { name: /Проблемы/ })).toHaveTextContent(
-      "Список проблем появится",
-    );
+    expect(
+      await within(screen.getByRole("tabpanel", { name: /Проблемы/ })).findByText("Проблем не найдено."),
+    ).toBeInTheDocument();
 
     // Редактор не размонтирован при переключении вкладок: панель «Код» лишь скрыта.
     const codePanel = screen.getByRole("tabpanel", { name: "Код", hidden: true });

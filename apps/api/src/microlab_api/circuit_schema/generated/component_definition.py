@@ -11,6 +11,10 @@ class InternalConnection(RootModel[list[str]]):
     root: Annotated[list[str], Field(min_length=2)]
 
 
+class PinId(RootModel[str]):
+    root: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+
+
 class LocalizedText(BaseModel):
     """
     UI text: translation key plus the Russian text.
@@ -84,16 +88,6 @@ class PinDefinition(BaseModel):
     """
 
 
-class BoardInfo(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        populate_by_name=True,
-    )
-    mcu: Annotated[str, Field(min_length=1)]
-    fqbn: Annotated[str, Field(pattern="^[a-z0-9_-]+:[a-z0-9_-]+:[a-z0-9_-]+$")]
-    clock_hz: Annotated[int, Field(alias="clockHz", ge=1)]
-
-
 class EnumOption(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -114,6 +108,74 @@ class PinPosition(BaseModel):
     )
     x: int
     y: int
+
+
+class McuPin(RootModel[str]):
+    root: Annotated[str, Field(pattern="^P[A-Z][0-7]$")]
+
+
+class GpioGroupCurrentLimit(BaseModel):
+    """
+    Limit for the sum of currents of a group of MCU port pins.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    direction: Literal["source", "sink"]
+    mcu_pins: Annotated[list[McuPin], Field(alias="mcuPins", min_length=1)]
+    max_ma: Annotated[float, Field(alias="maxMa", gt=0.0)]
+
+
+class ResistorModel(BaseModel):
+    """
+    Two-terminal resistor; resistance in ohms comes from a number property.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    kind: Literal["resistor"]
+    terminals: Annotated[list[PinId], Field(max_length=2, min_length=2)]
+    resistance_property: Annotated[
+        str,
+        Field(alias="resistanceProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId"),
+    ]
+
+
+class LedModel(BaseModel):
+    """
+    Light-emitting diode; forward voltage in volts comes from a number property.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    kind: Literal["led"]
+    anode: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    cathode: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    forward_voltage_property: Annotated[
+        str,
+        Field(
+            alias="forwardVoltageProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId"
+        ),
+    ]
+
+
+class SwitchModel(BaseModel):
+    """
+    Switch between two terminals; open or closed at run time.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    kind: Literal["switch"]
+    terminals: Annotated[list[PinId], Field(max_length=2, min_length=2)]
 
 
 class NumberPropertyDefinition(BaseModel):
@@ -168,6 +230,41 @@ class VisualModel(BaseModel):
     pins: dict[str, PinPosition]
 
 
+class BoardElectricalLimits(BaseModel):
+    """
+    Electrical values used by circuit validation. Operating limits only, never absolute maximum ratings.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    io_voltage: Annotated[float, Field(alias="ioVoltage", gt=0.0)]
+    """
+    Nominal I/O logic voltage, V.
+    """
+    gpio_pin_current_ma: Annotated[float, Field(alias="gpioPinCurrentMa", gt=0.0)]
+    """
+    Operating current limit per GPIO pin (source or sink), mA.
+    """
+    gpio_group_current_limits: Annotated[
+        list[GpioGroupCurrentLimit], Field(alias="gpioGroupCurrentLimits")
+    ]
+
+
+class BoardInfo(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    mcu: Annotated[str, Field(min_length=1)]
+    fqbn: Annotated[str, Field(pattern="^[a-z0-9_-]+:[a-z0-9_-]+:[a-z0-9_-]+$")]
+    clock_hz: Annotated[int, Field(alias="clockHz", ge=1)]
+    electrical_limits: Annotated[BoardElectricalLimits | None, Field(alias="electricalLimits")] = (
+        None
+    )
+
+
 class ComponentDefinition(BaseModel):
     """
     Definition of a board or component type. Geometry is in grid units (integers, 1 unit = 2.54 mm).
@@ -192,7 +289,18 @@ class ComponentDefinition(BaseModel):
     """
     Groups of pin ids that are always the same net (inside the component itself).
     """
+    socket: bool | None = None
+    """
+    true for socket components such as a breadboard: a pin of another component (not a board and not a socket) that lies exactly on the same grid point as a socket pin is electrically connected to it. Visual proximity without exact coincidence never connects.
+    """
     properties: list[NumberPropertyDefinition | EnumPropertyDefinition]
+    electrical_model: Annotated[
+        ResistorModel | LedModel | SwitchModel | None,
+        Field(alias="electricalModel", title="ElectricalModel"),
+    ] = None
+    """
+    Electrical model used by circuit validation and simulation.
+    """
     simulation_accuracy: Annotated[
         Literal["DIGITAL", "BASIC_ELECTRICAL", "BEHAVIORAL", "CONNECTIVITY"],
         Field(alias="simulationAccuracy", title="SimulationAccuracy"),

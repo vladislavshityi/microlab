@@ -12,6 +12,7 @@
   ],
   "properties": [],
   "simulationAccuracy": "BASIC_ELECTRICAL",
+  "electricalModel": { "kind": "switch", "terminals": ["A", "B"] },
   "limitations": [
     "Моделируется как идеальный переключатель: сопротивление замкнутого контакта не учитывается.",
     "Дребезг контактов не моделируется.",

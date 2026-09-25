@@ -1,6 +1,36 @@
 {
   "components": {
     "schemas": {
+      "BoardElectricalLimits": {
+        "additionalProperties": false,
+        "description": "Electrical values used by circuit validation. Operating limits only, never absolute maximum ratings.",
+        "properties": {
+          "gpioGroupCurrentLimits": {
+            "items": {
+              "$ref": "#/components/schemas/GpioGroupCurrentLimit"
+            },
+            "title": "Gpiogroupcurrentlimits",
+            "type": "array"
+          },
+          "gpioPinCurrentMa": {
+            "exclusiveMinimum": 0.0,
+            "title": "Gpiopincurrentma",
+            "type": "number"
+          },
+          "ioVoltage": {
+            "exclusiveMinimum": 0.0,
+            "title": "Iovoltage",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ioVoltage",
+          "gpioPinCurrentMa",
+          "gpioGroupCurrentLimits"
+        ],
+        "title": "BoardElectricalLimits",
+        "type": "object"
+      },
       "BoardInfo": {
         "additionalProperties": false,
         "properties": {
@@ -8,6 +38,16 @@
             "minimum": 1.0,
             "title": "Clockhz",
             "type": "integer"
+          },
+          "electricalLimits": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoardElectricalLimits"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "fqbn": {
             "pattern": "^[a-z0-9_-]+:[a-z0-9_-]+:[a-z0-9_-]+$",
@@ -26,6 +66,104 @@
           "clockHz"
         ],
         "title": "BoardInfo",
+        "type": "object"
+      },
+      "CircuitIssue": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/IssueCode"
+          },
+          "message": {
+            "description": "English text for logs and API clients; the UI uses code.",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values for the localized UI message, e.g. estimated current.",
+            "title": "Params",
+            "type": "object"
+          },
+          "refs": {
+            "items": {
+              "$ref": "#/components/schemas/IssueRef"
+            },
+            "title": "Refs",
+            "type": "array"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "refs",
+          "params"
+        ],
+        "title": "CircuitIssue",
+        "type": "object"
+      },
+      "CircuitNet": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "members": {
+            "description": "Pin references componentId.pinId.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "members"
+        ],
+        "title": "CircuitNet",
+        "type": "object"
+      },
+      "CircuitValidationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/CircuitIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "nets": {
+            "items": {
+              "$ref": "#/components/schemas/CircuitNet"
+            },
+            "title": "Nets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "issues",
+          "nets"
+        ],
+        "title": "CircuitValidationResponse",
         "type": "object"
       },
       "CompileDiagnostic": {
@@ -231,6 +369,23 @@
           "displayName": {
             "$ref": "#/components/schemas/LocalizedText"
           },
+          "electricalModel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResistorModel"
+              },
+              {
+                "$ref": "#/components/schemas/LedModel"
+              },
+              {
+                "$ref": "#/components/schemas/SwitchModel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "ElectricalModel"
+          },
           "internalConnections": {
             "anyOf": [
               {
@@ -283,6 +438,17 @@
             ],
             "title": "SimulationAccuracy",
             "type": "string"
+          },
+          "socket": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Socket"
           },
           "type": {
             "pattern": "^[a-z][a-z0-9-]{0,63}$",
@@ -502,6 +668,40 @@
         "title": "Firmware",
         "type": "object"
       },
+      "GpioGroupCurrentLimit": {
+        "additionalProperties": false,
+        "description": "Limit for the sum of currents of a group of MCU port pins.",
+        "properties": {
+          "direction": {
+            "enum": [
+              "source",
+              "sink"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "maxMa": {
+            "exclusiveMinimum": 0.0,
+            "title": "Maxma",
+            "type": "number"
+          },
+          "mcuPins": {
+            "items": {
+              "$ref": "#/components/schemas/McuPin"
+            },
+            "minItems": 1,
+            "title": "Mcupins",
+            "type": "array"
+          }
+        },
+        "required": [
+          "direction",
+          "mcuPins",
+          "maxMa"
+        ],
+        "title": "GpioGroupCurrentLimit",
+        "type": "object"
+      },
       "HealthChecks": {
         "additionalProperties": false,
         "properties": {
@@ -550,6 +750,93 @@
         "title": "InternalConnection",
         "type": "array"
       },
+      "IssueCode": {
+        "description": "Stable machine-readable circuit issue codes. The UI relies only on these values.",
+        "enum": [
+          "INVALID_DOCUMENT",
+          "UNSUPPORTED_SCHEMA_VERSION",
+          "DUPLICATE_COMPONENT_ID",
+          "DUPLICATE_CONNECTION_ID",
+          "UNKNOWN_COMPONENT_TYPE",
+          "NOT_A_BOARD",
+          "BOARD_AS_COMPONENT",
+          "UNKNOWN_PROPERTY",
+          "INVALID_PROPERTY",
+          "BROKEN_CONNECTION_REFERENCE",
+          "UNKNOWN_PIN",
+          "NON_ORTHOGONAL_ROUTE",
+          "POWER_SHORT_TO_GROUND",
+          "POWER_RAILS_SHORTED",
+          "VIN_CONNECTED_TO_RAIL",
+          "OUTPUT_TO_RAIL",
+          "OUTPUTS_CONNECTED",
+          "LED_WITHOUT_RESISTOR",
+          "LED_REVERSED",
+          "GPIO_CURRENT_EXCEEDS_LIMIT",
+          "GPIO_GROUP_CURRENT_EXCEEDS_LIMIT",
+          "MISSING_GROUND",
+          "FLOATING_POWER_PIN",
+          "POWER_DOMAIN_MISMATCH",
+          "SERIAL_PINS_USED",
+          "I2C_PINS_USED",
+          "SPI_PINS_USED"
+        ],
+        "title": "IssueCode",
+        "type": "string"
+      },
+      "IssueRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RefKind",
+            "description": "component: board or component id; connection: wire id; pin: componentId.pinId; net: netlist id; field: document field path."
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "IssueRef",
+        "type": "object"
+      },
+      "LedModel": {
+        "additionalProperties": false,
+        "description": "Light-emitting diode; forward voltage in volts comes from a number property.",
+        "properties": {
+          "anode": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          },
+          "cathode": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          },
+          "forwardVoltageProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "kind": {
+            "const": "led",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "anode",
+          "cathode",
+          "forwardVoltageProperty"
+        ],
+        "title": "LedModel",
+        "type": "object"
+      },
       "LocalizedText": {
         "additionalProperties": false,
         "description": "UI text: translation key plus the Russian text.",
@@ -571,6 +858,11 @@
         ],
         "title": "LocalizedText",
         "type": "object"
+      },
+      "McuPin": {
+        "pattern": "^P[A-Z][0-7]$",
+        "title": "McuPin",
+        "type": "string"
       },
       "NumberPropertyDefinition": {
         "additionalProperties": false,
@@ -750,6 +1042,11 @@
         "title": "PinDefinition",
         "type": "object"
       },
+      "PinId": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+        "title": "PinId",
+        "type": "string"
+      },
       "PinPosition": {
         "additionalProperties": false,
         "description": "Pin position in grid units, relative to the top-left corner of the symbol.",
@@ -768,6 +1065,86 @@
           "y"
         ],
         "title": "PinPosition",
+        "type": "object"
+      },
+      "RefKind": {
+        "description": "Kind of the object an issue refers to.",
+        "enum": [
+          "component",
+          "connection",
+          "pin",
+          "net",
+          "field"
+        ],
+        "title": "RefKind",
+        "type": "string"
+      },
+      "ResistorModel": {
+        "additionalProperties": false,
+        "description": "Two-terminal resistor; resistance in ohms comes from a number property.",
+        "properties": {
+          "kind": {
+            "const": "resistor",
+            "title": "Kind",
+            "type": "string"
+          },
+          "resistanceProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "terminals": {
+            "items": {
+              "$ref": "#/components/schemas/PinId"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Terminals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "terminals",
+          "resistanceProperty"
+        ],
+        "title": "ResistorModel",
+        "type": "object"
+      },
+      "Severity": {
+        "description": "Issue severity: ERROR blocks compilation and simulation, WARNING and INFO do not.",
+        "enum": [
+          "ERROR",
+          "WARNING",
+          "INFO"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
+      "SwitchModel": {
+        "additionalProperties": false,
+        "description": "Switch between two terminals; open or closed at run time.",
+        "properties": {
+          "kind": {
+            "const": "switch",
+            "title": "Kind",
+            "type": "string"
+          },
+          "terminals": {
+            "items": {
+              "$ref": "#/components/schemas/PinId"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Terminals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "terminals"
+        ],
+        "title": "SwitchModel",
         "type": "object"
       },
       "Toolchain": {
@@ -832,6 +1209,60 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/circuits/validate": {
+      "post": {
+        "operationId": "validateCircuit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "description": "Circuit document (CircuitDocument, schemaVersion 1).",
+                "title": "Document",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitValidationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          }
+        },
+        "summary": "Validate a circuit document",
+        "tags": [
+          "circuits"
+        ]
+      }
+    },
     "/api/v1/compile": {
       "post": {
         "operationId": "compileSketch",

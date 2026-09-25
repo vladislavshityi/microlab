@@ -3,6 +3,8 @@ import type { ComponentDefinition, ComponentInstance, Rotation } from "@microlab
 
 import { localized } from "@/i18n/localized";
 
+import { rotationTransform } from "./rotation";
+
 /**
  * Собственные упрощённые символы компонентов. Рисуются в единицах сетки (viewBox),
  * поэтому выводы символа совпадают с координатами выводов из определения.
@@ -19,19 +21,6 @@ const LED_FILL: Readonly<Record<string, string>> = {
   blue: "#3b82f6",
   white: "#f5f5f5",
 };
-
-function rotationTransform(rotation: Rotation, width: number, height: number): string | undefined {
-  switch (rotation) {
-    case 0:
-      return undefined;
-    case 90:
-      return `translate(${height} 0) rotate(90)`;
-    case 180:
-      return `translate(${width} ${height}) rotate(180)`;
-    case 270:
-      return `translate(0 ${width}) rotate(270)`;
-  }
-}
 
 function Lead({ x1, x2, y }: { x1: number; x2: number; y: number }) {
   return <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--foreground)" strokeWidth={STROKE} />;

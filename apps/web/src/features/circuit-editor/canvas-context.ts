@@ -5,7 +5,8 @@ import type { PinRef } from "@microlab/circuit-schema";
 export interface PinActions {
   onPinPointerDown: (pin: PinRef, event: PointerEvent<HTMLElement>) => void;
   onPinKeyDown: (pin: PinRef, event: KeyboardEvent<HTMLElement>) => void;
-  showPinHint: (pin: PinRef, element: HTMLElement) => void;
+  /** Показать подсказку вывода над прямоугольником в координатах окна. */
+  showPinHint: (pin: PinRef, rect: { left: number; top: number; width: number }) => void;
   hidePinHint: () => void;
 }
 

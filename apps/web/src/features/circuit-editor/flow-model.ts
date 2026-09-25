@@ -36,7 +36,9 @@ export interface CircuitNodeData extends Record<string, unknown> {
   isBoard: boolean;
 }
 
-export type CircuitFlowNode = Node<CircuitNodeData, "circuit">;
+/** Тип узла React Flow: гнёзда (макетная плата) рисуются отдельным компонентом. */
+export type CircuitNodeType = "circuit" | "breadboard";
+export type CircuitFlowNode = Node<CircuitNodeData, CircuitNodeType>;
 export type WireFlowEdge = Edge<Record<string, never>, "wire">;
 
 /** Размер области захвата вывода, px. */
@@ -83,8 +85,18 @@ export function pinLayouts(definition: ComponentDefinition, rotation: Rotation):
   return layouts;
 }
 
+const handlesCache = new WeakMap<readonly PinLayout[], NodeHandle[]>();
+
+/**
+ * Выводы узла для React Flow (позиции концов проводов). Задаются данными, а не DOM,
+ * поэтому у макетной платы нет 400 DOM-элементов выводов. Кэшируются по раскладке.
+ */
 function nodeHandles(layouts: readonly PinLayout[]): NodeHandle[] {
-  return layouts.map((layout) => ({
+  const cached = handlesCache.get(layouts);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const handles: NodeHandle[] = layouts.map((layout) => ({
     id: layout.id,
     type: "source",
     position: layout.position,
@@ -93,7 +105,12 @@ function nodeHandles(layouts: readonly PinLayout[]): NodeHandle[] {
     width: PIN_HIT_PX,
     height: PIN_HIT_PX,
   }));
+  handlesCache.set(layouts, handles);
+  return handles;
 }
+
+/** Слои холста: плата и макетная плата под проводами, компоненты над ними. */
+export const Z_INDEX = { base: 0, wire: 1, component: 2 } as const;
 
 /** Доступное имя компонента на холсте: «Резистор r1, 220 Ω». */
 export function componentAccessibleName(
@@ -157,9 +174,10 @@ export function createNodeBuilder() {
     const width = size.width * GRID_PX;
     const height = size.height * GRID_PX;
     const position = source.position ?? { x: 0, y: 0 };
+    const lowered = isBoard || definition.socket === true;
     const node: CircuitFlowNode = {
       id: source.id,
-      type: "circuit",
+      type: definition.socket === true ? "breadboard" : "circuit",
       position: { x: position.x * GRID_PX, y: position.y * GRID_PX },
       data,
       selected,
@@ -168,7 +186,7 @@ export function createNodeBuilder() {
       measured: { width, height },
       handles: nodeHandles(pinLayouts(definition, rotation)),
       deletable: !isBoard,
-      zIndex: isBoard ? 0 : 1,
+      zIndex: lowered ? Z_INDEX.base : Z_INDEX.component,
       ariaLabel: componentAccessibleName(definition, source.id, properties),
     };
     cache.set(source.id, { source, selected, node });
@@ -224,6 +242,7 @@ export function createEdgeBuilder() {
         target: connection.to.componentId,
         targetHandle: connection.to.pinId,
         selected: isSelected,
+        zIndex: Z_INDEX.wire,
         data: {},
         ariaLabel: t("canvas.wire.label", {
           id,

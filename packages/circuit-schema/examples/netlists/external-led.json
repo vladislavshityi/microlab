@@ -1,0 +1,8 @@
+[
+  {"id": "NET_001", "members": ["uno1.D13", "resistor1.1"]},
+  {"id": "NET_002", "members": ["uno1.A4", "uno1.SDA"]},
+  {"id": "NET_003", "members": ["uno1.A5", "uno1.SCL"]},
+  {"id": "NET_004", "members": ["uno1.IOREF", "uno1.5V"]},
+  {"id": "NET_005", "members": ["uno1.GND1", "uno1.GND2", "uno1.GND3", "led1.K"]},
+  {"id": "NET_006", "members": ["resistor1.2", "led1.A"]}
+]

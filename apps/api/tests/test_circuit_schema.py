@@ -33,6 +33,7 @@ def _validator(name: str) -> Draft202012Validator:
 def test_definitions_exist() -> None:
     assert [path.name for path in DEFINITION_FILES] == [
         "arduino-uno-r3.json",
+        "breadboard.json",
         "led.json",
         "push-button.json",
         "resistor.json",
@@ -69,8 +70,14 @@ def test_circuit_schema_requires_integer_grid_and_version() -> None:
 
 def test_registry_loads_all_definitions() -> None:
     registry = get_definition_registry()
-    assert sorted(registry.by_type) == ["arduino-uno-r3", "led", "push-button", "resistor"]
-    assert registry.get("breadboard") is None
+    assert sorted(registry.by_type) == [
+        "arduino-uno-r3",
+        "breadboard",
+        "led",
+        "push-button",
+        "resistor",
+    ]
+    assert registry.get("capacitor") is None
 
 
 def test_generated_models_are_up_to_date(capsys: pytest.CaptureFixture[str]) -> None:

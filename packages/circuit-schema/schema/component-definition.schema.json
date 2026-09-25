@@ -52,11 +52,18 @@
         }
       }
     },
+    "socket": {
+      "description": "true for socket components such as a breadboard: a pin of another component (not a board and not a socket) that lies exactly on the same grid point as a socket pin is electrically connected to it. Visual proximity without exact coincidence never connects.",
+      "type": "boolean"
+    },
     "properties": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/PropertyDefinition"
       }
+    },
+    "electricalModel": {
+      "$ref": "#/$defs/ElectricalModel"
     },
     "simulationAccuracy": {
       "$ref": "#/$defs/SimulationAccuracy"
@@ -226,6 +233,9 @@
         "clockHz": {
           "type": "integer",
           "minimum": 1
+        },
+        "electricalLimits": {
+          "$ref": "#/$defs/BoardElectricalLimits"
         }
       }
     },
@@ -402,6 +412,158 @@
         }
       },
       "description": "Pin position in grid units, relative to the top-left corner of the symbol."
+    },
+    "BoardElectricalLimits": {
+      "title": "BoardElectricalLimits",
+      "description": "Electrical values used by circuit validation. Operating limits only, never absolute maximum ratings.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ioVoltage",
+        "gpioPinCurrentMa",
+        "gpioGroupCurrentLimits"
+      ],
+      "properties": {
+        "ioVoltage": {
+          "description": "Nominal I/O logic voltage, V.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "gpioPinCurrentMa": {
+          "description": "Operating current limit per GPIO pin (source or sink), mA.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "gpioGroupCurrentLimits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GpioGroupCurrentLimit"
+          }
+        }
+      }
+    },
+    "GpioGroupCurrentLimit": {
+      "title": "GpioGroupCurrentLimit",
+      "description": "Limit for the sum of currents of a group of MCU port pins.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "direction",
+        "mcuPins",
+        "maxMa"
+      ],
+      "properties": {
+        "direction": {
+          "enum": [
+            "source",
+            "sink"
+          ]
+        },
+        "mcuPins": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^P[A-Z][0-7]$"
+          }
+        },
+        "maxMa": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "ResistorModel": {
+      "title": "ResistorModel",
+      "description": "Two-terminal resistor; resistance in ohms comes from a number property.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "terminals",
+        "resistanceProperty"
+      ],
+      "properties": {
+        "kind": {
+          "const": "resistor"
+        },
+        "terminals": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/PinId"
+          }
+        },
+        "resistanceProperty": {
+          "$ref": "#/$defs/PropertyId"
+        }
+      }
+    },
+    "LedModel": {
+      "title": "LedModel",
+      "description": "Light-emitting diode; forward voltage in volts comes from a number property.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "anode",
+        "cathode",
+        "forwardVoltageProperty"
+      ],
+      "properties": {
+        "kind": {
+          "const": "led"
+        },
+        "anode": {
+          "$ref": "#/$defs/PinId"
+        },
+        "cathode": {
+          "$ref": "#/$defs/PinId"
+        },
+        "forwardVoltageProperty": {
+          "$ref": "#/$defs/PropertyId"
+        }
+      }
+    },
+    "SwitchModel": {
+      "title": "SwitchModel",
+      "description": "Switch between two terminals; open or closed at run time.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "terminals"
+      ],
+      "properties": {
+        "kind": {
+          "const": "switch"
+        },
+        "terminals": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/PinId"
+          }
+        }
+      }
+    },
+    "ElectricalModel": {
+      "title": "ElectricalModel",
+      "description": "Electrical model used by circuit validation and simulation.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ResistorModel"
+        },
+        {
+          "$ref": "#/$defs/LedModel"
+        },
+        {
+          "$ref": "#/$defs/SwitchModel"
+        }
+      ]
     }
   }
 }

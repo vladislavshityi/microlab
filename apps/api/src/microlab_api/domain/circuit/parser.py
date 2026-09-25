@@ -6,7 +6,7 @@ from typing import Final
 from pydantic import ValidationError
 
 from microlab_api.circuit_schema.generated.circuit import CircuitDocument
-from microlab_api.domain.circuit.issues import Issue, IssueCode, Severity
+from microlab_api.domain.circuit.issues import Issue, IssueCode, Severity, field_ref
 
 SUPPORTED_SCHEMA_VERSION: Final = 1
 
@@ -32,7 +32,7 @@ def parse_circuit(raw: object) -> ParseResult:
                     f"Unsupported circuit schemaVersion {version!r}; "
                     f"supported: {SUPPORTED_SCHEMA_VERSION}."
                 ),
-                refs=("schemaVersion",),
+                refs=(field_ref("schemaVersion"),),
             )
             return ParseResult(document=None, issues=[issue])
 
@@ -44,7 +44,7 @@ def parse_circuit(raw: object) -> ParseResult:
                 code=IssueCode.INVALID_DOCUMENT,
                 severity=Severity.ERROR,
                 message=error["msg"],
-                refs=(".".join(str(part) for part in error["loc"]),),
+                refs=(field_ref(".".join(str(part) for part in error["loc"])),),
             )
             for error in exc.errors(include_url=False)
         ]

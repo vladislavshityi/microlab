@@ -35,6 +35,7 @@
     }
   ],
   "simulationAccuracy": "BASIC_ELECTRICAL",
+  "electricalModel": { "kind": "resistor", "terminals": ["1", "2"], "resistanceProperty": "resistanceOhms" },
   "limitations": [
     "Допуск — только справочные данные: в симуляции используется номинальное сопротивление.",
     "Рассеиваемая мощность, нагрев и температурная зависимость сопротивления не моделируются."

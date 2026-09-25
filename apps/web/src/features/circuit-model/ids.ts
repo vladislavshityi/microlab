@@ -5,6 +5,7 @@ const ID_PREFIXES: Readonly<Record<string, string>> = {
   resistor: "r",
   led: "led",
   "push-button": "btn",
+  breadboard: "bb",
 };
 
 /** Префикс id соединений (проводов): w1, w2, … */

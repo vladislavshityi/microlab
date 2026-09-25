@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "board": { "id": "uno1", "type": "arduino-uno-r3", "position": { "x": 0, "y": 0 }, "rotation": 0 },
+  "components": [
+    { "id": "bb1", "type": "breadboard", "position": { "x": 16, "y": 0 }, "rotation": 0, "properties": {} },
+    {
+      "id": "r1",
+      "type": "resistor",
+      "position": { "x": 22, "y": 5 },
+      "rotation": 0,
+      "properties": { "resistanceOhms": 220 }
+    },
+    {
+      "id": "led1",
+      "type": "led",
+      "position": { "x": 25, "y": 7 },
+      "rotation": 90,
+      "properties": { "color": "red" }
+    },
+    { "id": "btn1", "type": "push-button", "position": { "x": 40, "y": 8 }, "rotation": 0, "properties": {} }
+  ],
+  "connections": [
+    {
+      "id": "w1",
+      "from": { "componentId": "uno1", "pinId": "D13" },
+      "to": { "componentId": "bb1", "pinId": "a5" },
+      "color": "#d97706"
+    },
+    { "id": "w2", "from": { "componentId": "bb1", "pinId": "j9" }, "to": { "componentId": "bb1", "pinId": "bn6" } },
+    {
+      "id": "w3",
+      "from": { "componentId": "uno1", "pinId": "GND3" },
+      "to": { "componentId": "bb1", "pinId": "bn1" },
+      "color": "#1f2937"
+    }
+  ]
+}

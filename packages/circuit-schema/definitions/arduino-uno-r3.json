@@ -12,7 +12,83 @@
   "board": {
     "mcu": "ATmega328P",
     "fqbn": "arduino:avr:uno",
-    "clockHz": 16000000
+    "clockHz": 16000000,
+    "electricalLimits": {
+      "ioVoltage": 5,
+      "gpioPinCurrentMa": 20,
+      "gpioGroupCurrentLimits": [
+        {
+          "direction": "sink",
+          "mcuPins": [
+            "PC0",
+            "PC1",
+            "PC2",
+            "PC3",
+            "PC4",
+            "PC5"
+          ],
+          "maxMa": 100
+        },
+        {
+          "direction": "sink",
+          "mcuPins": [
+            "PB0",
+            "PB1",
+            "PB2",
+            "PB3",
+            "PB4",
+            "PB5",
+            "PD5",
+            "PD6",
+            "PD7"
+          ],
+          "maxMa": 100
+        },
+        {
+          "direction": "sink",
+          "mcuPins": [
+            "PD0",
+            "PD1",
+            "PD2",
+            "PD3",
+            "PD4"
+          ],
+          "maxMa": 100
+        },
+        {
+          "direction": "source",
+          "mcuPins": [
+            "PC0",
+            "PC1",
+            "PC2",
+            "PC3",
+            "PC4",
+            "PC5",
+            "PD0",
+            "PD1",
+            "PD2",
+            "PD3",
+            "PD4"
+          ],
+          "maxMa": 150
+        },
+        {
+          "direction": "source",
+          "mcuPins": [
+            "PB0",
+            "PB1",
+            "PB2",
+            "PB3",
+            "PB4",
+            "PB5",
+            "PD5",
+            "PD6",
+            "PD7"
+          ],
+          "maxMa": 150
+        }
+      ]
+    }
   },
   "pins": [
     {

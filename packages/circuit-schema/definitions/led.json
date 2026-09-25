@@ -37,6 +37,7 @@
     }
   ],
   "simulationAccuracy": "BASIC_ELECTRICAL",
+  "electricalModel": { "kind": "led", "anode": "A", "cathode": "K", "forwardVoltageProperty": "forwardVoltage" },
   "limitations": [
     "Прямое напряжение по умолчанию (2 В) — условное значение, не взятое из datasheet: задайте его по datasheet используемого светодиода.",
     "Цвет — только визуальные метаданные: он не меняет прямое напряжение.",

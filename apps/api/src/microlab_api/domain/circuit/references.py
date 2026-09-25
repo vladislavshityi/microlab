@@ -17,10 +17,19 @@ from microlab_api.circuit_schema.generated.component_definition import (
     ComponentDefinition,
     NumberPropertyDefinition,
 )
-from microlab_api.domain.circuit.issues import Issue, IssueCode, Severity
+from microlab_api.domain.circuit.issues import (
+    Issue,
+    IssueCode,
+    IssueRef,
+    Severity,
+    component_ref,
+    connection_ref,
+    field_ref,
+    pin_ref,
+)
 
 
-def _error(code: IssueCode, message: str, *refs: str) -> Issue:
+def _error(code: IssueCode, message: str, *refs: IssueRef) -> Issue:
     return Issue(code=code, severity=Severity.ERROR, message=message, refs=refs)
 
 
@@ -46,7 +55,7 @@ def check_references(document: CircuitDocument, registry: DefinitionRegistry) ->
                 _error(
                     IssueCode.DUPLICATE_COMPONENT_ID,
                     f"Component id {instance_id!r} is used {count} times.",
-                    instance_id,
+                    component_ref(instance_id),
                 )
             )
     for connection_id, count in Counter(c.id for c in document.connections).items():
@@ -55,7 +64,7 @@ def check_references(document: CircuitDocument, registry: DefinitionRegistry) ->
                 _error(
                     IssueCode.DUPLICATE_CONNECTION_ID,
                     f"Connection id {connection_id!r} is used {count} times.",
-                    connection_id,
+                    connection_ref(connection_id),
                 )
             )
 
@@ -65,7 +74,7 @@ def check_references(document: CircuitDocument, registry: DefinitionRegistry) ->
             _error(
                 IssueCode.UNKNOWN_COMPONENT_TYPE,
                 f"Unknown board type {document.board.type!r}.",
-                document.board.id,
+                component_ref(document.board.id),
             )
         )
     elif board.category != "board":
@@ -73,7 +82,7 @@ def check_references(document: CircuitDocument, registry: DefinitionRegistry) ->
             _error(
                 IssueCode.NOT_A_BOARD,
                 f"Type {board.type!r} is not a board.",
-                document.board.id,
+                component_ref(document.board.id),
             )
         )
 
@@ -91,7 +100,7 @@ def check_references(document: CircuitDocument, registry: DefinitionRegistry) ->
                 _error(
                     IssueCode.NON_ORTHOGONAL_ROUTE,
                     f"Connection {connection.id!r} has a diagonal route segment.",
-                    connection.id,
+                    connection_ref(connection.id),
                 )
             )
     return issues
@@ -104,7 +113,7 @@ def _check_component(component: ComponentInstance, registry: DefinitionRegistry)
             _error(
                 IssueCode.UNKNOWN_COMPONENT_TYPE,
                 f"Unknown component type {component.type!r}.",
-                component.id,
+                component_ref(component.id),
             )
         ]
     if definition.category == "board":
@@ -112,7 +121,7 @@ def _check_component(component: ComponentInstance, registry: DefinitionRegistry)
             _error(
                 IssueCode.BOARD_AS_COMPONENT,
                 f"Board type {component.type!r} cannot be used as a component.",
-                component.id,
+                component_ref(component.id),
             )
         ]
     return _check_properties(component, definition)
@@ -122,14 +131,14 @@ def _check_properties(component: ComponentInstance, definition: ComponentDefinit
     issues: list[Issue] = []
     known = {prop.id: prop for prop in definition.properties}
     for name, value in component.properties.items():
-        ref = f"{component.id}.{name}"
+        refs = (component_ref(component.id), field_ref(f"{component.id}.{name}"))
         prop = known.get(name)
         if prop is None:
             issues.append(
                 _error(
                     IssueCode.UNKNOWN_PROPERTY,
                     f"Component type {definition.type!r} has no property {name!r}.",
-                    ref,
+                    *refs,
                 )
             )
         elif isinstance(prop, NumberPropertyDefinition):
@@ -143,7 +152,7 @@ def _check_properties(component: ComponentInstance, definition: ComponentDefinit
                         IssueCode.INVALID_PROPERTY,
                         f"Property {name!r} must be a number in "
                         f"[{prop.minimum:g}, {prop.maximum:g}].",
-                        ref,
+                        *refs,
                     )
                 )
         elif value not in {option.value for option in prop.options}:
@@ -151,7 +160,7 @@ def _check_properties(component: ComponentInstance, definition: ComponentDefinit
                 _error(
                     IssueCode.INVALID_PROPERTY,
                     f"Property {name!r} must be one of the defined options.",
-                    ref,
+                    *refs,
                 )
             )
     return issues
@@ -160,14 +169,13 @@ def _check_properties(component: ComponentInstance, definition: ComponentDefinit
 def _check_pin_ref(
     connection_id: str, end: PinRef, types: dict[str, str], registry: DefinitionRegistry
 ) -> Issue | None:
-    pin_ref = f"{end.component_id}.{end.pin_id}"
     component_type = types.get(end.component_id)
     if component_type is None:
         return _error(
             IssueCode.BROKEN_CONNECTION_REFERENCE,
             f"Connection {connection_id!r} references missing component {end.component_id!r}.",
-            connection_id,
-            end.component_id,
+            connection_ref(connection_id),
+            component_ref(end.component_id),
         )
     definition = registry.get(component_type)
     if definition is None:
@@ -177,8 +185,8 @@ def _check_pin_ref(
         return _error(
             IssueCode.UNKNOWN_PIN,
             f"Component {end.component_id!r} ({component_type}) has no pin {end.pin_id!r}.",
-            connection_id,
-            pin_ref,
+            connection_ref(connection_id),
+            pin_ref(f"{end.component_id}.{end.pin_id}"),
         )
     return None
 

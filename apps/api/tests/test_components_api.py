@@ -25,7 +25,13 @@ async def test_list_components(http: AsyncClient) -> None:
     response = await http.get("/api/v1/components")
     assert response.status_code == 200
     types = [item["type"] for item in response.json()]
-    assert types == ["arduino-uno-r3", "led", "push-button", "resistor"]
+    assert types == [
+        "arduino-uno-r3",
+        "breadboard",
+        "led",
+        "push-button",
+        "resistor",
+    ]
 
 
 async def test_get_component_matches_package_json(http: AsyncClient) -> None:

@@ -37,6 +37,8 @@ interface UiState {
   canvasCenter: GridPoint | null;
   /** Запрошен фокус на поиске компонентов (клавиша A на холсте); сбрасывается после фокуса. */
   componentSearchRequested: boolean;
+  /** Запрос показать объекты на холсте (например, по щелчку на замечании); seq — номер запроса. */
+  canvasFocus: { ids: readonly string[]; seq: number } | null;
 
   setThemePreference: (preference: ThemePreference) => void;
   setResolvedTheme: (theme: ResolvedTheme) => void;
@@ -47,6 +49,7 @@ interface UiState {
   setCanvasCenter: (center: GridPoint) => void;
   requestComponentSearch: () => void;
   consumeComponentSearch: () => void;
+  focusCanvasOn: (ids: readonly string[]) => void;
 }
 
 let nextNoticeId = 1;
@@ -71,6 +74,7 @@ export const useUiStore = create<UiState>()((set) => ({
   notice: null,
   canvasCenter: null,
   componentSearchRequested: false,
+  canvasFocus: null,
 
   // Класс темы меняется синхронно, до перерисовки React: компоненты, читающие значения
   // CSS-токенов (редактор кода), получают уже актуальные цвета.
@@ -108,5 +112,8 @@ export const useUiStore = create<UiState>()((set) => ({
   },
   consumeComponentSearch: () => {
     set({ componentSearchRequested: false });
+  },
+  focusCanvasOn: (ids) => {
+    set((state) => ({ canvasFocus: { ids, seq: (state.canvasFocus?.seq ?? 0) + 1 } }));
   },
 }));

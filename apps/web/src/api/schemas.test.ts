@@ -2,9 +2,11 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import type { z } from "zod";
 
 import {
+  CircuitValidationResponseSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
   readDisplayErrorCode,
+  type CircuitValidationResponse,
   type ErrorResponse,
   type HealthResponse,
 } from "./schemas";
@@ -14,6 +16,7 @@ describe("HealthResponseSchema", () => {
   it("is exactly the generated OpenAPI type (compile-time)", () => {
     expectTypeOf<z.infer<typeof HealthResponseSchema>>().toEqualTypeOf<HealthResponse>();
     expectTypeOf<z.infer<typeof ErrorResponseSchema>>().toEqualTypeOf<ErrorResponse>();
+    expectTypeOf<z.infer<typeof CircuitValidationResponseSchema>>().toEqualTypeOf<CircuitValidationResponse>();
   });
 
   it("accepts the 200 and 503 bodies from the contract", () => {
@@ -34,6 +37,33 @@ describe("HealthResponseSchema", () => {
 
   it("strips unknown extra keys (tolerant reader)", () => {
     expect(HealthResponseSchema.parse({ ...HEALTH_OK, extra: 1 })).toEqual(HEALTH_OK);
+  });
+});
+
+describe("CircuitValidationResponseSchema", () => {
+  const body = {
+    issues: [
+      {
+        code: "LED_WITHOUT_RESISTOR",
+        severity: "WARNING",
+        message: "LED led1 has no current-limiting resistor in its path.",
+        refs: [{ kind: "component", id: "led1" }],
+        params: { component: "led1", currentMa: 30 },
+      },
+    ],
+    nets: [{ id: "NET_001", members: ["uno1.D13", "led1.A"] }],
+  };
+
+  it("accepts a validation result", () => {
+    expect(CircuitValidationResponseSchema.parse(body)).toEqual(body);
+  });
+
+  it("rejects unknown issue codes and severities", () => {
+    const [issue] = body.issues;
+    expect(CircuitValidationResponseSchema.safeParse({ ...body, issues: [{ ...issue, code: "X" }] }).success).toBe(false);
+    expect(CircuitValidationResponseSchema.safeParse({ ...body, issues: [{ ...issue, severity: "FATAL" }] }).success).toBe(
+      false,
+    );
   });
 });
 

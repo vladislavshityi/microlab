@@ -53,11 +53,11 @@ const PinHandle = memo(function PinHandle({ componentId, pin, layout }: PinHandl
         actions.onPinKeyDown(ref, event);
       }}
       onPointerEnter={(event) => {
-        actions.showPinHint(ref, event.currentTarget);
+        actions.showPinHint(ref, event.currentTarget.getBoundingClientRect());
       }}
       onPointerLeave={actions.hidePinHint}
       onFocus={(event) => {
-        actions.showPinHint(ref, event.currentTarget);
+        actions.showPinHint(ref, event.currentTarget.getBoundingClientRect());
       }}
       onBlur={actions.hidePinHint}
     />
