@@ -1,0 +1,18 @@
+{
+  "name": "microlab",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24 <27"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @microlab/web dev",
+    "build": "pnpm --filter @microlab/web build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "gen:api": "pnpm --filter @microlab/web gen:api",
+    "gen:api:check": "pnpm --filter @microlab/web gen:api:check"
+  }
+}

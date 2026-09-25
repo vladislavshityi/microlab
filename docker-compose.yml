@@ -1,0 +1,27 @@
+# MicroLab — локальная инфраструктура для разработки (Phase 0).
+# Только PostgreSQL; API запускается локально через uv.
+name: microlab
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      # Учётные данные только для разработки. Не использовать в production.
+      POSTGRES_USER: microlab
+      POSTGRES_PASSWORD: microlab
+      POSTGRES_DB: microlab
+    ports:
+      # Только loopback: БД не доступна из локальной сети.
+      - "127.0.0.1:${MICROLAB_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      # Для образов postgres 18+ volume монтируется в /var/lib/postgresql.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U microlab -d microlab"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  postgres-data:

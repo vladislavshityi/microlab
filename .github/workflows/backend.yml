@@ -1,0 +1,94 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "docker-compose.yml"
+      - ".env.example"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - "docker-compose.yml"
+      - ".env.example"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        # Тот же тег, что в docker-compose.yml.
+        image: postgres:18
+        env:
+          POSTGRES_USER: microlab
+          POSTGRES_PASSWORD: microlab
+          POSTGRES_DB: microlab
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U microlab -d microlab"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    # Те же значения, что в .env.example (одноразовая база только для CI).
+    env:
+      MICROLAB_ENV: development
+      MICROLAB_DATABASE_URL: postgresql+asyncpg://microlab:microlab@127.0.0.1:5433/microlab
+      MICROLAB_LOG_LEVEL: INFO
+      MICROLAB_LOG_FORMAT: json
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.2.0  # action публикует только точные теги (плавающего v10 нет)
+        with:
+          version: "0.12.x"
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format
+        run: uv run ruff format --check .
+
+      - name: Mypy
+        run: uv run mypy
+
+      - name: Migrations (upgrade, drift check, downgrade, upgrade)
+        run: >-
+          uv run alembic upgrade head &&
+          uv run alembic check &&
+          uv run alembic downgrade base &&
+          uv run alembic upgrade head
+
+      - name: Seed dev-user (idempotent)
+        run: >-
+          uv run python -m microlab_api.scripts.seed_dev_user &&
+          uv run python -m microlab_api.scripts.seed_dev_user
+
+      - name: Tests
+        run: uv run pytest
+
+      - name: OpenAPI is up to date
+        run: uv run python -m microlab_api.scripts.export_openapi --check
