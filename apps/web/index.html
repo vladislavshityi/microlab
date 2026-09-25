@@ -5,6 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>MicroLab</title>
+    <script>
+      // Применяет тему до первой отрисовки, чтобы не было вспышки светлой темы.
+      // Логика совпадает с src/lib/theme.ts (ключ "microlab.theme").
+      (function () {
+        var preference = "system";
+        try {
+          var stored = window.localStorage.getItem("microlab.theme");
+          if (stored === "light" || stored === "dark" || stored === "system") {
+            preference = stored;
+          }
+        } catch (error) {
+          // localStorage недоступен — используется системная тема.
+        }
+        var dark =
+          preference === "dark" ||
+          (preference === "system" &&
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        var root = document.documentElement;
+        if (dark) {
+          root.classList.add("dark");
+        }
+        root.style.colorScheme = dark ? "dark" : "light";
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,11 +1,14 @@
 @import "tailwindcss";
 
+/* Тёмная тема включается классом .dark на <html> (см. src/lib/theme.ts). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Дизайн-токены MicroLab (CSS custom properties).
  * Компоненты используют только семантические токены (bg-background, text-error, …);
  * «сырые» цвета палитры запрещены.
- * Phase 0: светлая тема обязательна; тёмная следует prefers-color-scheme
- * (UI переключателя нет, Phase 1).
+ * Светлая тема — в :root, тёмная — в .dark. Режим «Системная» определяется скриптом
+ * в index.html и src/lib/theme.ts, а не media-запросом в CSS.
  */
 
 :root {
@@ -58,41 +61,39 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.17 0.004 286);
-    --foreground: oklch(0.96 0 0);
-    --card: oklch(0.205 0.005 286);
-    --card-foreground: oklch(0.96 0 0);
-    --popover: oklch(0.205 0.005 286);
-    --popover-foreground: oklch(0.96 0 0);
+.dark {
+  --background: oklch(0.17 0.004 286);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.205 0.005 286);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.205 0.005 286);
+  --popover-foreground: oklch(0.96 0 0);
 
-    --primary: oklch(0.68 0.15 257);
-    --primary-foreground: oklch(0.17 0.004 286);
-    --secondary: oklch(0.27 0.006 286);
-    --secondary-foreground: oklch(0.96 0 0);
-    --muted: oklch(0.26 0.006 286);
-    --muted-foreground: oklch(0.71 0.015 286);
-    --accent: oklch(0.26 0.006 286);
-    --accent-foreground: oklch(0.96 0 0);
-    --destructive: oklch(0.68 0.19 25);
-    --destructive-foreground: oklch(0.17 0.004 286);
+  --primary: oklch(0.68 0.15 257);
+  --primary-foreground: oklch(0.17 0.004 286);
+  --secondary: oklch(0.27 0.006 286);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.26 0.006 286);
+  --muted-foreground: oklch(0.71 0.015 286);
+  --accent: oklch(0.26 0.006 286);
+  --accent-foreground: oklch(0.96 0 0);
+  --destructive: oklch(0.68 0.19 25);
+  --destructive-foreground: oklch(0.17 0.004 286);
 
-    --border: oklch(0.3 0.006 286);
-    --input: oklch(0.53 0.01 286);
-    --ring: oklch(0.68 0.15 257);
+  --border: oklch(0.3 0.006 286);
+  --input: oklch(0.53 0.01 286);
+  --ring: oklch(0.68 0.15 257);
 
-    --success: oklch(0.75 0.15 150);
-    --success-muted: oklch(0.25 0.04 150);
-    --warning: oklch(0.8 0.14 80);
-    --warning-muted: oklch(0.26 0.04 75);
-    --error: oklch(0.71 0.17 25);
-    --error-muted: oklch(0.26 0.05 25);
-    --info: oklch(0.72 0.13 250);
-    --info-muted: oklch(0.25 0.04 250);
+  --success: oklch(0.75 0.15 150);
+  --success-muted: oklch(0.25 0.04 150);
+  --warning: oklch(0.8 0.14 80);
+  --warning-muted: oklch(0.26 0.04 75);
+  --error: oklch(0.71 0.17 25);
+  --error-muted: oklch(0.26 0.05 25);
+  --info: oklch(0.72 0.13 250);
+  --info-muted: oklch(0.25 0.04 250);
 
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -160,4 +161,28 @@
   .animate-spin {
     animation-duration: 1s !important;
   }
+}
+
+/* Canvas схемы: цвета React Flow из токенов темы. */
+.react-flow {
+  --xy-background-color: var(--background);
+  --xy-background-pattern-color: var(--border);
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--accent);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--accent-foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-controls-box-shadow: none;
+  --xy-attribution-background-color: transparent;
+}
+
+.react-flow__controls {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.react-flow__controls-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }

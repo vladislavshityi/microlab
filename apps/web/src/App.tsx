@@ -1,18 +1,22 @@
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 
 import { AppErrorBoundary } from "@/components/app-error-boundary";
-import { AppHeader } from "@/components/app-header";
-import { SystemStatusPage } from "@/features/system-status/system-status-page";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Workspace } from "@/features/workspace/workspace";
+import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
+import { useThemeSync } from "@/hooks/use-theme-sync";
 
 export function App({ queryClient }: { queryClient: QueryClient }) {
+  useThemeSync();
+  useGlobalShortcuts();
+
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <AppHeader />
-      <AppErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <SystemStatusPage />
-        </QueryClientProvider>
-      </AppErrorBoundary>
-    </div>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider delayDuration={400}>
+          <Workspace />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </AppErrorBoundary>
   );
 }

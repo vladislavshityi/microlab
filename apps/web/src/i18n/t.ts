@@ -1,6 +1,6 @@
 import { RU_LOCALE, ru } from "./ru";
 
-/** Активная локаль UI для Intl API. В Phase 0 есть только русский. */
+/** Активная локаль UI для Intl API. Пока есть только русский. */
 export const locale: string = RU_LOCALE;
 
 export type TranslationKey = keyof typeof ru;
@@ -20,7 +20,7 @@ export type PlainTranslationKey = {
 }[TranslationKey];
 
 /**
- * Типизированный поиск перевода (Phase 0, без i18n-библиотеки).
+ * Типизированный поиск перевода (без i18n-библиотеки).
  * Ключи и обязательные параметры `{placeholder}` проверяются на этапе компиляции.
  */
 export function t<K extends TranslationKey>(key: K, ...args: ParamsFor<K>): string {

@@ -1,13 +1,71 @@
 // Словарь русского UI (основной язык интерфейса; UI готов к i18n).
-// Phase 0: без i18n-библиотеки; ключи имеют вид `area.entity.state`, плейсхолдеры — `{name}`.
-// В Phase 0 нет числовых форм множественного числа (для них нужен Intl.PluralRules вместе
-// с i18n-библиотекой в Phase 1).
+// Без i18n-библиотеки; ключи имеют вид `area.entity.state`, плейсхолдеры — `{name}`.
+// Строк с числовыми формами множественного числа пока нет (для них понадобится
+// Intl.PluralRules).
 /** Локаль BCP 47 для Intl-форматирования (даты, время, числа) русского UI. */
 export const RU_LOCALE = "ru-RU";
 
 export const ru = {
   "app.name": "MicroLab",
   "app.documentTitle": "{page} — MicroLab",
+
+  "workspace.project.untitled": "Проект без названия",
+  "workspace.board.none": "Плата не выбрана",
+  "workspace.skip.canvas": "Перейти к схеме",
+  "workspace.skip.bottom": "Перейти к нижней панели",
+  "workspace.narrowViewport": "Рабочее пространство рассчитано на экран шириной от 1024 px.",
+
+  "workspace.region.components": "Компоненты",
+  "workspace.region.canvas": "Схема",
+  "workspace.region.properties": "Свойства",
+  "workspace.region.bottom": "Нижняя панель",
+
+  "workspace.panel.collapseComponents": "Свернуть панель компонентов",
+  "workspace.panel.expandComponents": "Развернуть панель компонентов",
+  "workspace.panel.collapseProperties": "Свернуть панель свойств",
+  "workspace.panel.expandProperties": "Развернуть панель свойств",
+  "workspace.panel.collapseBottom": "Свернуть нижнюю панель",
+  "workspace.panel.expandBottom": "Развернуть нижнюю панель",
+
+  "workspace.resize.components": "Изменить ширину панели компонентов",
+  "workspace.resize.properties": "Изменить ширину панели свойств",
+  "workspace.resize.bottom": "Изменить высоту нижней панели",
+
+  "components.empty": "Библиотека компонентов появится в следующей версии.",
+  "properties.empty": "Ничего не выбрано",
+
+  "canvas.empty": "Схема пуста. Компоненты появятся в следующей версии.",
+  "canvas.controls.label": "Масштаб схемы",
+  "canvas.controls.zoomIn": "Увеличить",
+  "canvas.controls.zoomOut": "Уменьшить",
+  "canvas.controls.fitView": "Показать схему целиком",
+
+  "bottom.tabs.label": "Вкладки нижней панели",
+  "bottom.tab.code": "Код",
+  "bottom.tab.console": "Консоль",
+  "bottom.tab.serial": "Монитор порта",
+  "bottom.tab.problems": "Проблемы",
+  "bottom.comingSoon": "Скоро",
+
+  "console.empty": "Нет сообщений",
+  "serial.comingSoon": "Монитор порта появится вместе с симуляцией.",
+  "problems.comingSoon": "Список проблем появится вместе с проверкой схемы и компиляцией.",
+
+  "editor.label": "Редактор кода скетча",
+  "editor.loading": "Загрузка редактора…",
+  "editor.tabFocusHint": "Tab вставляет отступ. {shortcut} — выход из редактора клавишей Tab.",
+
+  "notice.saveUnavailable": "Сохранение появится в следующих версиях",
+  "notice.runUnavailable": "Запуск появится в следующих версиях",
+  "notice.dismiss": "Скрыть уведомление",
+
+  "theme.menu.label": "Тема оформления",
+  "theme.menu.trigger": "Тема оформления: {theme}",
+  "theme.system": "Системная",
+  "theme.light": "Светлая",
+  "theme.dark": "Тёмная",
+
+  "health.indicator.details": "Подробнее о состоянии системы",
 
   "health.page.title": "Состояние системы",
   "health.page.description": "Проверка доступности backend и базы данных.",

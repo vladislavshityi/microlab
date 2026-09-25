@@ -32,7 +32,7 @@ describe("t", () => {
     expect(new Intl.DateTimeFormat(locale).resolvedOptions().locale).toBe("ru-RU");
   });
 
-  it("contains the required Phase 0 texts verbatim", () => {
+  it("contains the required health texts verbatim", () => {
     expect(ru["health.summary.databaseDown.title"]).toBe("БД недоступна");
     expect(ru["health.summary.backendUnreachable.title"]).toBe("Backend недоступен");
   });

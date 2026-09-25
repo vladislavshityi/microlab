@@ -1,0 +1,120 @@
+import { act, fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { App } from "@/App";
+import { createQueryClient } from "@/lib/query-client";
+import { HEALTH_OK, jsonResponse, stubFetch } from "@/test/fetch";
+import { render } from "@testing-library/react";
+
+vi.mock("@/features/code-editor/code-editor", () => import("@/test/monaco-mock"));
+
+function renderApp() {
+  return render(<App queryClient={createQueryClient()} />);
+}
+
+describe("Workspace", () => {
+  beforeEach(() => {
+    stubFetch(() => Promise.resolve(jsonResponse(HEALTH_OK, 200)));
+  });
+
+  it("renders all regions with accessible names and honest empty states", async () => {
+    renderApp();
+
+    expect(screen.getByRole("banner")).toHaveTextContent("MicroLab");
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+
+    const components = screen.getByRole("navigation", { name: "Компоненты" });
+    expect(components).toHaveTextContent("Библиотека компонентов появится в следующей версии.");
+    expect(screen.getByRole("region", { name: "Схема" })).toHaveTextContent(
+      "Схема пуста. Компоненты появятся в следующей версии.",
+    );
+    expect(screen.getByRole("complementary", { name: "Свойства" })).toHaveTextContent(
+      "Ничего не выбрано",
+    );
+    expect(screen.getByRole("region", { name: "Нижняя панель" })).toBeInTheDocument();
+
+    // Разделители панелей доступны с клавиатуры.
+    for (const name of [
+      "Изменить ширину панели компонентов",
+      "Изменить ширину панели свойств",
+      "Изменить высоту нижней панели",
+    ]) {
+      expect(screen.getByRole("separator", { name })).toHaveAttribute("tabindex", "0");
+    }
+
+    // Нереализованных действий нет в интерфейсе.
+    for (const name of [/запуск/i, /сохран/i, /стоп/i, /пауза/i]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+    expect(await screen.findByRole("textbox", { name: "Редактор кода скетча" })).toBeInTheDocument();
+    expect(await screen.findByText("Все системы работают")).toBeInTheDocument();
+  });
+
+  it("switches bottom tabs; unfinished tabs are labelled as coming soon", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const tabs = screen.getByRole("tablist", { name: "Вкладки нижней панели" });
+
+    const codeTab = within(tabs).getByRole("tab", { name: "Код" });
+    expect(codeTab).toHaveAttribute("aria-selected", "true");
+
+    // Переключение с клавиатуры (в jsdom у панелей нулевые размеры, и щелчки мышью
+    // перехватывает обработчик разделителей панелей).
+    codeTab.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tabpanel", { name: "Консоль" })).toHaveTextContent("Нет сообщений");
+
+    const serial = within(tabs).getByRole("tab", { name: /Монитор порта/ });
+    expect(serial).toHaveTextContent("Скоро");
+    await user.keyboard("{ArrowRight}");
+    expect(serial).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: /Монитор порта/ })).toHaveTextContent(
+      "Монитор порта появится вместе с симуляцией.",
+    );
+
+    const problems = within(tabs).getByRole("tab", { name: /Проблемы/ });
+    expect(problems).toHaveTextContent("Скоро");
+    await user.keyboard("{ArrowRight}");
+    expect(problems).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: /Проблемы/ })).toHaveTextContent(
+      "Список проблем появится",
+    );
+
+    // Редактор не размонтирован при переключении вкладок: панель «Код» лишь скрыта.
+    const codePanel = screen.getByRole("tabpanel", { name: "Код", hidden: true });
+    expect(codePanel).toHaveAttribute("data-state", "inactive");
+    expect(
+      within(codePanel).getByRole("textbox", { name: "Редактор кода скетча", hidden: true }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["Cmd+S", { key: "s", code: "KeyS", metaKey: true }, "Сохранение появится в следующих версиях"],
+    ["Ctrl+S", { key: "s", code: "KeyS", ctrlKey: true }, "Сохранение появится в следующих версиях"],
+    ["Ctrl+S (русская раскладка)", { key: "ы", code: "KeyS", ctrlKey: true }, "Сохранение появится в следующих версиях"],
+    ["Cmd+Enter", { key: "Enter", code: "Enter", metaKey: true }, "Запуск появится в следующих версиях"],
+  ])("%s is intercepted and explained", (_name, init, message) => {
+    vi.useFakeTimers();
+    try {
+      renderApp();
+      const notAllowed = !fireEvent.keyDown(window, init);
+      expect(notAllowed).toBe(true);
+      expect(screen.getByText(message)).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not intercept other shortcuts", () => {
+    renderApp();
+    expect(fireEvent.keyDown(window, { key: "f", code: "KeyF", metaKey: true })).toBe(true);
+    expect(fireEvent.keyDown(window, { key: "s", code: "KeyS" })).toBe(true);
+  });
+});
