@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import AnyHttpUrl, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _API_PROJECT_MARKER = Path("apps") / "api" / "pyproject.toml"
@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     database_url: SecretStr
     log_level: LogLevel = "INFO"
     log_format: LogFormat = "json"
+    # Адрес воркера компиляции (services/compiler). Не задан — компиляция недоступна (503).
+    compiler_url: AnyHttpUrl | None = None
+    # Общий таймаут запроса к воркеру; больше таймаута компиляции в воркере (60 с)
+    # и ожидания в его очереди (10 с).
+    compiler_timeout_seconds: float = Field(default=90.0, gt=0)
 
 
 @lru_cache(maxsize=1)

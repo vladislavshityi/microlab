@@ -1,0 +1,13 @@
+# Конфигурация arduino-cli воркера компиляции.
+# Каталоги данных доступны только для чтения во время работы; пользовательский
+# каталог (sketchbook) пуст, поэтому системные/пользовательские библиотеки не подключаются.
+directories:
+  data: /opt/arduino/data
+  downloads: /opt/arduino/downloads
+  user: /opt/arduino/user
+board_manager:
+  additional_urls: []
+updater:
+  enable_notification: false
+library:
+  enable_unsafe_install: false

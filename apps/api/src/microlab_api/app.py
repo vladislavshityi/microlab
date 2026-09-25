@@ -13,16 +13,19 @@ from microlab_api.api.router import api_router
 from microlab_api.config import Settings, get_settings
 from microlab_api.db.database import Database
 from microlab_api.logging import configure_logging
+from microlab_api.services.compiler_service import CompilerClient
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level, settings.log_format)
     database = Database(settings)
+    compiler = CompilerClient(settings)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         yield
+        await compiler.aclose()
         await database.dispose()
 
     app = FastAPI(
@@ -35,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.database = database
+    app.state.compiler = compiler
 
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)

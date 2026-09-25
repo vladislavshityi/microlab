@@ -1,0 +1,11 @@
+# Профиль сборки: копируется рядом с каждым sketch.ino перед компиляцией.
+# Версия платформы зафиксирована; libraries пуст — используются только
+# библиотеки, входящие в состав платформы arduino:avr.
+profiles:
+  uno:
+    fqbn: arduino:avr:uno
+    platforms:
+      - platform: arduino:avr (1.8.8)
+    libraries: []
+
+default_profile: uno

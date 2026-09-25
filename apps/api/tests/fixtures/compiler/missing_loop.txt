@@ -1,0 +1,4 @@
+tmp/ccpkFB2a.ltrans0.ltrans.o: In function `main':
+arduino-avr-1.8.8/cores/arduino/main.cpp:46: undefined reference to `loop'
+collect2: error: ld returned 1 exit status
+Error during build: exit status 1

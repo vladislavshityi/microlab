@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/compile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compile an Arduino sketch for Arduino UNO R3 */
+        post: operations["compileSketch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/components": {
         parameters: {
             query?: never;
@@ -67,6 +84,60 @@ export interface components {
             fqbn: string;
             /** Mcu */
             mcu: string;
+        };
+        /** CompileDiagnostic */
+        CompileDiagnostic: {
+            /** Column */
+            column: number | null;
+            /** File */
+            file: string | null;
+            /** Line */
+            line: number | null;
+            /** Message */
+            message: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "error" | "warning" | "note";
+        };
+        /** CompileRequest */
+        CompileRequest: {
+            /**
+             * Code
+             * @description Arduino sketch source (sketch.ino), UTF-8.
+             */
+            code: string;
+        };
+        /** CompileResponse */
+        CompileResponse: {
+            /** Compileroutput */
+            compilerOutput: string;
+            /** Compileroutputtruncated */
+            compilerOutputTruncated: boolean;
+            /** Diagnostics */
+            diagnostics: components["schemas"]["CompileDiagnostic"][];
+            /** Durationms */
+            durationMs: number;
+            firmware: components["schemas"]["Firmware"] | null;
+            sizes: components["schemas"]["CompileSizes"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "success" | "error";
+            toolchain: components["schemas"]["Toolchain"];
+        };
+        /** CompileSizes */
+        CompileSizes: {
+            /** Flashbytes */
+            flashBytes: number;
+            /** Flashmaxbytes */
+            flashMaxBytes: number;
+            /** Rambytes */
+            ramBytes: number;
+            /** Rammaxbytes */
+            ramMaxBytes: number;
         };
         /**
          * ComponentDefinition
@@ -147,7 +218,7 @@ export interface components {
          * @description Stable machine-readable error codes. The UI relies only on these values.
          * @enum {string}
          */
-        ErrorCode: "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "VALIDATION_ERROR" | "HTTP_ERROR" | "INTERNAL_ERROR" | "DATABASE_UNAVAILABLE" | "UNKNOWN_COMPONENT_TYPE";
+        ErrorCode: "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "VALIDATION_ERROR" | "HTTP_ERROR" | "INTERNAL_ERROR" | "DATABASE_UNAVAILABLE" | "UNKNOWN_COMPONENT_TYPE" | "SOURCE_TOO_LARGE" | "COMPILER_UNAVAILABLE" | "COMPILER_BUSY" | "COMPILATION_TIMEOUT" | "COMPILER_OUTPUT_TOO_LARGE";
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -160,6 +231,24 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** Firmware */
+        Firmware: {
+            /**
+             * Data
+             * @description Intel HEX text of the application image (without bootloader).
+             */
+            data: string;
+            /**
+             * Format
+             * @constant
+             */
+            format: "ihex";
+            /**
+             * Sha256
+             * @description SHA-256 of the Intel HEX text.
+             */
+            sha256: string;
         };
         /** HealthChecks */
         HealthChecks: {
@@ -244,6 +333,15 @@ export interface components {
             /** Y */
             y: number;
         };
+        /** Toolchain */
+        Toolchain: {
+            /** Arduinocli */
+            arduinoCli: string;
+            /** Fqbn */
+            fqbn: string;
+            /** Platform */
+            platform: string;
+        };
         /**
          * VisualModel
          * @description Symbol size and pin positions relative to the top-left corner, in grid units.
@@ -267,6 +365,75 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    compileSketch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompileResponse"];
+                };
+            };
+            /** @description Source exceeds 256 KiB (SOURCE_TOO_LARGE). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Compiler is unavailable (COMPILER_UNAVAILABLE) or busy (COMPILER_BUSY). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Time limit exceeded (COMPILATION_TIMEOUT). */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listComponents: {
         parameters: {
             query?: never;

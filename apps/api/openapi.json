@@ -28,6 +28,177 @@
         "title": "BoardInfo",
         "type": "object"
       },
+      "CompileDiagnostic": {
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "error",
+              "warning",
+              "note"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "line",
+          "column",
+          "severity",
+          "message"
+        ],
+        "title": "CompileDiagnostic",
+        "type": "object"
+      },
+      "CompileRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "Arduino sketch source (sketch.ino), UTF-8.",
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "CompileRequest",
+        "type": "object"
+      },
+      "CompileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "compilerOutput": {
+            "title": "Compileroutput",
+            "type": "string"
+          },
+          "compilerOutputTruncated": {
+            "title": "Compileroutputtruncated",
+            "type": "boolean"
+          },
+          "diagnostics": {
+            "items": {
+              "$ref": "#/components/schemas/CompileDiagnostic"
+            },
+            "title": "Diagnostics",
+            "type": "array"
+          },
+          "durationMs": {
+            "title": "Durationms",
+            "type": "integer"
+          },
+          "firmware": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Firmware"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sizes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompileSizes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "success",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "toolchain": {
+            "$ref": "#/components/schemas/Toolchain"
+          }
+        },
+        "required": [
+          "status",
+          "diagnostics",
+          "sizes",
+          "firmware",
+          "compilerOutput",
+          "compilerOutputTruncated",
+          "toolchain",
+          "durationMs"
+        ],
+        "title": "CompileResponse",
+        "type": "object"
+      },
+      "CompileSizes": {
+        "additionalProperties": false,
+        "properties": {
+          "flashBytes": {
+            "title": "Flashbytes",
+            "type": "integer"
+          },
+          "flashMaxBytes": {
+            "title": "Flashmaxbytes",
+            "type": "integer"
+          },
+          "ramBytes": {
+            "title": "Rambytes",
+            "type": "integer"
+          },
+          "ramMaxBytes": {
+            "title": "Rammaxbytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "flashBytes",
+          "flashMaxBytes",
+          "ramBytes",
+          "ramMaxBytes"
+        ],
+        "title": "CompileSizes",
+        "type": "object"
+      },
       "ComponentDefinition": {
         "additionalProperties": false,
         "description": "Definition of a board or component type. Geometry is in grid units (integers, 1 unit = 2.54 mm).",
@@ -257,7 +428,12 @@
           "HTTP_ERROR",
           "INTERNAL_ERROR",
           "DATABASE_UNAVAILABLE",
-          "UNKNOWN_COMPONENT_TYPE"
+          "UNKNOWN_COMPONENT_TYPE",
+          "SOURCE_TOO_LARGE",
+          "COMPILER_UNAVAILABLE",
+          "COMPILER_BUSY",
+          "COMPILATION_TIMEOUT",
+          "COMPILER_OUTPUT_TOO_LARGE"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -297,6 +473,33 @@
           "error"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Firmware": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "description": "Intel HEX text of the application image (without bootloader).",
+            "title": "Data",
+            "type": "string"
+          },
+          "format": {
+            "const": "ihex",
+            "title": "Format",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "SHA-256 of the Intel HEX text.",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "data",
+          "sha256"
+        ],
+        "title": "Firmware",
         "type": "object"
       },
       "HealthChecks": {
@@ -567,6 +770,30 @@
         "title": "PinPosition",
         "type": "object"
       },
+      "Toolchain": {
+        "additionalProperties": false,
+        "properties": {
+          "arduinoCli": {
+            "title": "Arduinocli",
+            "type": "string"
+          },
+          "fqbn": {
+            "title": "Fqbn",
+            "type": "string"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "arduinoCli",
+          "platform",
+          "fqbn"
+        ],
+        "title": "Toolchain",
+        "type": "object"
+      },
       "VisualModel": {
         "additionalProperties": false,
         "description": "Symbol size and pin positions relative to the top-left corner, in grid units.",
@@ -605,6 +832,87 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/compile": {
+      "post": {
+        "operationId": "compileSketch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Source exceeds 256 KiB (SOURCE_TOO_LARGE)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Compiler is unavailable (COMPILER_UNAVAILABLE) or busy (COMPILER_BUSY)."
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Time limit exceeded (COMPILATION_TIMEOUT)."
+          }
+        },
+        "summary": "Compile an Arduino sketch for Arduino UNO R3",
+        "tags": [
+          "compile"
+        ]
+      }
+    },
     "/api/v1/components": {
       "get": {
         "operationId": "listComponents",

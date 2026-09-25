@@ -1,0 +1,5 @@
+*
+!compile_worker.py
+!arduino-cli.yaml
+!sketch.yaml
+!warmup.ino

@@ -8,7 +8,7 @@ MicroLab — виртуальная лаборатория электроник�
 
 ## Статус
 
-**Circuit Model.** Реализованы монорепозиторий, backend (FastAPI + PostgreSQL + Alembic) с эндпоинтами `GET /api/v1/health` и `GET /api/v1/components[/{type}]` и frontend-оболочка IDE: панели с изменяемыми размерами, редактор кода (Monaco), пустой холст схемы, светлая/тёмная тема, индикатор состояния backend. Circuit Model: versioned-формат схемы и определения Arduino UNO R3, резистора, светодиода и кнопки в `packages/circuit-schema`, проверка ссылок и построение netlist на backend, каталог компонентов в UI (без добавления на схему). Редактора схемы, компилятора и симулятора пока нет.
+**Circuit Model.** Реализованы монорепозиторий, backend (FastAPI + PostgreSQL + Alembic) с эндпоинтами `GET /api/v1/health` и `GET /api/v1/components[/{type}]` и frontend-оболочка IDE: панели с изменяемыми размерами, редактор кода (Monaco), пустой холст схемы, светлая/тёмная тема, индикатор состояния backend. Circuit Model: versioned-формат схемы и определения Arduino UNO R3, резистора, светодиода и кнопки в `packages/circuit-schema`, проверка ссылок и построение netlist на backend, каталог компонентов в UI (без добавления на схему). Компиляция: `POST /api/v1/compile` через изолированный воркер arduino-cli (см. «Компиляция»). Редактора схемы и симулятора пока нет.
 
 ## Структура
 
@@ -16,8 +16,9 @@ MicroLab — виртуальная лаборатория электроник�
 apps/api/                 FastAPI backend (Python 3.13, uv)
 apps/web/                 React + Vite + TypeScript frontend (pnpm)
 packages/circuit-schema/  единый источник формата схемы и определений компонентов
+services/compiler/        изолированный воркер компиляции (arduino-cli 1.5.1, arduino:avr 1.8.8)
 simulation/               зарезервировано под Simulation Worker
-docker-compose.yml        PostgreSQL 18 для разработки
+docker-compose.yml        PostgreSQL 18 и воркер компиляции для разработки
 .github/workflows/        CI: backend.yml, frontend.yml
 ```
 
@@ -40,8 +41,10 @@ Python устанавливать не нужно — uv скачает CPython 
 
 ```sh
 cp .env.example .env              # .env не коммитится
-docker compose up -d --wait       # PostgreSQL 18 на 127.0.0.1:5433
+docker compose up -d --wait       # PostgreSQL 18 на 127.0.0.1:5433, воркер компиляции на 127.0.0.1:8081
 ```
+
+Первая сборка образа воркера компиляции скачивает arduino-cli и toolchain (≈400 MB, несколько минут).
 
 ### 2. Backend
 
@@ -91,6 +94,9 @@ Vite проксирует `/api` → `http://127.0.0.1:8000`; другой ад�
 | `MICROLAB_LOG_LEVEL` | `INFO` | уровень логирования |
 | `MICROLAB_LOG_FORMAT` | `json` | `json` или `console` |
 | `MICROLAB_POSTGRES_PORT` | `5433` | порт PostgreSQL на хосте (читает `docker-compose.yml`) |
+| `MICROLAB_COMPILER_URL` | — | адрес воркера компиляции; не задан — `POST /compile` отвечает 503 |
+| `MICROLAB_COMPILER_TIMEOUT_SECONDS` | `90` | общий таймаут запроса к воркеру |
+| `MICROLAB_COMPILER_PORT` | `8081` | порт dev-шлюза воркера на хосте (читает `docker-compose.yml`) |
 
 Порядок источников: переменные окружения процесса → `apps/api/.env` → `.env` в корне репозитория.
 
@@ -110,7 +116,7 @@ uv run python -m microlab_api.scripts.export_openapi --check
 uv run python -m microlab_api.scripts.gen_circuit_schema --check
 ```
 
-`pytest` использует отдельную базу `microlab_test`: фикстура создаёт её и применяет миграции автоматически.
+`pytest` использует отдельную базу `microlab_test`: фикстура создаёт её и применяет миграции автоматически. Интеграционные тесты компилятора (`-m compiler`) выполняются, только если воркер доступен по `MICROLAB_COMPILER_URL`, иначе пропускаются.
 
 Frontend — из корня (то же выполняет `.github/workflows/frontend.yml` на Node 24 и 26):
 
@@ -133,7 +139,15 @@ cd apps/api && uv run python -m microlab_api.scripts.export_openapi   # обно
 cd ../.. && pnpm gen:api && pnpm typecheck                            # обновить TS-типы
 ```
 
-Ошибки API имеют формат `{"error": {"code", "message", "details": []}}` со стабильными кодами (`NOT_FOUND`, `METHOD_NOT_ALLOWED`, `VALIDATION_ERROR`, `INTERNAL_ERROR`, `DATABASE_UNAVAILABLE`, `HTTP_ERROR`, `UNKNOWN_COMPONENT_TYPE`). Каждый ответ содержит заголовок `X-Request-ID`, этот же id пишется в логи.
+Ошибки API имеют формат `{"error": {"code", "message", "details": []}}` со стабильными кодами (`NOT_FOUND`, `METHOD_NOT_ALLOWED`, `VALIDATION_ERROR`, `INTERNAL_ERROR`, `DATABASE_UNAVAILABLE`, `HTTP_ERROR`, `UNKNOWN_COMPONENT_TYPE`, `SOURCE_TOO_LARGE`, `COMPILER_UNAVAILABLE`, `COMPILER_BUSY`, `COMPILATION_TIMEOUT`, `COMPILER_OUTPUT_TOO_LARGE`).
+
+## Компиляция
+
+`POST /api/v1/compile` с телом `{"code": "..."}` компилирует скетч для `arduino:avr:uno`. Ошибки в коде — результат, а не сбой запроса: ответ 200 со `status: "error"` и `diagnostics[]` (`file`, `line`, `column`, `severity`, `message`; строки — строки `sketch.ino`). При успехе `firmware` содержит Intel HEX и его SHA-256, `sizes` — занятые flash/RAM.
+
+Воркер `services/compiler` запускается только в контейнере: версии arduino-cli, базового образа и платформы зафиксированы, контрольные суммы проверяются при сборке образа; профиль `sketch.yaml` фиксирует FQBN и `arduino:avr (1.8.8)` без сторонних библиотек (доступны только библиотеки платформы). Изоляция: пользователь без root, read-only root FS, `cap_drop: ALL`, `no-new-privileges`, лимиты памяти/CPU/процессов, tmpfs с `noexec`, внутренняя сеть без выхода в интернет. Каждая компиляция — новая временная директория, таймаут 60 с (все процессы сборки завершаются), `prlimit` на CPU/память/размер файлов/число процессов, исходник до 256 KiB, вывод до 64 KB, не более 2 компиляций одновременно (очередь ждёт 10 с, затем `COMPILER_BUSY`).
+
+Контейнеры во внутренней сети недоступны с хоста, поэтому для разработки добавлен шлюз `compiler-gateway` (nginx, `127.0.0.1:8081` → `compiler:8080`). В production API подключается к внутренней сети напрямую, шлюз не нужен. Каждый ответ содержит заголовок `X-Request-ID`, этот же id пишется в логи.
 
 ## Миграции
 

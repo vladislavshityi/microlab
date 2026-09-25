@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/api/**"
       - "packages/circuit-schema/**"
+      - "services/compiler/**"
       - "docker-compose.yml"
       - ".env.example"
       - ".github/workflows/backend.yml"
@@ -13,6 +14,7 @@ on:
     paths:
       - "apps/api/**"
       - "packages/circuit-schema/**"
+      - "services/compiler/**"
       - "docker-compose.yml"
       - ".env.example"
       - ".github/workflows/backend.yml"
@@ -97,3 +99,65 @@ jobs:
 
       - name: Generated circuit-schema models are up to date
         run: uv run python -m microlab_api.scripts.gen_circuit_schema --check
+
+  compiler:
+    # Образ воркера компиляции и интеграционные тесты API с реальным arduino-cli.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      MICROLAB_ENV: test
+      # База не используется интеграционными тестами компилятора, но обязательна в настройках.
+      MICROLAB_DATABASE_URL: postgresql+asyncpg://microlab:microlab@127.0.0.1:1/microlab
+      MICROLAB_COMPILER_URL: http://127.0.0.1:8081
+      # Недоступный воркер — ошибка, а не пропуск тестов.
+      MICROLAB_REQUIRE_COMPILER: "1"
+      MICROLAB_LOG_FORMAT: json
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4.4.1
+
+      - name: Build compiler image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: services/compiler
+          # Тег совпадает с image сервиса compiler в docker-compose.yml.
+          tags: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8
+          load: true
+          cache-from: type=gha,scope=compiler
+          cache-to: type=gha,scope=compiler,mode=max
+
+      - name: Start compiler (internal network + dev gateway)
+        run: docker compose up -d --no-build --wait compiler compiler-gateway
+
+      - name: Compiler has no network egress
+        run: >-
+          ! docker compose exec -T compiler python -c
+          "import urllib.request; urllib.request.urlopen('https://downloads.arduino.cc', timeout=5)"
+
+      - uses: astral-sh/setup-uv@v10.2.0  # action публикует только точные теги (плавающего v10 нет)
+        with:
+          version: "0.12.x"
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+
+      - name: Install dependencies
+        working-directory: apps/api
+        run: uv sync --locked
+
+      - name: Lint compiler worker
+        working-directory: apps/api
+        run: >-
+          uv run ruff check ../../services/compiler &&
+          uv run ruff format --check ../../services/compiler &&
+          uv run mypy --strict ../../services/compiler/compile_worker.py
+
+      - name: Compiler integration tests
+        working-directory: apps/api
+        run: uv run pytest -m compiler
+
+      - name: Compiler logs
+        if: failure()
+        run: docker compose logs compiler compiler-gateway

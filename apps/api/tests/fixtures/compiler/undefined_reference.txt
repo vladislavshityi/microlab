@@ -1,0 +1,4 @@
+tmp/ccqtB7pH.ltrans0.ltrans.o: In function `setup':
+sketch.ino:4: undefined reference to `helper()'
+collect2: error: ld returned 1 exit status
+Error during build: exit status 1

@@ -1,0 +1,84 @@
+"""Компиляция Arduino-скетча для Arduino UNO R3 (arduino:avr:uno, arduino:avr 1.8.8).
+
+Эндпоинт без состояния: компилирует переданный код. Эндпоинт в контексте проекта
+(``POST /projects/{id}/compile``) появится вместе с API проектов и будет использовать
+тот же сервис.
+
+Ошибки в коде пользователя — это результат компиляции, а не сбой запроса: ответ 200
+со ``status: "error"`` и диагностиками. Коды 4xx/5xx означают, что компиляцию выполнить
+не удалось (исходник слишком большой, воркер недоступен или занят, превышено время).
+"""
+
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
+
+from microlab_api.api.errors import error_response
+from microlab_api.schemas.compile import (
+    CompileDiagnostic,
+    CompileRequest,
+    CompileResponse,
+    CompileSizes,
+    Firmware,
+    Toolchain,
+)
+from microlab_api.schemas.errors import ErrorResponse
+from microlab_api.services.compiler_service import CompilerClient, CompilerError
+
+router = APIRouter(tags=["compile"])
+
+
+def get_compiler(request: Request) -> CompilerClient:
+    compiler: CompilerClient = request.app.state.compiler
+    return compiler
+
+
+_RESPONSES: dict[int | str, dict[str, Any]] = {
+    413: {"model": ErrorResponse, "description": "Source exceeds 256 KiB (SOURCE_TOO_LARGE)."},
+    422: {"model": ErrorResponse, "description": "Invalid request or oversized compiler output."},
+    500: {"model": ErrorResponse, "description": "Unexpected server error."},
+    503: {
+        "model": ErrorResponse,
+        "description": "Compiler is unavailable (COMPILER_UNAVAILABLE) or busy (COMPILER_BUSY).",
+    },
+    504: {"model": ErrorResponse, "description": "Time limit exceeded (COMPILATION_TIMEOUT)."},
+}
+
+
+@router.post(
+    "/compile",
+    response_model=CompileResponse,
+    responses=_RESPONSES,
+    summary="Compile an Arduino sketch for Arduino UNO R3",
+    operation_id="compileSketch",
+)
+async def compile_sketch(
+    body: CompileRequest, compiler: Annotated[CompilerClient, Depends(get_compiler)]
+) -> CompileResponse | JSONResponse:
+    try:
+        outcome = await compiler.compile(body.code)
+    except CompilerError as exc:
+        return error_response(exc.status_code, exc.code, exc.message)
+
+    result = outcome.result
+    firmware = (
+        Firmware(format="ihex", data=result.hex, sha256=outcome.firmware_sha256)
+        if result.success and result.hex is not None and outcome.firmware_sha256 is not None
+        else None
+    )
+    return CompileResponse(
+        status="success" if result.success else "error",
+        diagnostics=[
+            CompileDiagnostic(
+                file=d.file, line=d.line, column=d.column, severity=d.severity, message=d.message
+            )
+            for d in outcome.diagnostics
+        ],
+        sizes=CompileSizes(**result.sizes.model_dump()) if result.sizes else None,
+        firmware=firmware,
+        compiler_output=result.compiler_output,
+        compiler_output_truncated=result.compiler_output_truncated,
+        toolchain=Toolchain(**result.toolchain.model_dump()),
+        duration_ms=result.duration_ms,
+    )

@@ -1,0 +1,12 @@
+sketch.ino: In function 'void setup()':
+sketch.ino:4:1: error: expected ';' before '}' token
+ }
+ ^
+sketch.ino: In function 'void loop()':
+sketch.ino:8:3: error: 'unknownFunction' was not declared in this scope
+   unknownFunction(5);
+   ^~~~~~~~~~~~~~~
+sketch.ino:7:7: warning: unused variable 'unused' [-Wunused-variable]
+   int unused;
+       ^~~~~~
+Error during build: exit status 1

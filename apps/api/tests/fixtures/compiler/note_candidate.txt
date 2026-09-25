@@ -1,0 +1,8 @@
+sketch.ino: In function 'void setup()':
+sketch.ino:4:6: error: too few arguments to function 'void f(int, int)'
+   f(1);
+      ^
+sketch.ino:1:6: note: declared here
+ void f(int a, int b) {}
+      ^
+Error during build: exit status 1

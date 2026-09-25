@@ -1,0 +1,160 @@
+"""Клиент воркера компиляции (services/compiler).
+
+API не запускает arduino-cli сам: компиляция недоверенного кода выполняется только
+в изолированном контейнере воркера, API обращается к нему по HTTP.
+"""
+
+import hashlib
+import logging
+from dataclasses import dataclass
+
+import httpx
+from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic.alias_generators import to_camel
+
+from microlab_api.config import Settings
+from microlab_api.domain.compilation.diagnostics import Diagnostic, parse_diagnostics
+from microlab_api.schemas.errors import ErrorCode
+
+logger = logging.getLogger(__name__)
+
+# Лимит исходника совпадает с лимитом воркера (COMPILER_MAX_SOURCE_BYTES).
+MAX_SOURCE_BYTES = 256 * 1024
+# Размер ответа воркера ограничен: HEX до 512 KB + вывод до 64 KB символов.
+_MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+
+
+class CompilerError(Exception):
+    """Сбой компиляции как операции (а не ошибка в коде пользователя)."""
+
+    def __init__(self, status_code: int, code: ErrorCode, message: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+
+
+def _unavailable() -> CompilerError:
+    return CompilerError(503, ErrorCode.COMPILER_UNAVAILABLE, "Compiler is unavailable.")
+
+
+# Коды ошибок воркера → ошибки API.
+_WORKER_ERRORS: dict[str, CompilerError] = {
+    "SOURCE_TOO_LARGE": CompilerError(413, ErrorCode.SOURCE_TOO_LARGE, "Source is too large."),
+    "COMPILER_BUSY": CompilerError(
+        503, ErrorCode.COMPILER_BUSY, "Compiler is busy, try again later."
+    ),
+    "COMPILATION_TIMEOUT": CompilerError(
+        504, ErrorCode.COMPILATION_TIMEOUT, "Compilation exceeded the time limit."
+    ),
+    "OUTPUT_TOO_LARGE": CompilerError(
+        422, ErrorCode.COMPILER_OUTPUT_TOO_LARGE, "Compiler output exceeded the size limit."
+    ),
+}
+
+
+class _WorkerModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, extra="ignore", frozen=True)
+
+
+class WorkerSizes(_WorkerModel):
+    flash_bytes: int
+    flash_max_bytes: int
+    ram_bytes: int
+    ram_max_bytes: int
+
+
+class WorkerToolchain(_WorkerModel):
+    arduino_cli: str
+    platform: str
+    fqbn: str
+
+
+class WorkerResult(_WorkerModel):
+    success: bool
+    compiler_output: str
+    compiler_output_truncated: bool
+    hex: str | None
+    sizes: WorkerSizes | None
+    duration_ms: int
+    toolchain: WorkerToolchain
+
+
+@dataclass(frozen=True, slots=True)
+class CompileOutcome:
+    result: WorkerResult
+    diagnostics: list[Diagnostic]
+    firmware_sha256: str | None
+
+
+class CompilerClient:
+    def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None):
+        self._client: httpx.AsyncClient | None = None
+        if settings.compiler_url is not None:
+            timeout = httpx.Timeout(settings.compiler_timeout_seconds, connect=5.0)
+            self._client = httpx.AsyncClient(
+                base_url=str(settings.compiler_url),
+                timeout=timeout,
+                transport=transport,
+                # Воркер находится во внутренней сети; прокси окружения не используются.
+                trust_env=False,
+            )
+
+    async def aclose(self) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+
+    async def compile(self, source: str) -> CompileOutcome:
+        if len(source.encode("utf-8")) > MAX_SOURCE_BYTES:
+            raise _WORKER_ERRORS["SOURCE_TOO_LARGE"]
+        if self._client is None:
+            raise _unavailable()
+
+        try:
+            response = await self._client.post("/compile", json={"source": source})
+        except httpx.TimeoutException:
+            raise _WORKER_ERRORS["COMPILATION_TIMEOUT"] from None
+        except httpx.HTTPError as exc:
+            logger.warning("compiler request failed", extra={"error_type": type(exc).__name__})
+            raise _unavailable() from None
+
+        if len(response.content) > _MAX_RESPONSE_BYTES:
+            logger.warning("compiler response too large")
+            raise _unavailable()
+        if response.status_code != 200:
+            raise self._map_error(response)
+        try:
+            result = WorkerResult.model_validate_json(response.content)
+        except ValidationError:
+            logger.warning("compiler returned invalid response")
+            raise _unavailable() from None
+
+        diagnostics = parse_diagnostics(result.compiler_output, failed=not result.success)
+        sha256 = (
+            hashlib.sha256(result.hex.encode("ascii")).hexdigest()
+            if result.success and result.hex is not None
+            else None
+        )
+        logger.info(
+            "sketch compiled",
+            extra={"success": result.success, "duration_ms": result.duration_ms},
+        )
+        return CompileOutcome(result=result, diagnostics=diagnostics, firmware_sha256=sha256)
+
+    @staticmethod
+    def _map_error(response: httpx.Response) -> CompilerError:
+        code: object = None
+        try:
+            body = response.json()
+            if isinstance(body, dict) and isinstance(body.get("error"), dict):
+                code = body["error"].get("code")
+        except ValueError:
+            pass
+        mapped = _WORKER_ERRORS.get(code) if isinstance(code, str) else None
+        if mapped is None:
+            logger.warning(
+                "compiler error response",
+                extra={"status_code": response.status_code, "worker_code": str(code)},
+            )
+            return _unavailable()
+        return mapped
