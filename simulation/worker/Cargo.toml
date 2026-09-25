@@ -12,9 +12,14 @@ path = "src/main.rs"
 
 [dependencies]
 avr-core = { path = "../avr-core" }
+circuit = { package = "microlab-circuit", path = "../circuit" }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"
 
 [[test]]
 name = "protocol"
 path = "../tests/worker/protocol.rs"
+
+[[test]]
+name = "reference_circuits"
+path = "../tests/conformance/reference_circuits/main.rs"

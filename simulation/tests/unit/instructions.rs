@@ -463,13 +463,13 @@ fn in_reads_pin_register_with_external_level() {
 
 #[test]
 fn unsupported_peripheral_is_reported_once() {
-    // sts ADCSRA(0x7A), r16 дважды
-    let mut m = mcu(&[0x9300, 0x007A, 0x9300, 0x007A]);
-    m.set_reg(16, 0x87);
+    // sts SPCR(0x4C), r16 дважды
+    let mut m = mcu(&[0x9300, 0x004C, 0x9300, 0x004C]);
+    m.set_reg(16, 0x53);
     m.step();
     m.step();
     assert!(!m.halted());
-    assert_eq!(m.peek(0x7A), 0x87, "значение сохраняется");
+    assert_eq!(m.peek(0x4C), 0x53, "значение сохраняется");
     let ev = m.drain_events();
     let n = ev
         .iter()

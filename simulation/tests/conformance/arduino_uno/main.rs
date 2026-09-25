@@ -312,3 +312,48 @@ fn simulation_is_deterministic() {
     };
     assert_eq!(run(), run());
 }
+
+/// analogRead(A0) с опорным AVCC (core 1.8.8: `analogReference(DEFAULT)`, делитель 128 → 125 kHz).
+///
+/// Вход: напряжение на A0 задаётся напрямую (0 В, 2,5 В, 5 В). Ожидание по формуле datasheet
+/// ADC = ⌊VIN·1024/VREF⌋ с ограничением 0x3FF: 0, 512, 1023. Модель АЦП идеальна (без шума и INL/DNL),
+/// поэтому значения проверяются точно.
+#[test]
+fn analog_read_follows_input_voltage() {
+    let mut mcu = load("analog_read");
+    let mut values = Vec::new();
+    for (i, volts) in [0.0, 2.5, 5.0].into_iter().enumerate() {
+        mcu.set_analog_input(0, volts);
+        mcu.run_for(ms(100));
+        let events = mcu.drain_events();
+        assert!(errors(&events).is_empty(), "{events:?}");
+        if i == 0 {
+            // ADC поддерживается: нет предупреждения о неподдерживаемой периферии ADCSRA.
+            assert!(
+                !events.iter().any(|e| matches!(
+                    &e.kind,
+                    EventKind::SimulationError { message, .. } if message.contains("ADCSRA")
+                )),
+                "{events:?}"
+            );
+        }
+        let lines = serial_lines(&events);
+        // Первые строки после смены входа могли быть измерены до неё — берём последнюю.
+        assert!(lines.len() >= 3, "{lines:?}");
+        values.push(lines.last().unwrap().1.clone());
+    }
+    assert_eq!(values, ["0", "512", "1023"]);
+}
+
+/// analogRead() не зависает в ожидании ADSC и стабильно возвращает ⌊1,0·1024/5⌋ = 204.
+/// Длительность преобразования (13/25 тактов АЦП) проверяется модульными тестами модели АЦП.
+#[test]
+fn analog_read_does_not_block_forever() {
+    let mut mcu = load("analog_read");
+    mcu.set_analog_input(0, 1.0);
+    mcu.run_for(ms(1_000));
+    let events = mcu.drain_events();
+    let lines = serial_lines(&events);
+    assert!(lines.len() >= 45, "{}", lines.len());
+    assert!(lines.iter().all(|l| l.1 == "204"), "{lines:?}");
+}

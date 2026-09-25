@@ -5,6 +5,7 @@
 //! Темп симуляции задаёт оркестратор: worker выполняет `run_for` так быстро, как может,
 //! поэтому результат не зависит от нагрузки на хост.
 
+mod bridge;
 mod protocol;
 
 use std::io::{self, BufRead, BufWriter, Read, Write};

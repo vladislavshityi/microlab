@@ -1,0 +1,14 @@
+[package]
+name = "microlab-circuit"
+description = "Решатель рабочей точки схемы (DC) для симуляции MicroLab"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+name = "circuit"
+path = "src/lib.rs"
+
+[dependencies]
+serde_json = "=1.0.151"

@@ -5,12 +5,12 @@ on:
     branches: [main]
     paths:
       - "simulation/**"
-      - "packages/circuit-schema/definitions/arduino-uno-r3.json"
+      - "packages/circuit-schema/definitions/**"
       - ".github/workflows/simulation.yml"
   pull_request:
     paths:
       - "simulation/**"
-      - "packages/circuit-schema/definitions/arduino-uno-r3.json"
+      - "packages/circuit-schema/definitions/**"
       - ".github/workflows/simulation.yml"
 
 permissions:
@@ -42,7 +42,7 @@ jobs:
       - name: Clippy
         run: cargo clippy --locked --all-targets --all-features -- -D warnings
 
-      - name: Tests (unit, conformance, worker protocol)
+      - name: Tests (unit, conformance, reference circuits, worker protocol)
         run: cargo test --locked --release
 
       - name: Benchmark (simulated MHz)

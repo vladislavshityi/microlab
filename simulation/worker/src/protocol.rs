@@ -5,8 +5,13 @@
 //! или `{"version":1,"type":"response","id":…,"ok":false,"error":{"code":"…","message":"…"}}`.
 //! Событие: `{"version":1,"type":"<тип>","timestamp":<такт MCU>,"payload":{…}}`.
 //! `timestamp` — номер такта MCU (16 MHz) с момента запуска worker; время в мс = timestamp / 16000.
+//!
+//! Команды схемы (`attach_circuit`, `detach_circuit`, `set_component_input`) и события
+//! `component_state_changed`, `analog_value_changed` — обратно совместимые дополнения версии 1.
 
+use crate::bridge::Bridge;
 use avr_core::{parse_hex, Event, EventKind, Mcu, BOARD_PINS, CLOCK_HZ, CYCLES_PER_MS};
+use circuit::{Circuit, CircuitSpec, ComponentSpec, Library, NetSpec};
 use serde_json::{json, Value};
 use std::io::Write;
 
@@ -21,7 +26,11 @@ const MAX_SERIAL_INPUT: usize = 4096;
 pub struct Session {
     mcu: Mcu,
     loaded: bool,
+    library: Library,
+    circuit: Option<Bridge>,
 }
+
+type CmdResult = Result<Value, (&'static str, String)>;
 
 pub fn write_line(out: &mut impl Write, v: &Value) {
     // Ошибка записи в stdout означает, что оркестратор ушёл; её обработает цикл main.
@@ -91,12 +100,29 @@ impl Session {
         Session {
             mcu: Mcu::new(),
             loaded: false,
+            library: Library::builtin(),
+            circuit: None,
         }
     }
 
     fn flush_events(&mut self, out: &mut impl Write) {
         for e in self.mcu.drain_events() {
             write_line(out, &event_json(&e));
+        }
+    }
+
+    /// Пересчитывает схему (если подключена) и выводит события: сначала накопленные события MCU,
+    /// затем события схемы с текущим тактом — порядок timestamp не нарушается.
+    fn resolve_circuit(&mut self, out: &mut impl Write) {
+        self.mcu.take_drive_changed();
+        if self.circuit.is_none() {
+            return;
+        }
+        self.flush_events(out);
+        if let Some(bridge) = self.circuit.as_mut() {
+            for e in bridge.resolve(&mut self.mcu) {
+                write_line(out, &e);
+            }
         }
     }
 
@@ -120,6 +146,9 @@ impl Session {
             "run_for" => self.run_for(&cmd, out),
             "set_input" => self.set_input(&cmd),
             "serial_input" => self.serial_input(&cmd),
+            "attach_circuit" => self.attach_circuit(&cmd, out),
+            "detach_circuit" => self.detach_circuit(),
+            "set_component_input" => self.set_component_input(&cmd, out),
             "get_state" => Ok(self.state()),
             "stop" => {
                 self.flush_events(out);
@@ -144,16 +173,175 @@ impl Session {
         let image = parse_hex(hex).map_err(|e| ("INVALID_FIRMWARE", e.to_string()))?;
         self.mcu.load_firmware(&image);
         self.loaded = true;
-        Ok(json!({"flashBytes": image.used, "cycle": self.mcu.cycles()}))
+        if let Some(b) = self.circuit.as_mut() {
+            b.clear_warnings();
+        }
+        let result = json!({"flashBytes": image.used, "cycle": self.mcu.cycles()});
+        Ok(result)
     }
 
-    fn reset(&mut self, out: &mut impl Write) -> Result<Value, (&'static str, String)> {
+    fn reset(&mut self, out: &mut impl Write) -> CmdResult {
         self.mcu.reset();
+        self.flush_events(out);
         write_line(
             out,
             &json!({"version": PROTOCOL_VERSION, "type": "simulation_reset", "timestamp": self.mcu.cycles(), "payload": {}}),
         );
+        self.resolve_circuit(out);
         Ok(json!({"cycle": self.mcu.cycles()}))
+    }
+
+    fn attach_circuit(&mut self, cmd: &Value, out: &mut impl Write) -> CmdResult {
+        let bad = |m: &str| ("INVALID_ARGUMENT", m.to_string());
+        let comps = cmd
+            .get("components")
+            .and_then(Value::as_array)
+            .ok_or_else(|| bad("components (array) is required"))?;
+        let nets = cmd
+            .get("netlist")
+            .and_then(Value::as_array)
+            .ok_or_else(|| bad("netlist (array) is required"))?;
+        let mut components = Vec::with_capacity(comps.len());
+        for c in comps {
+            let id = c.get("id").and_then(Value::as_str);
+            let ty = c.get("type").and_then(Value::as_str);
+            let (Some(id), Some(ty)) = (id, ty) else {
+                return Err(bad("each component needs id and type"));
+            };
+            let properties = match c.get("properties") {
+                None | Some(Value::Null) => serde_json::Map::new(),
+                Some(Value::Object(m)) => m.clone(),
+                Some(_) => return Err(bad("component properties must be an object")),
+            };
+            components.push(ComponentSpec {
+                id: id.to_string(),
+                type_name: ty.to_string(),
+                properties,
+            });
+        }
+        let mut netlist = Vec::with_capacity(nets.len());
+        for n in nets {
+            let id = n.get("id").and_then(Value::as_str);
+            let members = n.get("members").and_then(Value::as_array);
+            let (Some(id), Some(members)) = (id, members) else {
+                return Err(bad("each net needs id and members"));
+            };
+            let members = members
+                .iter()
+                .map(|m| m.as_str().map(str::to_string))
+                .collect::<Option<Vec<_>>>()
+                .ok_or_else(|| bad("net members must be strings \"componentId.pinId\""))?;
+            netlist.push(NetSpec {
+                id: id.to_string(),
+                members,
+            });
+        }
+        let board_type = self.library.board_type.clone();
+        let board_id = cmd
+            .pointer("/board/id")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .or_else(|| {
+                components
+                    .iter()
+                    .find(|c| c.type_name == board_type)
+                    .map(|c| c.id.clone())
+            })
+            .ok_or_else(|| bad("board.id is required (or a component of the board type)"))?;
+        if let Some(t) = cmd.pointer("/board/type").and_then(Value::as_str) {
+            if t != board_type {
+                return Err((
+                    "UNSUPPORTED_BOARD",
+                    format!("board type {t:?} is not simulated"),
+                ));
+            }
+        }
+        let spec = CircuitSpec {
+            board_id: board_id.clone(),
+            nets: netlist,
+            components,
+        };
+        let circuit = Circuit::build(&self.library, &spec).map_err(|e| ("INVALID_ARGUMENT", e))?;
+        let unsupported: Vec<String> = circuit.unsupported().to_vec();
+        let n_nets = spec.nets.len();
+        if let Some(old) = self.circuit.take() {
+            old.detach(&mut self.mcu);
+        }
+        self.circuit = Some(Bridge::new(circuit, board_id));
+        let cycle = self.mcu.cycles();
+        self.flush_events(out);
+        for id in &unsupported {
+            write_line(
+                out,
+                &json!({"version": PROTOCOL_VERSION, "type": "simulation_error", "timestamp": cycle,
+                        "payload": {"code": "UNSUPPORTED_COMPONENT", "severity": "warning", "componentId": id,
+                                    "message": format!("component {id} is not simulated; its pins are left unconnected")}}),
+            );
+        }
+        self.resolve_circuit(out);
+        let fault = self
+            .circuit
+            .as_ref()
+            .and_then(|b| b.fault())
+            .map(|e| e.code());
+        Ok(
+            json!({"cycle": cycle, "nets": n_nets, "unsupportedComponents": unsupported, "fault": fault}),
+        )
+    }
+
+    fn detach_circuit(&mut self) -> CmdResult {
+        if let Some(b) = self.circuit.take() {
+            b.detach(&mut self.mcu);
+        }
+        Ok(json!({"cycle": self.mcu.cycles()}))
+    }
+
+    fn set_component_input(&mut self, cmd: &Value, out: &mut impl Write) -> CmdResult {
+        let Some(bridge) = self.circuit.as_mut() else {
+            return Err(("NO_CIRCUIT", "attach_circuit must be called first".into()));
+        };
+        let id = cmd
+            .get("componentId")
+            .and_then(Value::as_str)
+            .ok_or(("INVALID_ARGUMENT", "componentId is required".to_string()))?;
+        let input = cmd
+            .get("input")
+            .and_then(Value::as_object)
+            .ok_or(("INVALID_ARGUMENT", "input (object) is required".to_string()))?;
+        if let Some(p) = input.get("pressed") {
+            let pressed = p
+                .as_bool()
+                .ok_or(("INVALID_ARGUMENT", "pressed must be a boolean".to_string()))?;
+            let changed = bridge
+                .circuit_mut()
+                .set_switch(id, pressed)
+                .ok_or(("UNKNOWN_COMPONENT", format!("{id:?} is not a push button")))?;
+            let cycle = self.mcu.cycles();
+            if changed {
+                self.flush_events(out);
+                write_line(
+                    out,
+                    &json!({"version": PROTOCOL_VERSION, "type": "component_state_changed", "timestamp": cycle,
+                            "payload": {"componentId": id, "state": {"pressed": pressed}}}),
+                );
+                self.resolve_circuit(out);
+            }
+            return Ok(json!({"cycle": cycle, "changed": changed}));
+        }
+        if input.contains_key("position") {
+            let known =
+                bridge.circuit().has_switch(id) || bridge.circuit().led_ids().any(|l| l == id);
+            let msg = if known {
+                format!("{id:?} has no position input")
+            } else {
+                format!("{id:?} is not a simulated component with a position input")
+            };
+            return Err(("UNSUPPORTED_INPUT", msg));
+        }
+        Err((
+            "INVALID_ARGUMENT",
+            "input must contain pressed or position".into(),
+        ))
     }
 
     fn run_for(
@@ -185,10 +373,27 @@ impl Session {
                 format!("run_for is limited to {MAX_RUN_CYCLES} cycles"),
             ));
         }
+        if let Some(e) = self.circuit.as_ref().and_then(|b| b.fault()) {
+            return Err(("CIRCUIT_FAULT", e.message()));
+        }
         let target = self.mcu.cycles() + cycles;
         while self.mcu.cycles() < target && !self.mcu.halted() {
             let chunk_end = (self.mcu.cycles() + CHUNK_CYCLES).min(target);
-            self.mcu.run_until(chunk_end);
+            if self.circuit.is_some() {
+                // Выполнение до изменения режима вывода/PWM → пересчёт схемы → продолжение.
+                while self.mcu.run_until_drive_change(chunk_end) {
+                    self.resolve_circuit(out);
+                    if self.circuit.as_ref().and_then(|b| b.fault()).is_some() {
+                        self.flush_events(out);
+                        return Err((
+                            "CIRCUIT_FAULT",
+                            "circuit cannot be solved; simulation is paused".into(),
+                        ));
+                    }
+                }
+            } else {
+                self.mcu.run_until(chunk_end);
+            }
             if self.mcu.pending_events() > 0 {
                 self.flush_events(out);
             }
@@ -196,7 +401,13 @@ impl Session {
         Ok(json!({"cycle": self.mcu.cycles(), "halted": self.mcu.halted()}))
     }
 
-    fn set_input(&mut self, cmd: &Value) -> Result<Value, (&'static str, String)> {
+    fn set_input(&mut self, cmd: &Value) -> CmdResult {
+        if self.circuit.is_some() {
+            return Err((
+                "CIRCUIT_ATTACHED",
+                "input levels are computed from the attached circuit".into(),
+            ));
+        }
         let pin = cmd
             .get("pin")
             .and_then(Value::as_str)
@@ -252,7 +463,9 @@ impl Session {
                 );
             }
         }
+        let circuit = self.circuit.as_ref().map(Bridge::state);
         json!({
+            "circuit": circuit,
             "cycle": self.mcu.cycles(),
             "clockHz": CLOCK_HZ,
             "loaded": self.loaded,

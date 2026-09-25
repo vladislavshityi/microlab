@@ -74,9 +74,11 @@ fn blink_over_protocol() {
         "{d13:?}"
     );
     assert!(out.iter().any(|v| v["type"] == "simulation_reset"));
-    assert!(out
-        .iter()
-        .any(|v| v["type"] == "simulation_error" && v["payload"]["severity"] == "warning"));
+    // init() Arduino core настраивает АЦП — это поддерживаемая периферия, диагностик нет.
+    assert!(
+        !out.iter().any(|v| v["type"] == "simulation_error"),
+        "{out:?}"
+    );
     // После stop worker завершается: строка «not json» не обрабатывается.
     assert_eq!(out.last().unwrap()["id"], 8);
 }

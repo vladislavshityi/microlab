@@ -12,7 +12,12 @@
 //! * TXD при включённом передатчике отображается как выход в состоянии покоя (HIGH), отдельные биты
 //!   кадра на выводе не моделируются;
 //! * SLEEP не переводит CPU в сон (выполняется как NOP с предупреждением, если SE = 1).
+//!
+//! Связь со схемой: напряжения аналоговых входов и AREF задаются извне (`set_analog_input`, `set_aref`),
+//! логические уровни входов — `set_input`. Изменение режима вывода или скважности PWM отмечается флагом
+//! `drive_changed`, по которому внешний решатель схемы пересчитывает рабочую точку.
 
+use crate::adc::{Adc, AdcDiag};
 use crate::board::{pin_by_port_bit, Port, BOARD_PINS};
 use crate::decode::{decode, Op, PtrMode};
 use crate::events::{ErrorCode, Event, EventKind, PinMode, Severity};
@@ -103,6 +108,11 @@ pub struct Mcu {
     pcmsk: [u8; 3],
     timers: [Timer; 3],
     usart: Usart,
+    adc: Adc,
+    /// Последнее измерение PWM по каналам OC_PINS: (такты «1», такты периода).
+    last_pwm: [Option<(u32, u32)>; 6],
+    /// Изменился режим какого-либо вывода или скважность PWM (сбрасывает `take_drive_changed`).
+    drive_changed: bool,
 
     events: Vec<Event>,
     events_overflowed: bool,
@@ -192,6 +202,9 @@ impl Mcu {
                 Timer::new(TimerId::T2),
             ],
             usart: Usart::new(),
+            adc: Adc::new(),
+            last_pwm: [None; 6],
+            drive_changed: false,
             events: Vec::new(),
             events_overflowed: false,
             reported_io: Box::new([false; 256]),
@@ -274,6 +287,8 @@ impl Mcu {
             Timer::new(TimerId::T2),
         ];
         self.usart = Usart::new();
+        self.adc.reset();
+        self.last_pwm = [None; 6];
         self.schedule();
     }
 
@@ -358,6 +373,47 @@ impl Mcu {
         let n = self.usart.inject(bytes, self.cycles);
         self.schedule();
         n
+    }
+
+    /// Напряжение на аналоговом входе `channel` (0…5 = A0…A5), вольты. Задаётся моделью схемы.
+    pub fn set_analog_input(&mut self, channel: usize, volts: f64) {
+        self.adc.set_input(channel, volts);
+    }
+
+    pub fn analog_input(&self, channel: usize) -> f64 {
+        self.adc.input(channel)
+    }
+
+    /// Напряжение на выводе AREF (`None` — не подключён).
+    pub fn set_aref(&mut self, volts: Option<f64>) {
+        self.adc.set_aref(volts);
+    }
+
+    /// Последнее измеренное PWM на выводе: (такты «1», такты периода); `None`, если вывод не в PWM
+    /// или период ещё не измерен.
+    pub fn pwm_measurement(&self, name: &str) -> Option<(u32, u32)> {
+        let p = crate::board::pin_by_name(name)?;
+        let i = OC_PINS
+            .iter()
+            .position(|(_, _, port, bit)| *port == p.port && *bit == p.bit)?;
+        if self.pin_state_at(port_index(p.port), p.bit).mode != PinMode::Pwm {
+            return None;
+        }
+        self.last_pwm[i]
+    }
+
+    /// Возвращает и сбрасывает признак изменения режима выводов или скважности PWM.
+    pub fn take_drive_changed(&mut self) -> bool {
+        std::mem::replace(&mut self.drive_changed, false)
+    }
+
+    /// Выполняет инструкции до такта `target`, остановки CPU или изменения режима выводов/PWM
+    /// (после инструкции, вызвавшей изменение). Возвращает true при изменении.
+    pub fn run_until_drive_change(&mut self, target: u64) -> bool {
+        while self.cycles < target && !self.halted && !self.drive_changed {
+            self.step();
+        }
+        self.drive_changed
     }
 
     pub fn pin_state(&self, name: &str) -> Option<PinState> {
@@ -479,7 +535,8 @@ impl Mcu {
             .next_tick
             .min(self.timers[1].next_tick)
             .min(self.timers[2].next_tick)
-            .min(self.usart.next_event());
+            .min(self.usart.next_event())
+            .min(self.adc.next_event());
         self.next_event = t;
     }
 
@@ -505,10 +562,30 @@ impl Mcu {
                 self.emit_at(t, EventKind::SerialOutput { byte: b });
             }
         }
+        if self.adc.next_event() <= now {
+            if self.adc.advance(now) {
+                self.irq_dirty = true;
+            }
+            self.collect_adc_diags();
+        }
         if pins_dirty {
             self.refresh_pins();
         }
         self.schedule();
+    }
+
+    fn collect_adc_diags(&mut self) {
+        for d in std::mem::take(&mut self.adc.diags) {
+            let bit = 16
+                + match d {
+                    AdcDiag::UnsupportedChannel => 0,
+                    AdcDiag::UnsupportedTrigger => 1,
+                    AdcDiag::ReservedReference => 2,
+                    AdcDiag::ArefNotConnected => 3,
+                    AdcDiag::ArefConflict => 4,
+                };
+            self.report_once(bit, ErrorCode::UnsupportedPeripheral, d.message());
+        }
     }
 
     fn collect_timer_reports(&mut self, i: usize) {
@@ -518,6 +595,8 @@ impl Mcu {
                 if self.ddr[port_index(port)] & (1 << bit) == 0 {
                     continue;
                 }
+                self.last_pwm[i * 2 + ch] = Some((high, total));
+                self.drive_changed = true;
                 if let Some(p) = pin_by_port_bit(port, bit) {
                     let frequency_hz = self.timers[i].frequency_hz(total);
                     self.emit(EventKind::PwmChanged {
@@ -547,6 +626,15 @@ impl Mcu {
     }
 
     fn pin_state_at(&self, p: usize, bit: u8) -> PinState {
+        let mut st = self.pin_state_raw(p, bit);
+        // DIDR0: при отключённом цифровом входе ADCn бит PINC всегда читается как 0 (datasheet стр. 220).
+        if p == Port::C as usize && self.adc.didr0 & (1 << bit) != 0 {
+            st.value = false;
+        }
+        st
+    }
+
+    fn pin_state_raw(&self, p: usize, bit: u8) -> PinState {
         let m = 1u8 << bit;
         let pullup = self.port[p] & m != 0 && self.mcucr & PUD == 0;
         // USART переопределяет выводы D0 (RXD) и D1 (TXD).
@@ -683,10 +771,14 @@ impl Mcu {
         for (i, st) in pins.iter().enumerate() {
             if self.last_pins.get(i) != Some(st) {
                 let bp = &BOARD_PINS[i];
+                if self.last_pins.get(i).map(|s| s.0) != Some(st.0) {
+                    self.drive_changed = true;
+                }
                 if self.last_pins.get(i).map(|s| s.0) == Some(PinMode::Pwm) && st.0 != PinMode::Pwm
                 {
                     if let Some((t, ch)) = self.oc_for(port_index(bp.port), bp.bit) {
                         self.timers[t].forget_pwm(ch);
+                        self.last_pwm[t * 2 + ch] = None;
                     }
                 }
                 self.emit(EventKind::DigitalPinChanged {
@@ -742,6 +834,9 @@ impl Mcu {
         if a & usart::TXC != 0 && b & usart::TXCIE != 0 {
             return Some(20);
         }
+        if self.adc.interrupt_pending() {
+            return Some(21);
+        }
         None
     }
 
@@ -753,6 +848,7 @@ impl Mcu {
             11..=13 => self.timers[1].tifr &= !flag_for(vector - 11),
             14..=16 => self.timers[0].tifr &= !flag_for(vector - 14),
             20 => self.usart.ucsra &= !usart::TXC,
+            21 => self.adc.clear_flag(),
             _ => {} // RXC и UDRE — флаги-состояния, аппаратно не сбрасываются
         }
         let ret = self.pc;
@@ -844,6 +940,12 @@ impl Mcu {
             TIMSK0 => self.timers[0].timsk,
             TIMSK1 => self.timers[1].timsk,
             TIMSK2 => self.timers[2].timsk,
+            ADCL => self.adc.read_adcl(),
+            ADCH => self.adc.read_adch(),
+            ADCSRA => self.adc.read_adcsra(),
+            ADCSRB => self.adc.adcsrb,
+            ADMUX => self.adc.admux,
+            DIDR0 => self.adc.didr0,
             TCCR1A => self.timers[1].tccra,
             TCCR1B => self.timers[1].tccrb,
             TCCR1C => 0,
@@ -934,6 +1036,22 @@ impl Mcu {
                 self.schedule();
             }
             TCCR1C => {}
+            ADCL | ADCH => {} // только чтение
+            ADCSRA => {
+                self.adc.write_adcsra(v, now);
+                self.collect_adc_diags();
+                self.schedule();
+            }
+            ADCSRB => {
+                self.adc.write_adcsrb(v);
+                self.collect_adc_diags();
+            }
+            // Бит 4 ADMUX зарезервирован и читается как 0 (стр. 217).
+            ADMUX => self.adc.admux = v & 0xEF,
+            DIDR0 => {
+                self.adc.didr0 = v & 0x3F;
+                self.refresh_pins();
+            }
             TCNT0 => self.timers[0].tcnt = v as u16,
             TCNT2 => self.timers[2].tcnt = v as u16,
             OCR0A => self.timers[0].write_ocr(0, v as u16),
