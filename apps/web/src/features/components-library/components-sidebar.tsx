@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import {
   COMPONENT_CATEGORIES,
@@ -7,8 +7,11 @@ import {
   type ComponentDefinition,
 } from "@microlab/circuit-schema";
 
+import { COMPONENT_DRAG_MIME } from "@/features/circuit-editor/drag-data";
+import { addComponentAtViewCenter } from "@/features/circuit-editor/placement";
 import { localized } from "@/i18n/localized";
 import { t, type PlainTranslationKey } from "@/i18n/t";
+import { useUiStore } from "@/stores/ui-store";
 
 const CATEGORY_LABELS = {
   board: "components.category.board",
@@ -29,14 +32,63 @@ function matches(definition: ComponentDefinition, query: string): boolean {
     .includes(query);
 }
 
+function CatalogItem({ definition }: { definition: ComponentDefinition }) {
+  const name = localized(definition.displayName);
+  const description = localized(definition.description);
+  // Плата MVP одна и всегда присутствует на схеме.
+  if (definition.category === "board") {
+    return (
+      <li className="px-3 py-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="truncate text-[13px]">{name}</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">{t("components.board.present")}</span>
+        </div>
+        <div className="line-clamp-2 text-xs text-muted-foreground">{description}</div>
+      </li>
+    );
+  }
+  return (
+    <li>
+      <button
+        type="button"
+        draggable
+        aria-label={t("components.add", { name })}
+        title={description}
+        onDragStart={(event) => {
+          event.dataTransfer.setData(COMPONENT_DRAG_MIME, definition.type);
+          event.dataTransfer.effectAllowed = "copy";
+        }}
+        onClick={() => {
+          addComponentAtViewCenter(definition.type);
+        }}
+        className="block w-full cursor-grab px-3 py-1 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:cursor-grabbing"
+      >
+        <span className="block truncate text-[13px]">{name}</span>
+        <span className="line-clamp-2 text-xs text-muted-foreground">{description}</span>
+      </button>
+    </li>
+  );
+}
+
 /**
  * Библиотека компонентов: определения из circuit-schema по категориям с поиском.
- * Добавление на схему появится вместе с редактором схемы, поэтому элементы — справочный
- * каталог без перетаскивания.
+ * Компонент добавляется на схему перетаскиванием на холст или щелчком (в центр видимой
+ * области холста).
  */
 export function ComponentsSidebar() {
   const [query, setQuery] = useState("");
   const searchId = useId();
+  const searchRef = useRef<HTMLInputElement>(null);
+  const searchRequested = useUiStore((state) => state.componentSearchRequested);
+
+  // Клавиша A на холсте переводит фокус в поиск компонентов.
+  useEffect(() => {
+    if (searchRequested && searchRef.current !== null) {
+      searchRef.current.focus();
+      searchRef.current.select();
+      useUiStore.getState().consumeComponentSearch();
+    }
+  }, [searchRequested]);
   const normalizedQuery = query.trim().toLocaleLowerCase();
 
   const groups = useMemo(
@@ -61,6 +113,7 @@ export function ComponentsSidebar() {
           className="pointer-events-none absolute top-1/2 left-4 size-3.5 -translate-y-1/2 text-muted-foreground"
         />
         <input
+          ref={searchRef}
           id={searchId}
           type="search"
           value={query}
@@ -71,9 +124,7 @@ export function ComponentsSidebar() {
           className="h-7 w-full rounded-md border bg-transparent pr-2 pl-7 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
-      <p className="px-3 text-xs text-muted-foreground">
-        {t("components.notice.placementUnavailable")}
-      </p>
+      <p className="px-3 text-xs text-muted-foreground">{t("components.hint.add")}</p>
       {groups.length === 0 ? (
         <p className="px-3 py-1 text-[13px] text-muted-foreground">{t("components.search.empty")}</p>
       ) : (
@@ -87,12 +138,7 @@ export function ComponentsSidebar() {
             </h3>
             <ul>
               {items.map((definition) => (
-                <li key={definition.type} className="px-3 py-1">
-                  <div className="truncate text-[13px]">{localized(definition.displayName)}</div>
-                  <div className="line-clamp-2 text-xs text-muted-foreground">
-                    {localized(definition.description)}
-                  </div>
-                </li>
+                <CatalogItem key={definition.type} definition={definition} />
               ))}
             </ul>
           </section>

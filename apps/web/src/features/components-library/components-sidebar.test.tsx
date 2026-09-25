@@ -1,6 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+
+import { useCircuitStore } from "@/stores/circuit-store";
+import { useUiStore } from "@/stores/ui-store";
 
 import { ComponentsSidebar } from "./components-sidebar";
 
@@ -13,13 +16,18 @@ describe("ComponentsSidebar", () => {
 
     const basic = screen.getByRole("region", { name: "Базовые" });
     const names = within(basic)
-      .getAllByRole("listitem")
-      .map((item) => item.firstElementChild?.textContent);
-    expect(names).toEqual(["Светодиод", "Кнопка", "Резистор"]);
+      .getAllByRole("button")
+      .map((item) => item.getAttribute("aria-label"));
+    expect(names).toEqual([
+      "Добавить на схему: Светодиод",
+      "Добавить на схему: Кнопка",
+      "Добавить на схему: Резистор",
+    ]);
 
-    // Пустые категории не показываются; добавление на схему честно помечено как недоступное.
+    // Пустые категории не показываются; плата всегда на схеме и не добавляется повторно.
     expect(screen.queryByRole("region", { name: "Датчики" })).not.toBeInTheDocument();
-    expect(screen.getByText("Добавление на схему появится в следующей версии.")).toBeInTheDocument();
+    expect(within(boards).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(boards).getByText("На схеме")).toBeInTheDocument();
   });
 
   it("filters by name and shows an empty result", async () => {
@@ -39,5 +47,34 @@ describe("ComponentsSidebar", () => {
     await user.type(search, "осциллограф");
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
     expect(screen.getByText("Ничего не найдено")).toBeInTheDocument();
+  });
+
+  it("adds a component at the canvas center on click and supports dragging", async () => {
+    const user = userEvent.setup();
+    useUiStore.getState().setCanvasCenter({ x: 30, y: 10 });
+    render(<ComponentsSidebar />);
+
+    await user.click(screen.getByRole("button", { name: "Добавить на схему: Резистор" }));
+    const state = useCircuitStore.getState();
+    expect(state.componentOrder).toEqual(["r1"]);
+    // Центр символа 4×2 — в центре холста.
+    expect(state.components["r1"]?.position).toEqual({ x: 28, y: 9 });
+    expect(state.selection.componentIds).toEqual(["r1"]);
+
+    // Повторное добавление не накладывается на первый компонент.
+    await user.click(screen.getByRole("button", { name: "Добавить на схему: Резистор" }));
+    expect(useCircuitStore.getState().components["r2"]?.position).toEqual({ x: 34, y: 9 });
+
+    const item = screen.getByRole("button", { name: "Добавить на схему: Светодиод" });
+    expect(item).toHaveAttribute("draggable", "true");
+  });
+
+  it("focuses the search field on request (A on the canvas)", () => {
+    render(<ComponentsSidebar />);
+    act(() => {
+      useUiStore.getState().requestComponentSearch();
+    });
+    expect(screen.getByRole("searchbox", { name: "Поиск компонентов" })).toHaveFocus();
+    expect(useUiStore.getState().componentSearchRequested).toBe(false);
   });
 });

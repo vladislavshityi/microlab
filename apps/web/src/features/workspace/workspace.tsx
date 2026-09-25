@@ -1,4 +1,4 @@
-import { useCallback, useState, type RefObject } from "react";
+import { useCallback, useEffect, useState, type RefObject } from "react";
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import {
   usePanelRef,
@@ -89,6 +89,16 @@ export function Workspace() {
   const components = useCollapsible("components", componentsRef);
   const properties = useCollapsible("properties", propertiesRef);
   const bottom = useCollapsible("bottom", bottomRef);
+
+  // Запрос поиска компонентов (клавиша A на холсте) разворачивает свёрнутую панель;
+  // фокус в поле поиска переводит сама панель после появления.
+  const searchRequested = useUiStore((state) => state.componentSearchRequested);
+  const { collapsed: componentsCollapsed, expand: expandComponents } = components;
+  useEffect(() => {
+    if (searchRequested && componentsCollapsed) {
+      expandComponents();
+    }
+  }, [searchRequested, componentsCollapsed, expandComponents]);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">

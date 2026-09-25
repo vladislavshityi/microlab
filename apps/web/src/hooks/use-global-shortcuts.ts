@@ -1,9 +1,17 @@
 import { useEffect } from "react";
 
-import { matchShortcut, runShortcut } from "@/features/workspace/shortcuts";
+import {
+  matchHistoryShortcut,
+  matchShortcut,
+  runHistoryShortcut,
+  runShortcut,
+} from "@/features/workspace/shortcuts";
+import { isTextInputTarget } from "@/lib/platform";
 
 /**
- * Перехватывает Cmd/Ctrl+S и Cmd/Ctrl+Enter на уровне окна.
+ * Перехватывает Cmd/Ctrl+S и Cmd/Ctrl+Enter на уровне окна, а также отмену и повтор
+ * изменений схемы (Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z) — кроме полей ввода и редактора кода,
+ * где эти сочетания отменяют правку текста.
  *
  * Обработчик работает на фазе всплытия: внутри редактора кода эти сочетания
  * регистрируются как команды редактора, которые останавливают всплытие, поэтому
@@ -13,6 +21,14 @@ import { matchShortcut, runShortcut } from "@/features/workspace/shortcuts";
 export function useGlobalShortcuts(): void {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const history = matchHistoryShortcut(event);
+      if (history !== null) {
+        if (!isTextInputTarget(event.target)) {
+          event.preventDefault();
+          runHistoryShortcut(history);
+        }
+        return;
+      }
       const action = matchShortcut(event);
       if (action === null) {
         return;

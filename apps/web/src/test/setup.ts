@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 
+import { useCircuitStore } from "@/stores/circuit-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -43,12 +44,14 @@ Object.defineProperty(globalThis, "DOMMatrixReadOnly", {
 
 const initialUiState = useUiStore.getState();
 const initialEditorState = useEditorStore.getState();
+const initialCircuitState = useCircuitStore.getState();
 
 beforeEach(() => {
   window.localStorage.clear();
   document.documentElement.classList.remove("dark");
   useUiStore.setState(initialUiState, true);
   useEditorStore.setState(initialEditorState, true);
+  useCircuitStore.setState(initialCircuitState, true);
 });
 
 afterEach(() => {

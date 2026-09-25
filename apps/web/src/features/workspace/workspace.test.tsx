@@ -28,10 +28,8 @@ describe("Workspace", () => {
 
     const components = screen.getByRole("navigation", { name: "Компоненты" });
     expect(components).toHaveTextContent("Arduino UNO R3");
-    expect(components).toHaveTextContent("Добавление на схему появится в следующей версии.");
-    expect(screen.getByRole("region", { name: "Схема" })).toHaveTextContent(
-      "Схема пуста. Компоненты появятся в следующей версии.",
-    );
+    expect(screen.getByRole("button", { name: "Добавить на схему: Резистор" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Схема" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "Свойства" })).toHaveTextContent(
       "Ничего не выбрано",
     );

@@ -1,3 +1,4 @@
+import type { GridPoint } from "@microlab/circuit-schema";
 import { create } from "zustand";
 
 import type { PlainTranslationKey } from "@/i18n/t";
@@ -32,6 +33,10 @@ interface UiState {
   bottomTab: BottomTab;
   collapsed: Record<CollapsiblePanel, boolean>;
   notice: Notice | null;
+  /** Центр видимой области холста в единицах сетки (сюда добавляются компоненты по щелчку). */
+  canvasCenter: GridPoint | null;
+  /** Запрошен фокус на поиске компонентов (клавиша A на холсте); сбрасывается после фокуса. */
+  componentSearchRequested: boolean;
 
   setThemePreference: (preference: ThemePreference) => void;
   setResolvedTheme: (theme: ResolvedTheme) => void;
@@ -39,6 +44,9 @@ interface UiState {
   setCollapsed: (panel: CollapsiblePanel, collapsed: boolean) => void;
   showNotice: (message: PlainTranslationKey) => void;
   dismissNotice: (id: number) => void;
+  setCanvasCenter: (center: GridPoint) => void;
+  requestComponentSearch: () => void;
+  consumeComponentSearch: () => void;
 }
 
 let nextNoticeId = 1;
@@ -61,6 +69,8 @@ export const useUiStore = create<UiState>()((set) => ({
   bottomTab: "code",
   collapsed: { components: false, properties: false, bottom: false },
   notice: null,
+  canvasCenter: null,
+  componentSearchRequested: false,
 
   // Класс темы меняется синхронно, до перерисовки React: компоненты, читающие значения
   // CSS-токенов (редактор кода), получают уже актуальные цвета.
@@ -89,5 +99,14 @@ export const useUiStore = create<UiState>()((set) => ({
   },
   dismissNotice: (id) => {
     set((state) => (state.notice?.id === id ? { notice: null } : state));
+  },
+  setCanvasCenter: (center) => {
+    set({ canvasCenter: center });
+  },
+  requestComponentSearch: () => {
+    set({ componentSearchRequested: true });
+  },
+  consumeComponentSearch: () => {
+    set({ componentSearchRequested: false });
   },
 }));

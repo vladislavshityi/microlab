@@ -44,6 +44,8 @@
   --error-muted: oklch(0.96 0.025 27);
   --info: oklch(0.5 0.14 250);
   --info-muted: oklch(0.96 0.02 250);
+  /* Провод без заданного цвета. */
+  --wire-default: oklch(0.45 0.01 286);
 
   --font-ui:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
@@ -92,6 +94,7 @@
   --error-muted: oklch(0.26 0.05 25);
   --info: oklch(0.72 0.13 250);
   --info-muted: oklch(0.25 0.04 250);
+  --wire-default: oklch(0.75 0.01 286);
 
   color-scheme: dark;
 }
@@ -185,4 +188,55 @@
 .react-flow__controls-button:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: -2px;
+}
+
+/* Элементы схемы: без теней, фильтров и анимаций. */
+.react-flow__node-circuit {
+  border-radius: 2px;
+}
+
+.react-flow__node-circuit.selected {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.react-flow__node-circuit:focus-visible {
+  outline: 2px dashed var(--ring);
+  outline-offset: 4px;
+}
+
+.react-flow__node-circuit.selected:focus-visible {
+  outline-style: double;
+  outline-width: 4px;
+}
+
+/* Вывод: невидимая область захвата; при наведении и фокусе — кольцо. */
+.react-flow__handle.circuit-pin {
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  /* React Flow отключает события у выводов без встроенного соединения; соединения
+     создаёт сам редактор. */
+  pointer-events: all;
+  cursor: crosshair;
+}
+
+.react-flow__handle.circuit-pin:hover,
+.react-flow__handle.circuit-pin:focus-visible,
+.react-flow__handle.circuit-pin.circuit-pin-pending {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  background: color-mix(in oklab, var(--ring) 20%, transparent);
+}
+
+.react-flow__edge .circuit-wire-hit {
+  pointer-events: stroke;
+}
+
+.react-flow__edge:focus-visible .circuit-wire-hit {
+  stroke: var(--ring);
+  stroke-opacity: 0.35;
 }

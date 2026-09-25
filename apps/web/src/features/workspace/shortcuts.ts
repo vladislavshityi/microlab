@@ -1,4 +1,5 @@
 import type { PlainTranslationKey } from "@/i18n/t";
+import { useCircuitStore } from "@/stores/circuit-store";
 import { useUiStore } from "@/stores/ui-store";
 
 /** Глобальные сочетания клавиш рабочего пространства. */
@@ -33,4 +34,33 @@ export function matchShortcut(event: KeyboardEvent): ShortcutAction | null {
 
 export function runShortcut(action: ShortcutAction): void {
   useUiStore.getState().showNotice(UNAVAILABLE_NOTICE[action]);
+}
+
+/** Отмена и повтор изменений схемы. */
+export type HistoryAction = "undo" | "redo";
+
+/**
+ * Cmd/Ctrl+Z — отмена, Cmd/Ctrl+Shift+Z (и Ctrl+Y) — повтор. Клавиши определяются по
+ * физическому коду, чтобы сочетания работали и в русской раскладке.
+ */
+export function matchHistoryShortcut(event: KeyboardEvent): HistoryAction | null {
+  if (!(event.metaKey || event.ctrlKey) || event.altKey) {
+    return null;
+  }
+  if (event.code === "KeyZ" || event.key.toLowerCase() === "z") {
+    return event.shiftKey ? "redo" : "undo";
+  }
+  if (event.ctrlKey && !event.shiftKey && (event.code === "KeyY" || event.key.toLowerCase() === "y")) {
+    return "redo";
+  }
+  return null;
+}
+
+export function runHistoryShortcut(action: HistoryAction): void {
+  const store = useCircuitStore.getState();
+  if (action === "undo") {
+    store.undo();
+  } else {
+    store.redo();
+  }
 }
