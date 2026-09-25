@@ -1,0 +1,97 @@
+//! Адреса регистров ATmega328P в пространстве данных (ATmega328P datasheet 7810D, раздел 30
+//! «Register Summary», стр. 275–280). Адрес = адрес I/O + 0x20 для 0x00–0x3F.
+
+pub const PINB: u16 = 0x23;
+pub const DDRB: u16 = 0x24;
+pub const PORTB: u16 = 0x25;
+pub const PINC: u16 = 0x26;
+pub const DDRC: u16 = 0x27;
+pub const PORTC: u16 = 0x28;
+pub const PIND: u16 = 0x29;
+pub const DDRD: u16 = 0x2A;
+pub const PORTD: u16 = 0x2B;
+pub const TIFR0: u16 = 0x35;
+pub const TIFR1: u16 = 0x36;
+pub const TIFR2: u16 = 0x37;
+pub const PCIFR: u16 = 0x3B;
+pub const EIFR: u16 = 0x3C;
+pub const EIMSK: u16 = 0x3D;
+pub const GPIOR0: u16 = 0x3E;
+pub const TCCR0A: u16 = 0x44;
+pub const TCCR0B: u16 = 0x45;
+pub const TCNT0: u16 = 0x46;
+pub const OCR0A: u16 = 0x47;
+pub const OCR0B: u16 = 0x48;
+pub const GPIOR1: u16 = 0x4A;
+pub const GPIOR2: u16 = 0x4B;
+pub const MCUSR: u16 = 0x54;
+pub const MCUCR: u16 = 0x55;
+pub const SPL: u16 = 0x5D;
+pub const SPH: u16 = 0x5E;
+pub const SREG: u16 = 0x5F;
+pub const PCICR: u16 = 0x68;
+pub const EICRA: u16 = 0x69;
+pub const PCMSK0: u16 = 0x6B;
+pub const PCMSK1: u16 = 0x6C;
+pub const PCMSK2: u16 = 0x6D;
+pub const TIMSK0: u16 = 0x6E;
+pub const TIMSK1: u16 = 0x6F;
+pub const TIMSK2: u16 = 0x70;
+pub const TCCR1A: u16 = 0x80;
+pub const TCCR1B: u16 = 0x81;
+pub const TCCR1C: u16 = 0x82;
+pub const TCNT1L: u16 = 0x84;
+pub const TCNT1H: u16 = 0x85;
+pub const ICR1L: u16 = 0x86;
+pub const ICR1H: u16 = 0x87;
+pub const OCR1AL: u16 = 0x88;
+pub const OCR1AH: u16 = 0x89;
+pub const OCR1BL: u16 = 0x8A;
+pub const OCR1BH: u16 = 0x8B;
+pub const TCCR2A: u16 = 0xB0;
+pub const TCCR2B: u16 = 0xB1;
+pub const TCNT2: u16 = 0xB2;
+pub const OCR2A: u16 = 0xB3;
+pub const OCR2B: u16 = 0xB4;
+pub const UCSR0A: u16 = 0xC0;
+pub const UCSR0B: u16 = 0xC1;
+pub const UCSR0C: u16 = 0xC2;
+pub const UBRR0L: u16 = 0xC4;
+pub const UBRR0H: u16 = 0xC5;
+pub const UDR0: u16 = 0xC6;
+
+/// Имя регистра для диагностики неподдерживаемой периферии.
+pub fn name(addr: u16) -> &'static str {
+    match addr {
+        0x3F => "EECR",
+        0x40 => "EEDR",
+        0x41 => "EEARL",
+        0x42 => "EEARH",
+        0x43 => "GTCCR",
+        0x4C => "SPCR",
+        0x4D => "SPSR",
+        0x4E => "SPDR",
+        0x50 => "ACSR",
+        0x53 => "SMCR",
+        0x57 => "SPMCSR",
+        0x60 => "WDTCSR",
+        0x61 => "CLKPR",
+        0x64 => "PRR",
+        0x66 => "OSCCAL",
+        0x78 => "ADCL",
+        0x79 => "ADCH",
+        0x7A => "ADCSRA",
+        0x7B => "ADCSRB",
+        0x7C => "ADMUX",
+        0x7E => "DIDR0",
+        0x7F => "DIDR1",
+        0xB6 => "ASSR",
+        0xB8 => "TWBR",
+        0xB9 => "TWSR",
+        0xBA => "TWAR",
+        0xBB => "TWDR",
+        0xBC => "TWCR",
+        0xBD => "TWAMR",
+        _ => "reserved",
+    }
+}

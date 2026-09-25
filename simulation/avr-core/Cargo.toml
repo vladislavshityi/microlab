@@ -1,0 +1,29 @@
+[package]
+name = "avr-core"
+description = "Эмулятор ATmega328P (Arduino UNO R3) для MicroLab"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+build = "build.rs"
+
+[dependencies]
+
+[build-dependencies]
+serde_json = "=1.0.151"
+
+[[test]]
+name = "instructions"
+path = "../tests/unit/instructions.rs"
+
+[[test]]
+name = "arduino_uno"
+path = "../tests/conformance/arduino_uno/main.rs"
+
+[[example]]
+name = "bench"
+path = "../bench/bench.rs"
+
+[[example]]
+name = "dump"
+path = "../bench/dump.rs"
