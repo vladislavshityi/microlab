@@ -1,0 +1,21 @@
+{
+  "type": "push-button",
+  "displayName": { "key": "components.push-button.displayName", "ru": "Кнопка" },
+  "description": {
+    "key": "components.push-button.description",
+    "ru": "Кнопка без фиксации: пока нажата, замыкает контакты A и B."
+  },
+  "category": "basic",
+  "pins": [
+    { "id": "A", "name": "A", "electricalType": "passive" },
+    { "id": "B", "name": "B", "electricalType": "passive" }
+  ],
+  "properties": [],
+  "simulationAccuracy": "BASIC_ELECTRICAL",
+  "limitations": [
+    "Моделируется как идеальный переключатель: сопротивление замкнутого контакта не учитывается.",
+    "Дребезг контактов не моделируется.",
+    "У каждого контакта один вывод: четырёхвыводная тактовая кнопка пока не представлена."
+  ],
+  "visual": { "width": 4, "height": 2, "pins": { "A": { "x": 0, "y": 1 }, "B": { "x": 4, "y": 1 } } }
+}

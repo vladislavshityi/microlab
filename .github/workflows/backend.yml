@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - "apps/api/**"
+      - "packages/circuit-schema/**"
       - "docker-compose.yml"
       - ".env.example"
       - ".github/workflows/backend.yml"
   pull_request:
     paths:
       - "apps/api/**"
+      - "packages/circuit-schema/**"
       - "docker-compose.yml"
       - ".env.example"
       - ".github/workflows/backend.yml"
@@ -92,3 +94,6 @@ jobs:
 
       - name: OpenAPI is up to date
         run: uv run python -m microlab_api.scripts.export_openapi --check
+
+      - name: Generated circuit-schema models are up to date
+        run: uv run python -m microlab_api.scripts.gen_circuit_schema --check

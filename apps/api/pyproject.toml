@@ -19,7 +19,9 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "anyio>=4.15.1",
+    "datamodel-code-generator==0.83.0",
     "httpx>=0.28.1",
+    "jsonschema==4.26.0",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.9",
@@ -55,6 +57,8 @@ known-third-party = ["alembic"]
 "tests/**" = ["S101"]
 "src/microlab_api/scripts/**" = ["T201"]
 "alembic/versions/**" = ["N999"]
+# Генерируется из JSON Schema: длинные строки описаний не переносятся.
+"src/microlab_api/circuit_schema/generated/**" = ["E501"]
 
 [tool.mypy]
 strict = true
@@ -69,7 +73,7 @@ init_forbid_extra = true
 init_typed = true
 
 [[tool.mypy.overrides]]
-module = ["asyncpg", "asyncpg.*"]
+module = ["asyncpg", "asyncpg.*", "jsonschema", "jsonschema.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

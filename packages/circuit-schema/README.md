@@ -1,12 +1,38 @@
 # @microlab/circuit-schema
 
-Будущий **единственный источник истины** для versioned definitions MicroLab:
-circuit schema (`schemaVersion`), определения компонентов и плат, pin mapping, электрические и симуляционные свойства, visual metadata.
+Единственный источник истины для формата схемы и определений компонентов MicroLab.
+Формат языконезависимый: JSON Schema (draft 2020-12) и JSON-данные.
 
-## Статус (Phase 0)
+```text
+schema/circuit.schema.json               документ схемы (schemaVersion 1)
+schema/component-definition.schema.json  определение компонента или платы
+definitions/*.json                       arduino-uno-r3, resistor, led, push-button
+examples/*.json                          примеры документов схемы (используются в тестах)
+src/generated/                           TypeScript: типы и определения (генерируется)
+src/index.ts                             COMPONENT_DEFINITIONS, getComponentDefinition(type)
+```
 
-Каркас без содержимого: **нет** определений, схем, данных и кода. Пакет не импортируется ни из `apps/web`, ни из `apps/api`.
+Координаты — в единицах сетки: целые числа, 1 единица = 2,54 мм (0,1 дюйма).
 
-* Формат хранения — языконезависимый (JSON Schema + JSON-данные); TypeScript- и Python-представления будут генерироваться из него.
-* Инструменты генерации выбираются в Phase 2.
-* Аппаратные характеристики добавляются только после сверки с официальной документацией Arduino и datasheet ATmega328P.
+## Генерация
+
+Сгенерированные файлы коммитятся и проверяются в CI; вручную их не правят.
+
+```sh
+pnpm gen:circuit-schema            # TypeScript (json-schema-to-typescript)
+pnpm gen:circuit-schema:check
+cd apps/api
+uv run python -m microlab_api.scripts.gen_circuit_schema          # Pydantic (datamodel-code-generator)
+uv run python -m microlab_api.scripts.gen_circuit_schema --check
+```
+
+Backend читает `definitions/*.json` во время выполнения из checkout репозитория.
+В TypeScript определения встраиваются в `src/generated/definitions.ts` с аннотацией
+типа, поэтому `tsc` проверяет их по сгенерированным типам; backend-тесты проверяют их по
+JSON Schema и на внутреннюю согласованность.
+
+## Аппаратные данные
+
+Pin mapping, возможности выводов и параметры платы UNO R3 взяты только из сверенных
+официальных источников (распиновка и схема UNO R3, datasheet ATmega328P, ядро
+`arduino:avr` 1.8.8). Непроверенные сведения в определения не добавляются.

@@ -1,6 +1,141 @@
 {
   "components": {
     "schemas": {
+      "BoardInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "clockHz": {
+            "minimum": 1.0,
+            "title": "Clockhz",
+            "type": "integer"
+          },
+          "fqbn": {
+            "pattern": "^[a-z0-9_-]+:[a-z0-9_-]+:[a-z0-9_-]+$",
+            "title": "Fqbn",
+            "type": "string"
+          },
+          "mcu": {
+            "minLength": 1,
+            "title": "Mcu",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mcu",
+          "fqbn",
+          "clockHz"
+        ],
+        "title": "BoardInfo",
+        "type": "object"
+      },
+      "ComponentDefinition": {
+        "additionalProperties": false,
+        "description": "Definition of a board or component type. Geometry is in grid units (integers, 1 unit = 2.54 mm).",
+        "properties": {
+          "board": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoardInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "enum": [
+              "board",
+              "basic",
+              "passive",
+              "output",
+              "sensors",
+              "displays"
+            ],
+            "title": "ComponentCategory",
+            "type": "string"
+          },
+          "description": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "displayName": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "internalConnections": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/InternalConnection"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internalconnections"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "pins": {
+            "items": {
+              "$ref": "#/components/schemas/PinDefinition"
+            },
+            "minItems": 1,
+            "title": "Pins",
+            "type": "array"
+          },
+          "properties": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/NumberPropertyDefinition"
+                },
+                {
+                  "$ref": "#/components/schemas/EnumPropertyDefinition"
+                }
+              ]
+            },
+            "title": "Properties",
+            "type": "array"
+          },
+          "simulationAccuracy": {
+            "enum": [
+              "DIGITAL",
+              "BASIC_ELECTRICAL",
+              "BEHAVIORAL",
+              "CONNECTIVITY"
+            ],
+            "title": "SimulationAccuracy",
+            "type": "string"
+          },
+          "type": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "title": "Type",
+            "type": "string"
+          },
+          "visual": {
+            "$ref": "#/components/schemas/VisualModel"
+          }
+        },
+        "required": [
+          "type",
+          "displayName",
+          "description",
+          "category",
+          "pins",
+          "properties",
+          "simulationAccuracy",
+          "limitations",
+          "visual"
+        ],
+        "title": "ComponentDefinition",
+        "type": "object"
+      },
       "DatabaseCheck": {
         "additionalProperties": false,
         "properties": {
@@ -22,6 +157,69 @@
           "status"
         ],
         "title": "DatabaseCheck",
+        "type": "object"
+      },
+      "EnumOption": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "value": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "EnumOption",
+        "type": "object"
+      },
+      "EnumPropertyDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "string"
+          },
+          "displayName": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "id": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "minItems": 1,
+            "title": "Options",
+            "type": "array"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "enum",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "type",
+          "default",
+          "options",
+          "simulated"
+        ],
+        "title": "EnumPropertyDefinition",
         "type": "object"
       },
       "ErrorBody": {
@@ -58,7 +256,8 @@
           "VALIDATION_ERROR",
           "HTTP_ERROR",
           "INTERNAL_ERROR",
-          "DATABASE_UNAVAILABLE"
+          "DATABASE_UNAVAILABLE",
+          "UNKNOWN_COMPONENT_TYPE"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -139,6 +338,264 @@
         ],
         "title": "HealthResponse",
         "type": "object"
+      },
+      "InternalConnection": {
+        "items": {
+          "type": "string"
+        },
+        "minItems": 2,
+        "title": "InternalConnection",
+        "type": "array"
+      },
+      "LocalizedText": {
+        "additionalProperties": false,
+        "description": "UI text: translation key plus the Russian text.",
+        "properties": {
+          "key": {
+            "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z0-9][A-Za-z0-9-]*)+$",
+            "title": "Key",
+            "type": "string"
+          },
+          "ru": {
+            "minLength": 1,
+            "title": "Ru",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "ru"
+        ],
+        "title": "LocalizedText",
+        "type": "object"
+      },
+      "NumberPropertyDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "number"
+          },
+          "displayName": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "id": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "maximum": {
+            "title": "Maximum",
+            "type": "number"
+          },
+          "minimum": {
+            "title": "Minimum",
+            "type": "number"
+          },
+          "presets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presets"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "number",
+            "title": "Type",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "ohm",
+              "volt",
+              "percent"
+            ],
+            "title": "PropertyUnit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "type",
+          "unit",
+          "default",
+          "minimum",
+          "maximum",
+          "simulated"
+        ],
+        "title": "NumberPropertyDefinition",
+        "type": "object"
+      },
+      "PinDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "arduinoPin": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arduinopin"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "digital-io",
+                    "pwm",
+                    "adc",
+                    "adc-reference",
+                    "uart-rx",
+                    "uart-tx",
+                    "int0",
+                    "int1",
+                    "spi-ss",
+                    "spi-mosi",
+                    "spi-miso",
+                    "spi-sck",
+                    "i2c-sda",
+                    "i2c-scl",
+                    "builtin-led",
+                    "reset"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "electricalType": {
+            "enum": [
+              "power-input",
+              "power-output",
+              "ground",
+              "digital-input",
+              "digital-output",
+              "analog-input",
+              "analog-output",
+              "bidirectional",
+              "passive"
+            ],
+            "title": "ElectricalType",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          },
+          "mcuPin": {
+            "anyOf": [
+              {
+                "pattern": "^P[A-Z][0-7]$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcupin"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "voltageDomain": {
+            "anyOf": [
+              {
+                "enum": [
+                  "5V",
+                  "3V3",
+                  "VIN"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "VoltageDomain"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "electricalType"
+        ],
+        "title": "PinDefinition",
+        "type": "object"
+      },
+      "PinPosition": {
+        "additionalProperties": false,
+        "description": "Pin position in grid units, relative to the top-left corner of the symbol.",
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "integer"
+          },
+          "y": {
+            "title": "Y",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "PinPosition",
+        "type": "object"
+      },
+      "VisualModel": {
+        "additionalProperties": false,
+        "description": "Symbol size and pin positions relative to the top-left corner, in grid units.",
+        "properties": {
+          "height": {
+            "minimum": 1.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "pins": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PinPosition"
+            },
+            "title": "Pins",
+            "type": "object"
+          },
+          "width": {
+            "minimum": 1.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "pins"
+        ],
+        "title": "VisualModel",
+        "type": "object"
       }
     }
   },
@@ -148,6 +605,103 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/components": {
+      "get": {
+        "operationId": "listComponents",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ComponentDefinition"
+                  },
+                  "title": "Response Listcomponents",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          }
+        },
+        "summary": "List component and board definitions",
+        "tags": [
+          "components"
+        ]
+      }
+    },
+    "/api/v1/components/{component_type}": {
+      "get": {
+        "operationId": "getComponent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "component_type",
+            "required": true,
+            "schema": {
+              "title": "Component Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentDefinition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown component type."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          }
+        },
+        "summary": "Get a component or board definition",
+        "tags": [
+          "components"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "operationId": "getHealth",

@@ -1,0 +1,47 @@
+{
+  "type": "led",
+  "displayName": { "key": "components.led.displayName", "ru": "Светодиод" },
+  "description": {
+    "key": "components.led.description",
+    "ru": "Светодиод: светится, когда ток течёт от анода к катоду."
+  },
+  "category": "basic",
+  "pins": [
+    { "id": "A", "name": "Анод", "electricalType": "passive" },
+    { "id": "K", "name": "Катод", "electricalType": "passive" }
+  ],
+  "properties": [
+    {
+      "id": "color",
+      "displayName": { "key": "components.led.properties.color", "ru": "Цвет" },
+      "type": "enum",
+      "default": "red",
+      "options": [
+        { "value": "red", "label": { "key": "components.led.properties.color.red", "ru": "Красный" } },
+        { "value": "green", "label": { "key": "components.led.properties.color.green", "ru": "Зелёный" } },
+        { "value": "yellow", "label": { "key": "components.led.properties.color.yellow", "ru": "Жёлтый" } },
+        { "value": "blue", "label": { "key": "components.led.properties.color.blue", "ru": "Синий" } },
+        { "value": "white", "label": { "key": "components.led.properties.color.white", "ru": "Белый" } }
+      ],
+      "simulated": false
+    },
+    {
+      "id": "forwardVoltage",
+      "displayName": { "key": "components.led.properties.forwardVoltage", "ru": "Прямое напряжение" },
+      "type": "number",
+      "unit": "volt",
+      "default": 2,
+      "minimum": 0.5,
+      "maximum": 5,
+      "simulated": true
+    }
+  ],
+  "simulationAccuracy": "BASIC_ELECTRICAL",
+  "limitations": [
+    "Прямое напряжение по умолчанию (2 В) — условное значение, не взятое из datasheet: задайте его по datasheet используемого светодиода.",
+    "Цвет — только визуальные метаданные: он не меняет прямое напряжение.",
+    "Максимально допустимый ток светодиода не задан и не проверяется.",
+    "Тепловое поведение и длина волны излучения не моделируются."
+  ],
+  "visual": { "width": 4, "height": 2, "pins": { "A": { "x": 0, "y": 1 }, "K": { "x": 4, "y": 1 } } }
+}

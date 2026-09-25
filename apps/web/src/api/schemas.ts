@@ -36,6 +36,7 @@ export const ErrorCodeSchema = z.enum([
   "HTTP_ERROR",
   "INTERNAL_ERROR",
   "DATABASE_UNAVAILABLE",
+  "UNKNOWN_COMPONENT_TYPE",
 ]) satisfies z.ZodType<ErrorCode>;
 
 export const ErrorResponseSchema = z.object({

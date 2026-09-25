@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/v1/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List component and board definitions */
+        get: operations["listComponents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/components/{component_type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a component or board definition */
+        get: operations["getComponent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -25,6 +59,45 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BoardInfo */
+        BoardInfo: {
+            /** Clockhz */
+            clockHz: number;
+            /** Fqbn */
+            fqbn: string;
+            /** Mcu */
+            mcu: string;
+        };
+        /**
+         * ComponentDefinition
+         * @description Definition of a board or component type. Geometry is in grid units (integers, 1 unit = 2.54 mm).
+         */
+        ComponentDefinition: {
+            board?: components["schemas"]["BoardInfo"] | null;
+            /**
+             * ComponentCategory
+             * @enum {string}
+             */
+            category: "board" | "basic" | "passive" | "output" | "sensors" | "displays";
+            description: components["schemas"]["LocalizedText"];
+            displayName: components["schemas"]["LocalizedText"];
+            /** Internalconnections */
+            internalConnections?: components["schemas"]["InternalConnection"][] | null;
+            /** Limitations */
+            limitations: string[];
+            /** Pins */
+            pins: components["schemas"]["PinDefinition"][];
+            /** Properties */
+            properties: (components["schemas"]["NumberPropertyDefinition"] | components["schemas"]["EnumPropertyDefinition"])[];
+            /**
+             * SimulationAccuracy
+             * @enum {string}
+             */
+            simulationAccuracy: "DIGITAL" | "BASIC_ELECTRICAL" | "BEHAVIORAL" | "CONNECTIVITY";
+            /** Type */
+            type: string;
+            visual: components["schemas"]["VisualModel"];
+        };
         /** DatabaseCheck */
         DatabaseCheck: {
             /**
@@ -37,6 +110,29 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "error";
+        };
+        /** EnumOption */
+        EnumOption: {
+            label: components["schemas"]["LocalizedText"];
+            /** Value */
+            value: string;
+        };
+        /** EnumPropertyDefinition */
+        EnumPropertyDefinition: {
+            /** Default */
+            default: string;
+            displayName: components["schemas"]["LocalizedText"];
+            /** PropertyId */
+            id: string;
+            /** Options */
+            options: components["schemas"]["EnumOption"][];
+            /** Simulated */
+            simulated: boolean;
+            /**
+             * Type
+             * @constant
+             */
+            type: "enum";
         };
         /** ErrorBody */
         ErrorBody: {
@@ -51,7 +147,7 @@ export interface components {
          * @description Stable machine-readable error codes. The UI relies only on these values.
          * @enum {string}
          */
-        ErrorCode: "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "VALIDATION_ERROR" | "HTTP_ERROR" | "INTERNAL_ERROR" | "DATABASE_UNAVAILABLE";
+        ErrorCode: "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "VALIDATION_ERROR" | "HTTP_ERROR" | "INTERNAL_ERROR" | "DATABASE_UNAVAILABLE" | "UNKNOWN_COMPONENT_TYPE";
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -80,6 +176,88 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** InternalConnection */
+        InternalConnection: string[];
+        /**
+         * LocalizedText
+         * @description UI text: translation key plus the Russian text.
+         */
+        LocalizedText: {
+            /** Key */
+            key: string;
+            /** Ru */
+            ru: string;
+        };
+        /** NumberPropertyDefinition */
+        NumberPropertyDefinition: {
+            /** Default */
+            default: number;
+            displayName: components["schemas"]["LocalizedText"];
+            /** PropertyId */
+            id: string;
+            /** Maximum */
+            maximum: number;
+            /** Minimum */
+            minimum: number;
+            /** Presets */
+            presets?: number[] | null;
+            /** Simulated */
+            simulated: boolean;
+            /**
+             * Type
+             * @constant
+             */
+            type: "number";
+            /**
+             * PropertyUnit
+             * @enum {string}
+             */
+            unit: "ohm" | "volt" | "percent";
+        };
+        /** PinDefinition */
+        PinDefinition: {
+            /** Arduinopin */
+            arduinoPin?: number | null;
+            /** Capabilities */
+            capabilities?: ("digital-io" | "pwm" | "adc" | "adc-reference" | "uart-rx" | "uart-tx" | "int0" | "int1" | "spi-ss" | "spi-mosi" | "spi-miso" | "spi-sck" | "i2c-sda" | "i2c-scl" | "builtin-led" | "reset")[] | null;
+            /**
+             * ElectricalType
+             * @enum {string}
+             */
+            electricalType: "power-input" | "power-output" | "ground" | "digital-input" | "digital-output" | "analog-input" | "analog-output" | "bidirectional" | "passive";
+            /** PinId */
+            id: string;
+            /** Mcupin */
+            mcuPin?: string | null;
+            /** Name */
+            name: string;
+            /** VoltageDomain */
+            voltageDomain?: ("5V" | "3V3" | "VIN") | null;
+        };
+        /**
+         * PinPosition
+         * @description Pin position in grid units, relative to the top-left corner of the symbol.
+         */
+        PinPosition: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /**
+         * VisualModel
+         * @description Symbol size and pin positions relative to the top-left corner, in grid units.
+         */
+        VisualModel: {
+            /** Height */
+            height: number;
+            /** Pins */
+            pins: {
+                [key: string]: components["schemas"]["PinPosition"];
+            };
+            /** Width */
+            width: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -89,6 +267,84 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listComponents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentDefinition"][];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getComponent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                component_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentDefinition"];
+                };
+            };
+            /** @description Unknown component type. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;

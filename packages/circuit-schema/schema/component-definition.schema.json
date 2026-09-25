@@ -1,0 +1,407 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:microlab:circuit-schema:component-definition",
+  "title": "ComponentDefinition",
+  "description": "Definition of a board or component type. Geometry is in grid units (integers, 1 unit = 2.54 mm).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "displayName",
+    "description",
+    "category",
+    "pins",
+    "properties",
+    "simulationAccuracy",
+    "limitations",
+    "visual"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "displayName": {
+      "$ref": "#/$defs/LocalizedText"
+    },
+    "description": {
+      "$ref": "#/$defs/LocalizedText"
+    },
+    "category": {
+      "$ref": "#/$defs/ComponentCategory"
+    },
+    "board": {
+      "$ref": "#/$defs/BoardInfo"
+    },
+    "pins": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/PinDefinition"
+      }
+    },
+    "internalConnections": {
+      "description": "Groups of pin ids that are always the same net (inside the component itself).",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "uniqueItems": true,
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PropertyDefinition"
+      }
+    },
+    "simulationAccuracy": {
+      "$ref": "#/$defs/SimulationAccuracy"
+    },
+    "limitations": {
+      "description": "Known limitations of the model, short sentences in Russian.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visual": {
+      "$ref": "#/$defs/VisualModel"
+    }
+  },
+  "$defs": {
+    "PinId": {
+      "title": "PinId",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$"
+    },
+    "LocalizedText": {
+      "title": "LocalizedText",
+      "description": "UI text: translation key plus the Russian text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "ru"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z0-9][A-Za-z0-9-]*)+$"
+        },
+        "ru": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ComponentCategory": {
+      "title": "ComponentCategory",
+      "enum": [
+        "board",
+        "basic",
+        "passive",
+        "output",
+        "sensors",
+        "displays"
+      ]
+    },
+    "SimulationAccuracy": {
+      "title": "SimulationAccuracy",
+      "description": "DIGITAL: logic levels only; BASIC_ELECTRICAL: simple electrical model; BEHAVIORAL: behavioral model; CONNECTIVITY: connectivity only.",
+      "enum": [
+        "DIGITAL",
+        "BASIC_ELECTRICAL",
+        "BEHAVIORAL",
+        "CONNECTIVITY"
+      ]
+    },
+    "ElectricalType": {
+      "title": "ElectricalType",
+      "enum": [
+        "power-input",
+        "power-output",
+        "ground",
+        "digital-input",
+        "digital-output",
+        "analog-input",
+        "analog-output",
+        "bidirectional",
+        "passive"
+      ]
+    },
+    "VoltageDomain": {
+      "title": "VoltageDomain",
+      "description": "Supply domain the pin belongs to.",
+      "enum": [
+        "5V",
+        "3V3",
+        "VIN"
+      ]
+    },
+    "PinCapability": {
+      "title": "PinCapability",
+      "enum": [
+        "digital-io",
+        "pwm",
+        "adc",
+        "adc-reference",
+        "uart-rx",
+        "uart-tx",
+        "int0",
+        "int1",
+        "spi-ss",
+        "spi-mosi",
+        "spi-miso",
+        "spi-sck",
+        "i2c-sda",
+        "i2c-scl",
+        "builtin-led",
+        "reset"
+      ]
+    },
+    "PinDefinition": {
+      "title": "PinDefinition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "electricalType"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/PinId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "electricalType": {
+          "$ref": "#/$defs/ElectricalType"
+        },
+        "voltageDomain": {
+          "$ref": "#/$defs/VoltageDomain"
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/PinCapability"
+          }
+        },
+        "arduinoPin": {
+          "description": "Arduino pin number used by pinMode() and similar (boards only).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "mcuPin": {
+          "description": "Microcontroller port pin, e.g. PB5 (boards only).",
+          "type": "string",
+          "pattern": "^P[A-Z][0-7]$"
+        }
+      }
+    },
+    "BoardInfo": {
+      "title": "BoardInfo",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mcu",
+        "fqbn",
+        "clockHz"
+      ],
+      "properties": {
+        "mcu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fqbn": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+:[a-z0-9_-]+:[a-z0-9_-]+$"
+        },
+        "clockHz": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "PropertyUnit": {
+      "title": "PropertyUnit",
+      "enum": [
+        "ohm",
+        "volt",
+        "percent"
+      ]
+    },
+    "NumberPropertyDefinition": {
+      "title": "NumberPropertyDefinition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName",
+        "type",
+        "unit",
+        "default",
+        "minimum",
+        "maximum",
+        "simulated"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/PropertyId"
+        },
+        "displayName": {
+          "$ref": "#/$defs/LocalizedText"
+        },
+        "type": {
+          "const": "number"
+        },
+        "unit": {
+          "$ref": "#/$defs/PropertyUnit"
+        },
+        "default": {
+          "type": "number"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "presets": {
+          "description": "Suggested values for the UI; any value within [minimum, maximum] is valid.",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "simulated": {
+          "description": "false: the simulator ignores the value, the UI must label it as metadata only.",
+          "type": "boolean"
+        }
+      }
+    },
+    "EnumOption": {
+      "title": "EnumOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "label"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "label": {
+          "$ref": "#/$defs/LocalizedText"
+        }
+      }
+    },
+    "EnumPropertyDefinition": {
+      "title": "EnumPropertyDefinition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName",
+        "type",
+        "default",
+        "options",
+        "simulated"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/PropertyId"
+        },
+        "displayName": {
+          "$ref": "#/$defs/LocalizedText"
+        },
+        "type": {
+          "const": "enum"
+        },
+        "default": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/EnumOption"
+          }
+        },
+        "simulated": {
+          "description": "false: the simulator ignores the value, the UI must label it as metadata only.",
+          "type": "boolean"
+        }
+      }
+    },
+    "PropertyDefinition": {
+      "title": "PropertyDefinition",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/NumberPropertyDefinition"
+        },
+        {
+          "$ref": "#/$defs/EnumPropertyDefinition"
+        }
+      ]
+    },
+    "VisualModel": {
+      "title": "VisualModel",
+      "description": "Symbol size and pin positions relative to the top-left corner, in grid units.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height",
+        "pins"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pins": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/PinPosition"
+          }
+        }
+      }
+    },
+    "PropertyId": {
+      "title": "PropertyId",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]{0,63}$"
+    },
+    "PinPosition": {
+      "title": "PinPosition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer"
+        },
+        "y": {
+          "type": "integer"
+        }
+      },
+      "description": "Pin position in grid units, relative to the top-left corner of the symbol."
+    }
+  }
+}

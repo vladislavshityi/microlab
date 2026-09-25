@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "board": { "id": "uno1", "type": "arduino-uno-r3", "position": { "x": 0, "y": 0 }, "rotation": 0 },
+  "components": [
+    {
+      "id": "resistor1",
+      "type": "resistor",
+      "position": { "x": 20, "y": 8 },
+      "rotation": 0,
+      "properties": { "resistanceOhms": 220 }
+    },
+    {
+      "id": "led1",
+      "type": "led",
+      "position": { "x": 28, "y": 8 },
+      "rotation": 90,
+      "properties": { "color": "red" }
+    }
+  ],
+  "connections": [
+    {
+      "id": "w1",
+      "from": { "componentId": "uno1", "pinId": "D13" },
+      "to": { "componentId": "resistor1", "pinId": "1" },
+      "color": "#d97706",
+      "route": [{ "x": 16, "y": 6 }, { "x": 16, "y": 9 }]
+    },
+    {
+      "id": "w2",
+      "from": { "componentId": "resistor1", "pinId": "2" },
+      "to": { "componentId": "led1", "pinId": "A" }
+    },
+    {
+      "id": "w3",
+      "from": { "componentId": "led1", "pinId": "K" },
+      "to": { "componentId": "uno1", "pinId": "GND3" }
+    }
+  ]
+}

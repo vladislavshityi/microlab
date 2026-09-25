@@ -13,6 +13,8 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "gen:api": "pnpm --filter @microlab/web gen:api",
-    "gen:api:check": "pnpm --filter @microlab/web gen:api:check"
+    "gen:api:check": "pnpm --filter @microlab/web gen:api:check",
+    "gen:circuit-schema": "pnpm --filter @microlab/circuit-schema gen",
+    "gen:circuit-schema:check": "pnpm --filter @microlab/circuit-schema gen:check"
   }
 }

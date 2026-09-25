@@ -8,14 +8,14 @@ MicroLab — виртуальная лаборатория электроник�
 
 ## Статус
 
-**Оболочка IDE.** Реализованы монорепозиторий, backend (FastAPI + PostgreSQL + Alembic) с единственным эндпоинтом `GET /api/v1/health` и frontend-оболочка IDE: панели с изменяемыми размерами, редактор кода (Monaco), пустой холст схемы, светлая/тёмная тема, индикатор состояния backend. Библиотеки компонентов, модели схемы, компилятора и симулятора пока нет.
+**Circuit Model.** Реализованы монорепозиторий, backend (FastAPI + PostgreSQL + Alembic) с эндпоинтами `GET /api/v1/health` и `GET /api/v1/components[/{type}]` и frontend-оболочка IDE: панели с изменяемыми размерами, редактор кода (Monaco), пустой холст схемы, светлая/тёмная тема, индикатор состояния backend. Circuit Model: versioned-формат схемы и определения Arduino UNO R3, резистора, светодиода и кнопки в `packages/circuit-schema`, проверка ссылок и построение netlist на backend, каталог компонентов в UI (без добавления на схему). Редактора схемы, компилятора и симулятора пока нет.
 
 ## Структура
 
 ```text
 apps/api/                 FastAPI backend (Python 3.13, uv)
 apps/web/                 React + Vite + TypeScript frontend (pnpm)
-packages/circuit-schema/  будущий единый источник определений схемы и компонентов, пока пуст
+packages/circuit-schema/  единый источник формата схемы и определений компонентов
 simulation/               зарезервировано под Simulation Worker
 docker-compose.yml        PostgreSQL 18 для разработки
 .github/workflows/        CI: backend.yml, frontend.yml
@@ -107,6 +107,7 @@ uv run alembic upgrade head && uv run alembic check && uv run alembic downgrade 
 uv run python -m microlab_api.scripts.seed_dev_user && uv run python -m microlab_api.scripts.seed_dev_user
 uv run pytest
 uv run python -m microlab_api.scripts.export_openapi --check
+uv run python -m microlab_api.scripts.gen_circuit_schema --check
 ```
 
 `pytest` использует отдельную базу `microlab_test`: фикстура создаёт её и применяет миграции автоматически.
@@ -116,6 +117,7 @@ Frontend — из корня (то же выполняет `.github/workflows/fr
 ```sh
 pnpm install --frozen-lockfile
 pnpm gen:api:check
+pnpm gen:circuit-schema:check
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -131,7 +133,7 @@ cd apps/api && uv run python -m microlab_api.scripts.export_openapi   # обно
 cd ../.. && pnpm gen:api && pnpm typecheck                            # обновить TS-типы
 ```
 
-Ошибки API имеют формат `{"error": {"code", "message", "details": []}}` со стабильными кодами (`NOT_FOUND`, `METHOD_NOT_ALLOWED`, `VALIDATION_ERROR`, `INTERNAL_ERROR`, `DATABASE_UNAVAILABLE`, `HTTP_ERROR`). Каждый ответ содержит заголовок `X-Request-ID`, этот же id пишется в логи.
+Ошибки API имеют формат `{"error": {"code", "message", "details": []}}` со стабильными кодами (`NOT_FOUND`, `METHOD_NOT_ALLOWED`, `VALIDATION_ERROR`, `INTERNAL_ERROR`, `DATABASE_UNAVAILABLE`, `HTTP_ERROR`, `UNKNOWN_COMPONENT_TYPE`). Каждый ответ содержит заголовок `X-Request-ID`, этот же id пишется в логи.
 
 ## Миграции
 

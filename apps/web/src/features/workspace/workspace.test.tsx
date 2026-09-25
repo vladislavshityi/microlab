@@ -22,11 +22,13 @@ describe("Workspace", () => {
     renderApp();
 
     expect(screen.getByRole("banner")).toHaveTextContent("MicroLab");
+    expect(screen.getByRole("banner")).toHaveTextContent("Arduino UNO R3");
     expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
 
     const components = screen.getByRole("navigation", { name: "Компоненты" });
-    expect(components).toHaveTextContent("Библиотека компонентов появится в следующей версии.");
+    expect(components).toHaveTextContent("Arduino UNO R3");
+    expect(components).toHaveTextContent("Добавление на схему появится в следующей версии.");
     expect(screen.getByRole("region", { name: "Схема" })).toHaveTextContent(
       "Схема пуста. Компоненты появятся в следующей версии.",
     );

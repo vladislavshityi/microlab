@@ -1,0 +1,43 @@
+{
+  "type": "resistor",
+  "displayName": { "key": "components.resistor.displayName", "ru": "Резистор" },
+  "description": {
+    "key": "components.resistor.description",
+    "ru": "Постоянный резистор с двумя выводами, ограничивает ток в цепи."
+  },
+  "category": "basic",
+  "pins": [
+    { "id": "1", "name": "1", "electricalType": "passive" },
+    { "id": "2", "name": "2", "electricalType": "passive" }
+  ],
+  "properties": [
+    {
+      "id": "resistanceOhms",
+      "displayName": { "key": "components.resistor.properties.resistanceOhms", "ru": "Сопротивление" },
+      "type": "number",
+      "unit": "ohm",
+      "default": 220,
+      "minimum": 1,
+      "maximum": 100000000,
+      "presets": [100, 220, 330, 470, 1000, 2200, 4700, 10000, 100000, 1000000],
+      "simulated": true
+    },
+    {
+      "id": "tolerancePercent",
+      "displayName": { "key": "components.resistor.properties.tolerancePercent", "ru": "Допуск" },
+      "type": "number",
+      "unit": "percent",
+      "default": 5,
+      "minimum": 0.1,
+      "maximum": 20,
+      "presets": [1, 2, 5, 10],
+      "simulated": false
+    }
+  ],
+  "simulationAccuracy": "BASIC_ELECTRICAL",
+  "limitations": [
+    "Допуск — только справочные данные: в симуляции используется номинальное сопротивление.",
+    "Рассеиваемая мощность, нагрев и температурная зависимость сопротивления не моделируются."
+  ],
+  "visual": { "width": 4, "height": 2, "pins": { "1": { "x": 0, "y": 1 }, "2": { "x": 4, "y": 1 } } }
+}

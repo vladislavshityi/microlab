@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:microlab:circuit-schema:circuit",
+  "title": "CircuitDocument",
+  "description": "MicroLab circuit document, schemaVersion 1. Coordinates are grid units: integers, 1 unit = 2.54 mm (0.1 inch). The board is addressable in connections by its id, like any component.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "board",
+    "components",
+    "connections"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "description": "Version of this document format. Any format change increments it.",
+      "const": 1
+    },
+    "board": {
+      "$ref": "#/$defs/BoardInstance"
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ComponentInstance"
+      }
+    },
+    "connections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Connection"
+      }
+    }
+  },
+  "$defs": {
+    "InstanceId": {
+      "title": "InstanceId",
+      "description": "Identifier of a board, component or connection within the document. Dots are not allowed: pin references use the form componentId.pinId.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+    },
+    "ComponentType": {
+      "title": "ComponentType",
+      "description": "Component definition type, e.g. resistor.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "GridPoint": {
+      "title": "GridPoint",
+      "description": "Point in grid units (integers, 1 unit = 2.54 mm).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer"
+        },
+        "y": {
+          "type": "integer"
+        }
+      }
+    },
+    "Rotation": {
+      "title": "Rotation",
+      "description": "Clockwise rotation in degrees.",
+      "enum": [
+        0,
+        90,
+        180,
+        270
+      ]
+    },
+    "PropertyValue": {
+      "title": "PropertyValue",
+      "type": [
+        "number",
+        "string",
+        "boolean"
+      ]
+    },
+    "BoardInstance": {
+      "title": "BoardInstance",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/InstanceId"
+        },
+        "type": {
+          "$ref": "#/$defs/ComponentType"
+        },
+        "position": {
+          "$ref": "#/$defs/GridPoint"
+        },
+        "rotation": {
+          "$ref": "#/$defs/Rotation"
+        }
+      },
+      "description": "Board instance. position defaults to the origin, rotation to 0."
+    },
+    "ComponentInstance": {
+      "title": "ComponentInstance",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "position",
+        "rotation",
+        "properties"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/InstanceId"
+        },
+        "type": {
+          "$ref": "#/$defs/ComponentType"
+        },
+        "position": {
+          "$ref": "#/$defs/GridPoint"
+        },
+        "rotation": {
+          "$ref": "#/$defs/Rotation"
+        },
+        "properties": {
+          "description": "Property values by property id. Missing properties take the definition default.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/PropertyValue"
+          }
+        }
+      }
+    },
+    "PinRef": {
+      "title": "PinRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "componentId",
+        "pinId"
+      ],
+      "properties": {
+        "componentId": {
+          "$ref": "#/$defs/InstanceId"
+        },
+        "pinId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        }
+      }
+    },
+    "Connection": {
+      "title": "Connection",
+      "description": "Electrical connection (wire) between two pins. Appearance never affects connectivity.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/InstanceId"
+        },
+        "from": {
+          "$ref": "#/$defs/PinRef"
+        },
+        "to": {
+          "$ref": "#/$defs/PinRef"
+        },
+        "color": {
+          "description": "Visual metadata only; never used for electrical behavior.",
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "route": {
+          "description": "Intermediate waypoints in grid units. Consecutive waypoints must be horizontal or vertical to each other.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GridPoint"
+          }
+        }
+      }
+    }
+  }
+}

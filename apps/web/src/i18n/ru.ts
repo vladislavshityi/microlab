@@ -31,7 +31,16 @@ export const ru = {
   "workspace.resize.properties": "Изменить ширину панели свойств",
   "workspace.resize.bottom": "Изменить высоту нижней панели",
 
-  "components.empty": "Библиотека компонентов появится в следующей версии.",
+  "components.search.label": "Поиск компонентов",
+  "components.search.placeholder": "Поиск…",
+  "components.search.empty": "Ничего не найдено",
+  "components.notice.placementUnavailable": "Добавление на схему появится в следующей версии.",
+  "components.category.board": "Платы",
+  "components.category.basic": "Базовые",
+  "components.category.passive": "Пассивные",
+  "components.category.output": "Вывод",
+  "components.category.sensors": "Датчики",
+  "components.category.displays": "Дисплеи",
   "properties.empty": "Ничего не выбрано",
 
   "canvas.empty": "Схема пуста. Компоненты появятся в следующей версии.",
