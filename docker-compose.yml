@@ -1,5 +1,5 @@
-# MicroLab — локальная инфраструктура для разработки (Phase 0).
-# Только PostgreSQL; API запускается локально через uv.
+# MicroLab — локальная инфраструктура для разработки.
+# PostgreSQL и изолированный воркер компиляции; API запускается локально через uv.
 name: microlab
 
 services:
@@ -22,6 +22,58 @@ services:
       timeout: 3s
       retries: 30
       start_period: 5s
+
+  # Воркер компиляции: выполняет недоверенный код (сборку скетча) без доступа в сеть.
+  compiler:
+    build: services/compiler
+    image: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8
+    # tini в роли PID 1 собирает осиротевшие процессы компилятора после таймаута.
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: 2
+    pids_limit: 256
+    tmpfs:
+      - /work:size=512m,mode=0700,uid=10001,gid=10001,noexec,nosuid,nodev
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    # Только внутренняя сеть: нет выхода в интернет и нет опубликованных портов.
+    networks: [compiler-internal]
+
+  # Только для разработки: API запускается на хосте, а контейнеры во внутренней сети
+  # недоступны с хоста. Шлюз проксирует 127.0.0.1:8081 → compiler:8080; сам воркер при этом
+  # остаётся без выхода в интернет. В production API подключается к compiler-internal напрямую.
+  compiler-gateway:
+    image: nginx:1.30.5-alpine@sha256:bf3201ab56f23e5954646379c775d511fc466e9f11376d9725361064ad07ed35
+    depends_on:
+      compiler:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+    pids_limit: 32
+    tmpfs:
+      - /var/cache/nginx:size=8m
+      - /var/run:size=1m
+    volumes:
+      - ./services/compiler/gateway.conf:/etc/nginx/nginx.conf:ro
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    ports:
+      - "127.0.0.1:${MICROLAB_COMPILER_PORT:-8081}:8080"
+    networks: [default, compiler-internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+networks:
+  compiler-internal:
+    internal: true
 
 volumes:
   postgres-data:

@@ -37,6 +37,11 @@ export const ErrorCodeSchema = z.enum([
   "INTERNAL_ERROR",
   "DATABASE_UNAVAILABLE",
   "UNKNOWN_COMPONENT_TYPE",
+  "SOURCE_TOO_LARGE",
+  "COMPILER_UNAVAILABLE",
+  "COMPILER_BUSY",
+  "COMPILATION_TIMEOUT",
+  "COMPILER_OUTPUT_TOO_LARGE",
 ]) satisfies z.ZodType<ErrorCode>;
 
 export const ErrorResponseSchema = z.object({
