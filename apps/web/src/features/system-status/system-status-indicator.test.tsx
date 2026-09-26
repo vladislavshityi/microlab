@@ -44,7 +44,7 @@ describe("SystemStatusIndicator", () => {
     const { dialog } = await openDetails();
     expect(row(dialog, "Backend").getByText("Доступен")).toBeInTheDocument();
     expect(row(dialog, "База данных").getByText("Доступна")).toBeInTheDocument();
-    expect(row(dialog, "Версия API").getByText("0.1.0")).toBeInTheDocument();
+    expect(row(dialog, "Версия API").getByText("1.0.0")).toBeInTheDocument();
     expect(within(dialog).getByText(/^Проверено в \d{2}:\d{2}:\d{2}$/)).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Проверить снова" })).toHaveAttribute(
       "data-variant",

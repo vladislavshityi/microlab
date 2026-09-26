@@ -22,7 +22,7 @@ const EMPTY_CIRCUIT = {
   connections: [],
 };
 
-export const SIMULATION_ID = "sim-00000000-0001";
+const SIMULATION_ID = "sim-00000000-0001";
 
 export function simulationInfo(projectId: string, status: "starting" | "running" | "paused" | "stopped" | "failed") {
   return {
@@ -48,7 +48,7 @@ export const COMPILATION = {
   durationMs: 700,
 } as const;
 
-export function simulationStartResponse(projectId: string) {
+function simulationStartResponse(projectId: string) {
   return {
     session: simulationInfo(projectId, "running"),
     validation: { issues: [], nets: [] },
@@ -66,6 +66,8 @@ function error(status: number, code: string) {
  */
 export class FakeProjectsServer {
   readonly projects = new Map<string, StoredProject>();
+  /** Снимки версий: ключ — `${id}:${revision}`. */
+  readonly revisions = new Map<string, { code: string; circuit: Record<string, unknown>; createdAt: string }>();
   readonly requests: { method: string; url: string; body: unknown }[] = [];
   private nextId = 1;
   private clock = 0;
@@ -101,7 +103,16 @@ export class FakeProjectsServer {
       ...data,
     };
     this.projects.set(project.id, project);
+    this.snapshot(project);
     return project;
+  }
+
+  private snapshot(project: StoredProject): void {
+    this.revisions.set(`${project.id}:${String(project.revision)}`, {
+      code: project.code,
+      circuit: structuredClone(project.circuit),
+      createdAt: project.updatedAt,
+    });
   }
 
   /** Имитирует сохранение из другой вкладки. */
@@ -126,6 +137,8 @@ export class FakeProjectsServer {
     }
     const simulation = /^\/api\/v1\/projects\/([^/]+)\/simulation\/(\w+)$/.exec(url);
     if (simulation !== null) return this.simulation(simulation[2] ?? "", decodeURIComponent(simulation[1] ?? ""), body);
+    const revisionMatch = /^\/api\/v1\/projects\/([^/]+)\/revisions(?:\/(\d+))?$/.exec(url);
+    if (revisionMatch !== null) return this.handleRevisions(revisionMatch[1] ?? "", revisionMatch[2]);
     const id = /^\/api\/v1\/projects\/([^/]+)$/.exec(url)?.[1];
     if (id === undefined) {
       if (method === "GET") {
@@ -156,6 +169,25 @@ export class FakeProjectsServer {
       revision: project.revision + 1,
       updatedAt: new Date(Date.UTC(2026, 8, 26, 11, 0, this.clock++)).toISOString(),
     });
+    this.snapshot(project);
     return jsonResponse(project, 200);
+  }
+
+  private handleRevisions(id: string, revision: string | undefined): Response {
+    const projectId = decodeURIComponent(id);
+    if (!this.projects.has(projectId)) return error(404, "PROJECT_NOT_FOUND");
+    const entries = [...this.revisions.entries()]
+      .filter(([key]) => key.startsWith(`${projectId}:`))
+      .map(([key, value]) => ({ revision: Number(key.split(":")[1]), ...value }))
+      .sort((a, b) => b.revision - a.revision);
+    if (revision === undefined) {
+      return jsonResponse(
+        { items: entries.map((item) => ({ revision: item.revision, schemaVersion: 1, createdAt: item.createdAt })) },
+        200,
+      );
+    }
+    const found = entries.find((item) => item.revision === Number(revision));
+    if (found === undefined) return error(404, "REVISION_NOT_FOUND");
+    return jsonResponse({ ...found, schemaVersion: 1 }, 200);
   }
 }

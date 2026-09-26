@@ -21,8 +21,6 @@ from typing import Literal
 
 type Severity = Literal["error", "warning", "note"]
 
-SKETCH_FILE = "sketch.ino"
-
 _COMPILER = re.compile(
     r"^(?P<file>[^\s:][^:]*?):(?P<line>\d+):(?P<column>\d+): "
     r"(?P<severity>fatal error|error|warning|note): (?P<message>.+)$"

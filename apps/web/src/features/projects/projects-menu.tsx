@@ -27,6 +27,7 @@ import { locale, t } from "@/i18n/t";
 import { useProjectStore } from "@/stores/project-store";
 import { useUiStore } from "@/stores/ui-store";
 
+import { RevisionHistoryDialog } from "./revision-history-dialog";
 import { useProjectActions } from "./use-project-actions";
 
 const PROJECTS_LIST_KEY = ["projects", "list"] as const;
@@ -178,6 +179,7 @@ function OpenDialog({
 /** Меню проектов в верхней панели: создать, открыть, удалить. */
 export function ProjectsMenu() {
   const [openDialog, setOpenDialog] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const phase = useProjectStore((state) => state.phase);
   const projectId = useProjectStore((state) => state.projectId);
@@ -232,6 +234,14 @@ export function ProjectsMenu() {
           >
             {t("projects.menu.open")}
           </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={phase !== "ready" || projectId === null}
+            onSelect={() => {
+              setHistoryOpen(true);
+            }}
+          >
+            {t("projects.menu.history")}
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
@@ -245,6 +255,7 @@ export function ProjectsMenu() {
         </DropdownMenuContent>
       </DropdownMenu>
       <OpenDialog open={openDialog} onOpenChange={setOpenDialog} onDelete={setDeleteTarget} />
+      <RevisionHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} />
       <DeleteDialog
         target={deleteTarget}
         onClose={() => {

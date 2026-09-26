@@ -207,6 +207,9 @@ def _walk(ctx: CircuitContext, first: Element, entry: int, terminals: set[str]) 
     for _ in range(len(ctx.elements)):
         if element.instance_id in path.components:
             break
+        if element.variable:
+            # Ток через потенциометр зависит от положения движка — оценку не даём.
+            return None
         path.add(element, index)
         exit_terminal = element.terminals[1 - index]
         info = ctx.net_info(ctx.node(exit_terminal))

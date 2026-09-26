@@ -6,14 +6,18 @@ import {
   ProjectListSchema,
   readDisplayErrorCode,
   type DisplayErrorCode,
+  ProjectRevisionDetailSchema,
+  ProjectRevisionListSchema,
   type ProjectDetail,
+  type ProjectRevisionDetail,
+  type ProjectRevisionSummary,
   type ProjectSummary,
 } from "./schemas";
 
-export const PROJECTS_URL = "/api/v1/projects";
+const PROJECTS_URL = "/api/v1/projects";
 
 /** Клиентский лимит на один запрос к API проектов. */
-export const PROJECTS_TIMEOUT_MS = 15_000;
+const PROJECTS_TIMEOUT_MS = 15_000;
 
 /**
  * Сбой запроса к API проектов.
@@ -137,4 +141,28 @@ export async function updateProject(
 
 export async function deleteProject(id: string, signal?: AbortSignal): Promise<void> {
   await request(projectUrl(id), { method: "DELETE" }, signal);
+}
+
+/** Сохранённые версии проекта, новые первыми. */
+export async function listRevisions(id: string, signal?: AbortSignal): Promise<ProjectRevisionSummary[]> {
+  const { status, body } = await request(`${projectUrl(id)}/revisions`, { method: "GET" }, signal);
+  const parsed = ProjectRevisionListSchema.safeParse(body);
+  if (!parsed.success) throw new ProjectApiError("unexpected", status, null);
+  return parsed.data.items;
+}
+
+/** Код и схема сохранённой версии проекта. */
+export async function getRevision(
+  id: string,
+  revision: number,
+  signal?: AbortSignal,
+): Promise<ProjectRevisionDetail> {
+  const { status, body } = await request(
+    `${projectUrl(id)}/revisions/${String(revision)}`,
+    { method: "GET" },
+    signal,
+  );
+  const parsed = ProjectRevisionDetailSchema.safeParse(body);
+  if (!parsed.success) throw new ProjectApiError("unexpected", status, null);
+  return parsed.data;
 }

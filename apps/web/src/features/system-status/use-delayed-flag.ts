@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
 /** Индикатор занятости показывается не раньше чем через это время… */
-export const INDICATOR_SHOW_DELAY_MS = 150;
+const INDICATOR_SHOW_DELAY_MS = 150;
 /** …и, появившись, держится не меньше этого времени, чтобы не мерцать. */
-export const INDICATOR_MIN_VISIBLE_MS = 300;
+const INDICATOR_MIN_VISIBLE_MS = 300;
 
 /**
  * Флаг с задержкой для визуальных индикаторов загрузки.

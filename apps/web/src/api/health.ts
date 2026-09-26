@@ -3,7 +3,7 @@ import { HealthResponseSchema, readDisplayErrorCode, type DisplayErrorCode } fro
 export const HEALTH_URL = "/api/v1/health";
 
 /** Клиентский лимит на один health-запрос. Backend ограничивает проверку БД 2 с. */
-export const HEALTH_TIMEOUT_MS = 10_000;
+const HEALTH_TIMEOUT_MS = 10_000;
 
 /** Тот же формат request id, что принимает и генерирует backend. */
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;

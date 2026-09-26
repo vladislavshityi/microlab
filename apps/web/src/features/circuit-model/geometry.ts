@@ -7,20 +7,14 @@ import {
 
 import type { NormalizedCircuit } from "./circuit-document";
 
-/** Шаг основной сетки: 1 единица = 2,54 мм (0,1 дюйма). Координаты модели — целые единицы. */
-export const GRID_MM = 2.54;
-
 /**
+ * Шаг основной сетки: 1 единица = 2,54 мм (0,1 дюйма). Координаты модели — целые единицы.
  * Пикселей на единицу сетки при масштабе 100%. Преобразование детерминировано:
  * world(px) = grid × GRID_PX; grid = round(world / GRID_PX).
  */
 export const GRID_PX = 20;
 
 export const ROTATIONS: readonly Rotation[] = [0, 90, 180, 270];
-
-export function gridToWorld(point: GridPoint): { x: number; y: number } {
-  return { x: point.x * GRID_PX, y: point.y * GRID_PX };
-}
 
 /** Ближайший узел сетки для точки холста (px). */
 export function worldToGrid(point: { x: number; y: number }): GridPoint {

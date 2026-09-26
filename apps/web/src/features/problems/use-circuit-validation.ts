@@ -7,7 +7,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCircuitStore } from "@/stores/circuit-store";
 
 /** Задержка проверки после последнего изменения схемы, мс. */
-export const VALIDATION_DEBOUNCE_MS = 500;
+const VALIDATION_DEBOUNCE_MS = 500;
 
 /**
  * Проверка текущей схемы на backend: запрос уходит через {@link VALIDATION_DEBOUNCE_MS}

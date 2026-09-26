@@ -175,7 +175,7 @@ export function rotateItems(circuit: NormalizedCircuit, ids: readonly string[]):
 }
 
 /** Проверяет значение свойства по определению; возвращает нормализованное значение. */
-export function validatePropertyValue(
+function validatePropertyValue(
   definition: ComponentDefinition,
   propertyId: string,
   value: PropertyValue,
@@ -292,7 +292,7 @@ export function setConnectionRoute(
 }
 
 /** Смещение копий при дублировании, единицы сетки. */
-export const DUPLICATE_OFFSET = 2;
+const DUPLICATE_OFFSET = 2;
 
 /**
  * Дублирует компоненты (плата не дублируется). Соединения между дублируемыми

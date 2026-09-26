@@ -1,6 +1,6 @@
 [project]
 name = "microlab-api"
-version = "0.1.0"
+version = "1.0.0"
 description = "MicroLab backend API (FastAPI)."
 requires-python = ">=3.13,<3.14"
 dependencies = [

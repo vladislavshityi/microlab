@@ -3,6 +3,7 @@ import type { CircuitDocument, ProjectTemplate } from "@microlab/circuit-schema"
 import {
   createProject,
   getProject,
+  getRevision,
   listProjects,
   ProjectApiError,
   updateProject,
@@ -29,7 +30,7 @@ import {
 export const AUTOSAVE_DEBOUNCE_MS = 1500;
 
 /** Задержки повторов при временных сбоях сохранения, мс (последняя повторяется). */
-export const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 30000] as const;
+const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 30000] as const;
 
 /** Ключ localStorage с id последнего открытого проекта (удобство для этого браузера). */
 export const LAST_PROJECT_KEY = "microlab.project.last";
@@ -150,7 +151,7 @@ export function openProject(project: ProjectDetail): boolean {
 }
 
 /** Отмечает изменение рабочего документа и планирует автосохранение. */
-export function markChanged(): void {
+function markChanged(): void {
   const state = useProjectStore.getState();
   if (loading || state.phase !== "ready" || state.readOnly !== null) return;
   changeSeq += 1;
@@ -309,6 +310,26 @@ export async function openAfterDeletion(): Promise<void> {
       ? await createProject({ name: t("projects.defaultName") })
       : await getProject(latest.id);
   openProject(project);
+}
+
+/**
+ * Восстанавливает сохранённую версию: её код и схема сохраняются как новая версия проекта
+ * (история не переписывается). Текущие изменения сначала сохраняются.
+ */
+export async function restoreRevision(revision: number): Promise<boolean> {
+  const state = useProjectStore.getState();
+  if (state.projectId === null || state.readOnly !== null) return false;
+  if (!(await flushBeforeLeave())) return false;
+  const { projectId } = state;
+  const snapshot = await getRevision(projectId, revision);
+  // Схема старой версии проверяется до записи: неподдерживаемый документ не восстанавливается.
+  parseCircuitDocument(snapshot.circuit);
+  const saved = await updateProject(projectId, {
+    revision: useProjectStore.getState().revision,
+    code: snapshot.code,
+    circuit: snapshot.circuit as unknown as CircuitDocument,
+  });
+  return openProject(saved);
 }
 
 /** Конфликт: отбросить локальные изменения и загрузить версию с сервера. */

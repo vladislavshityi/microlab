@@ -2,13 +2,13 @@ import { vi } from "vitest";
 
 export const HEALTH_OK = {
   status: "ok",
-  version: "0.1.0",
+  version: "1.0.0",
   checks: { database: { status: "ok" } },
 } as const;
 
 export const HEALTH_DB_DOWN = {
   status: "unavailable",
-  version: "0.1.0",
+  version: "1.0.0",
   checks: { database: { status: "error", code: "DATABASE_UNAVAILABLE" } },
 } as const;
 

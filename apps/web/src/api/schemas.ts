@@ -20,6 +20,8 @@ export type ProjectDetail = components["schemas"]["ProjectDetail"];
 export type ProjectList = components["schemas"]["ProjectList"];
 export type ProjectCreate = components["schemas"]["ProjectCreate"];
 export type ProjectUpdate = components["schemas"]["ProjectUpdate"];
+export type ProjectRevisionSummary = components["schemas"]["ProjectRevisionSummary"];
+export type ProjectRevisionDetail = components["schemas"]["ProjectRevisionDetail"];
 export type CompileDiagnostic = components["schemas"]["CompileDiagnostic"];
 export type CompileResponse = components["schemas"]["CompileResponse"];
 export type SimulationInfo = components["schemas"]["SimulationInfo"];
@@ -39,7 +41,7 @@ export type AdminUserCreated = components["schemas"]["AdminUserCreated"];
 // Tolerant reader: неизвестные лишние ключи отбрасываются, а не отвергаются, чтобы
 // аддитивное обратно совместимое изменение backend не превращало исправную систему
 // в "unexpected response".
-export const DatabaseCheckSchema = z.object({
+const DatabaseCheckSchema = z.object({
   status: z.enum(["ok", "error"]),
   code: z.literal("DATABASE_UNAVAILABLE").exactOptional(),
 }) satisfies z.ZodType<components["schemas"]["DatabaseCheck"]>;
@@ -52,7 +54,7 @@ export const HealthResponseSchema = z.object({
   }),
 }) satisfies z.ZodType<HealthResponse>;
 
-export const ErrorCodeSchema = z.enum([
+const ErrorCodeSchema = z.enum([
   "NOT_FOUND",
   "METHOD_NOT_ALLOWED",
   "VALIDATION_ERROR",
@@ -105,7 +107,7 @@ export const ErrorResponseSchema = z.object({
   }),
 }) satisfies z.ZodType<ErrorResponse>;
 
-export const IssueCodeSchema = z.enum([
+const IssueCodeSchema = z.enum([
   "INVALID_DOCUMENT",
   "UNSUPPORTED_SCHEMA_VERSION",
   "DUPLICATE_COMPONENT_ID",
@@ -135,7 +137,7 @@ export const IssueCodeSchema = z.enum([
   "SPI_PINS_USED",
 ]) satisfies z.ZodType<IssueCode>;
 
-export const CircuitIssueSchema = z.object({
+const CircuitIssueSchema = z.object({
   code: IssueCodeSchema,
   severity: z.enum(["ERROR", "WARNING", "INFO"]),
   message: z.string(),
@@ -176,7 +178,22 @@ export const ProjectListSchema = z.object({
   items: z.array(ProjectSummarySchema),
 }) satisfies z.ZodType<ProjectList>;
 
-export const CompileDiagnosticSchema = z.object({
+const ProjectRevisionSummarySchema = z.object({
+  revision: z.number().int(),
+  schemaVersion: z.number().int(),
+  createdAt: z.string(),
+}) satisfies z.ZodType<ProjectRevisionSummary>;
+
+export const ProjectRevisionListSchema = z.object({
+  items: z.array(ProjectRevisionSummarySchema),
+});
+
+export const ProjectRevisionDetailSchema = ProjectRevisionSummarySchema.extend({
+  code: z.string(),
+  circuit: z.record(z.string(), z.unknown()),
+}) satisfies z.ZodType<ProjectRevisionDetail>;
+
+const CompileDiagnosticSchema = z.object({
   file: z.string().nullable(),
   line: z.number().int().nullable(),
   column: z.number().int().nullable(),
@@ -325,7 +342,7 @@ const DISPLAY_ERROR_CODE_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/;
  * {@link ErrorResponseSchema} (точный контракт), принимает коды, добавленные в backend позже,
  * но только если они похожи на стабильный идентификатор; `message` и `details` игнорируются.
  */
-export const DisplayErrorCodeSchema = z.object({
+const DisplayErrorCodeSchema = z.object({
   error: z.object({
     code: z.string().regex(DISPLAY_ERROR_CODE_PATTERN),
   }),

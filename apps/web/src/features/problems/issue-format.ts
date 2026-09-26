@@ -2,7 +2,7 @@ import type { CircuitIssue, CircuitValidationResponse, IssueCode } from "@/api/s
 import { locale, t, translateWith, type TranslationKey } from "@/i18n/t";
 
 /** Ключ сообщения UI для кода замечания (сообщение API — только для логов и клиентов API). */
-export const ISSUE_MESSAGE_KEYS = {
+const ISSUE_MESSAGE_KEYS = {
   INVALID_DOCUMENT: "issue.INVALID_DOCUMENT",
   UNSUPPORTED_SCHEMA_VERSION: "issue.UNSUPPORTED_SCHEMA_VERSION",
   DUPLICATE_COMPONENT_ID: "issue.DUPLICATE_COMPONENT_ID",

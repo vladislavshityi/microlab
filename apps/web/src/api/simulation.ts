@@ -13,9 +13,9 @@ import {
 } from "./schemas";
 
 /** Запуск включает проверку схемы и компиляцию на сервере: лимит с запасом над компиляцией (90 с). */
-export const START_TIMEOUT_MS = 120_000;
+const START_TIMEOUT_MS = 120_000;
 /** Лимит на команду управления симуляцией. */
-export const COMMAND_TIMEOUT_MS = 15_000;
+const COMMAND_TIMEOUT_MS = 15_000;
 
 export type SimulationCommand = "pause" | "resume" | "stop" | "reset";
 

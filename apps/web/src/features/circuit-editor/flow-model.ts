@@ -110,10 +110,10 @@ function nodeHandles(layouts: readonly PinLayout[]): NodeHandle[] {
 }
 
 /** Слои холста: плата и макетная плата под проводами, компоненты над ними. */
-export const Z_INDEX = { base: 0, wire: 1, component: 2 } as const;
+const Z_INDEX = { base: 0, wire: 1, component: 2 } as const;
 
 /** Доступное имя компонента на холсте: «Резистор r1, 220 Ω». */
-export function componentAccessibleName(
+function componentAccessibleName(
   definition: ComponentDefinition,
   id: string,
   properties: ComponentInstance["properties"] | undefined,

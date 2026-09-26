@@ -4,7 +4,7 @@ import { AccountApiError, fetchCurrentUser } from "@/api/accounts";
 import type { UserInfo } from "@/api/schemas";
 import { t, type PlainTranslationKey } from "@/i18n/t";
 
-export const CURRENT_USER_KEY = ["auth", "me"] as const;
+const CURRENT_USER_KEY = ["auth", "me"] as const;
 
 /** Текущий пользователь (null — вход не выполнен); серверное состояние в кэше TanStack Query. */
 export function useCurrentUser() {

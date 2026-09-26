@@ -111,9 +111,9 @@ export type ConsoleEntry =
 /** Предел длины текста монитора порта (символов); старые строки удаляются. */
 export const SERIAL_MAX_CHARS = 64 * 1024;
 /** Предел числа строк консоли. */
-export const CONSOLE_MAX_ENTRIES = 500;
+const CONSOLE_MAX_ENTRIES = 500;
 /** Предел числа замечаний симулятора. */
-export const MAX_RUNTIME_ISSUES = 100;
+const MAX_RUNTIME_ISSUES = 100;
 
 interface SimulationData {
   phase: SimulationPhase;
@@ -185,6 +185,26 @@ function appendConsole(current: readonly ConsoleEntry[], added: readonly Console
   return next.length > CONSOLE_MAX_ENTRIES ? next.slice(next.length - CONSOLE_MAX_ENTRIES) : next;
 }
 
+/**
+ * Добавляет итог запуска (компиляция, предупреждения) сразу после строки «компиляция…»:
+ * события симуляции по WebSocket могут прийти раньше ответа на запрос запуска.
+ */
+function insertAfterCompiling(
+  current: readonly ConsoleEntry[],
+  added: readonly ConsoleEntry[],
+): readonly ConsoleEntry[] {
+  let index = -1;
+  for (let i = current.length - 1; i >= 0; i -= 1) {
+    const entry = current[i];
+    if (entry?.kind === "message" && entry.key === "console.run.compiling") {
+      index = i;
+      break;
+    }
+  }
+  if (index < 0 || added.length === 0) return appendConsole(current, added);
+  return [...current.slice(0, index + 1), ...added, ...current.slice(index + 1)];
+}
+
 /** Добавляет текст в монитор порта, удаляя самые старые строки сверх предела. */
 export function appendSerial(current: string, added: string): string {
   if (added === "") return current;
@@ -196,7 +216,7 @@ export function appendSerial(current: string, added: string): string {
 }
 
 /** Фаза интерфейса по статусу сессии на сервере. */
-export function phaseForStatus(status: SimulationInfo["status"]): SimulationPhase {
+function phaseForStatus(status: SimulationInfo["status"]): SimulationPhase {
   switch (status) {
     case "starting":
       return "starting";
@@ -302,7 +322,7 @@ function componentState(event: SimulationEvent): ComponentSimState {
  * хранилища на сообщение). Объекты выводов и компонентов заменяются только для тех, что
  * изменились, поэтому подписки по id не срабатывают на чужие изменения.
  */
-export function reduceBatch(state: SimulationData, batch: Pick<EventBatch, "timestamp" | "events">): Partial<SimulationData> {
+function reduceBatch(state: SimulationData, batch: Pick<EventBatch, "timestamp" | "events">): Partial<SimulationData> {
   const work: Working = { pins: null, components: null, base: state };
   const consoleAdded: ConsoleEntry[] = [];
   let issues: RuntimeIssue[] | null = null;
@@ -422,7 +442,7 @@ export function reduceBatch(state: SimulationData, batch: Pick<EventBatch, "time
 }
 
 /** Состояние сессии при подключении или начале новой сессии. */
-export function reduceSessionState(state: SimulationData, message: Pick<SessionState, "session" | "events" | "serialTail">): Partial<SimulationData> {
+function reduceSessionState(state: SimulationData, message: Pick<SessionState, "session" | "events" | "serialTail">): Partial<SimulationData> {
   const session = message.session;
   const pending = PENDING_PHASES.has(state.phase);
   if (session === null) {
@@ -519,7 +539,7 @@ export const useSimulationStore = create<SimulationState>()((set) => ({
         acceptLifecycle: true,
         phase: pending ? phaseForStatus(session.status) : state.phase,
         ...(isNew ? { pins: {}, components: {}, runtimeIssues: [] } : {}),
-        console: appendConsole(state.console, entries),
+        console: insertAfterCompiling(state.console, entries),
       };
     });
   },

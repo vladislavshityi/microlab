@@ -124,6 +124,32 @@ describe("simulationStore event batches", () => {
     ]);
   });
 
+  it("lists the compilation result before events that arrived earlier over WebSocket", () => {
+    const store = useSimulationStore.getState();
+    store.beginRun();
+    store.setPhase("compiling");
+    const running = session("s1", "running");
+    if (running === null) throw new Error("session expected");
+    store.applyMessage({ version: 1, type: "session_state", session: running, events: [], serialTail: [] });
+    batch(0, [ev("simulation_started", 0)]);
+    store.finishStart(running, {
+      status: "success",
+      diagnostics: [],
+      sizes: { flashBytes: 1024, flashMaxBytes: 32256, ramBytes: 200, ramMaxBytes: 2048 },
+      firmware: null,
+      compilerOutput: "",
+      compilerOutputTruncated: false,
+      toolchain: { arduinoCli: "1.5.1", platform: "arduino:avr@1.8.8", fqbn: "arduino:avr:uno" },
+      durationMs: 700,
+    }, 0);
+    expect(useSimulationStore.getState().console.map((entry) => (entry.kind === "message" ? entry.key : "output"))).toEqual([
+      "console.run.saving",
+      "console.run.compiling",
+      "console.compile.success",
+      "console.sim.started",
+    ]);
+  });
+
   it("ends in error when the simulator fails", () => {
     batch(0, [ev("simulation_started", 0)]);
     batch(1000, [

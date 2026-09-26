@@ -1,5 +1,5 @@
 /** macOS и iOS: модификатор сочетаний — Cmd, а не Ctrl. */
-export function isApplePlatform(): boolean {
+function isApplePlatform(): boolean {
   return /Mac|iPhone|iPad/.test(navigator.userAgent);
 }
 

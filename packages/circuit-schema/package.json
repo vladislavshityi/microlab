@@ -1,6 +1,6 @@
 {
   "name": "@microlab/circuit-schema",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "MicroLab circuit schema: single source of truth for the circuit document format and component definitions.",

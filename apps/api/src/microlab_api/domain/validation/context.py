@@ -114,6 +114,9 @@ class Element:
     terminals: tuple[str, str]
     value: float
     channel: str | None = None
+    # Сопротивление задаётся во время симуляции (положение потенциометра), статически
+    # ток через него доказать нельзя.
+    variable: bool = False
 
     @property
     def label(self) -> str:
@@ -229,8 +232,8 @@ def _elements(
             wiper = ref(model.wiper)
             upper = max(total * position, _POT_MIN_SEGMENT_OHMS)
             lower = max(total * (1 - position), _POT_MIN_SEGMENT_OHMS)
-            elements.append(Element(component_id, "resistor", (a, wiper), upper))
-            elements.append(Element(component_id, "resistor", (wiper, b), lower))
+            elements.append(Element(component_id, "resistor", (a, wiper), upper, variable=True))
+            elements.append(Element(component_id, "resistor", (wiper, b), lower, variable=True))
         case PhotoresistorModel():
             lux = num(model.illuminance_property)
             resistance = num(model.resistance_at10_lux_property) * (lux / 10) ** -num(

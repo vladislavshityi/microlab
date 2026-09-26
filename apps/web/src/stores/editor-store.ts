@@ -4,7 +4,7 @@ import { create } from "zustand";
  * Минимальный каркас скетча: обязательные функции setup() и loop() без обращения
  * к какому-либо оборудованию.
  */
-export const DEFAULT_SKETCH = "void setup() {\n}\n\nvoid loop() {\n}\n";
+const DEFAULT_SKETCH = "void setup() {\n}\n\nvoid loop() {\n}\n";
 
 interface EditorState {
   /** Текст скетча открытого проекта. */

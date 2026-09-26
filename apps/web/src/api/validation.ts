@@ -3,10 +3,10 @@ import type { CircuitDocument } from "@microlab/circuit-schema";
 
 import { CircuitValidationResponseSchema, type CircuitValidationResponse } from "./schemas";
 
-export const VALIDATE_CIRCUIT_URL = "/api/v1/circuits/validate";
+const VALIDATE_CIRCUIT_URL = "/api/v1/circuits/validate";
 
 /** Клиентский лимит на один запрос проверки схемы. */
-export const VALIDATE_TIMEOUT_MS = 10_000;
+const VALIDATE_TIMEOUT_MS = 10_000;
 
 /** Проверка не выполнена: сервер недоступен или ответил не по контракту. */
 export class CircuitValidationError extends Error {

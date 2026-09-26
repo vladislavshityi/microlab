@@ -15,7 +15,7 @@ import type { PinDirection } from "./geometry";
  */
 
 /** Длина прямого участка у вывода, единицы сетки. */
-export const STUB = 1;
+const STUB = 1;
 
 /** Прямоугольник корпуса (единицы сетки), через который провод не должен проходить. */
 export interface Box {
@@ -44,7 +44,7 @@ function samePoint(a: GridPoint, b: GridPoint): boolean {
 }
 
 /** Точка на расстоянии STUB от вывода наружу; для вывода без направления — сам вывод. */
-export function stubPoint(point: GridPoint, direction: PinDirection | null): GridPoint {
+function stubPoint(point: GridPoint, direction: PinDirection | null): GridPoint {
   if (direction === null) return { x: point.x, y: point.y };
   const offset = OFFSETS[direction];
   return { x: point.x + offset.x * STUB, y: point.y + offset.y * STUB };
@@ -136,7 +136,7 @@ function score(
  * движения после `to`. Перебираются L-, Z- и U-образные варианты, включая обходы
  * корпусов; результат детерминирован.
  */
-export function connectOrthogonal(
+function connectOrthogonal(
   from: GridPoint,
   startDirection: PinDirection | null,
   to: GridPoint,

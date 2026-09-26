@@ -8,14 +8,14 @@ describe("interpretHealthResponse", () => {
     const result = await interpretHealthResponse(
       jsonResponse(HEALTH_OK, 200, { "X-Request-ID": "req-1" }),
     );
-    expect(result).toEqual({ kind: "ok", version: "0.1.0", requestId: "req-1" });
+    expect(result).toEqual({ kind: "ok", version: "1.0.0", requestId: "req-1" });
   });
 
   it("503 + valid body → databaseDown with code", async () => {
     const result = await interpretHealthResponse(jsonResponse(HEALTH_DB_DOWN, 503));
     expect(result).toEqual({
       kind: "databaseDown",
-      version: "0.1.0",
+      version: "1.0.0",
       code: "DATABASE_UNAVAILABLE",
       requestId: null,
     });

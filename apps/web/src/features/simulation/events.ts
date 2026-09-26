@@ -12,7 +12,7 @@ import { SimulationInfoSchema } from "@/api/schemas";
  * Разбор терпимый: неизвестные типы событий и лишние поля игнорируются.
  */
 
-export const SimulationEventSchema = z.object({
+const SimulationEventSchema = z.object({
   version: z.literal(1),
   type: z.string(),
   timestamp: z.number().int(),
@@ -21,14 +21,14 @@ export const SimulationEventSchema = z.object({
 
 export type SimulationEvent = z.infer<typeof SimulationEventSchema>;
 
-export const EventBatchSchema = z.object({
+const EventBatchSchema = z.object({
   version: z.literal(1),
   type: z.literal("event_batch"),
   timestamp: z.number().int(),
   events: z.array(z.unknown()),
 });
 
-export const SessionStateSchema = z.object({
+const SessionStateSchema = z.object({
   version: z.literal(1),
   type: z.literal("session_state"),
   session: SimulationInfoSchema.nullable(),
