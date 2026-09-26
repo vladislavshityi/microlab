@@ -5,10 +5,16 @@ import {
   CircuitValidationResponseSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
+  ProjectDetailSchema,
+  ProjectListSchema,
+  ProjectSummarySchema,
   readDisplayErrorCode,
   type CircuitValidationResponse,
   type ErrorResponse,
   type HealthResponse,
+  type ProjectDetail,
+  type ProjectList,
+  type ProjectSummary,
 } from "./schemas";
 import { HEALTH_DB_DOWN, HEALTH_OK } from "@/test/fetch";
 
@@ -17,6 +23,9 @@ describe("HealthResponseSchema", () => {
     expectTypeOf<z.infer<typeof HealthResponseSchema>>().toEqualTypeOf<HealthResponse>();
     expectTypeOf<z.infer<typeof ErrorResponseSchema>>().toEqualTypeOf<ErrorResponse>();
     expectTypeOf<z.infer<typeof CircuitValidationResponseSchema>>().toEqualTypeOf<CircuitValidationResponse>();
+    expectTypeOf<z.infer<typeof ProjectSummarySchema>>().toEqualTypeOf<ProjectSummary>();
+    expectTypeOf<z.infer<typeof ProjectDetailSchema>>().toEqualTypeOf<ProjectDetail>();
+    expectTypeOf<z.infer<typeof ProjectListSchema>>().toEqualTypeOf<ProjectList>();
   });
 
   it("accepts the 200 and 503 bodies from the contract", () => {
@@ -93,5 +102,29 @@ describe("readDisplayErrorCode (tolerant reader for display)", () => {
   it("returns null for a body without an error envelope", () => {
     expect(readDisplayErrorCode({ status: "ok" })).toBeNull();
     expect(readDisplayErrorCode(undefined)).toBeNull();
+  });
+});
+
+describe("ProjectDetailSchema", () => {
+  const project = {
+    id: "3f1c7a52-6a57-4a0b-9d0e-6a8f0f1d2c3b",
+    name: "Мигалка",
+    description: "",
+    board: "arduino-uno-r3",
+    schemaVersion: 1,
+    revision: 3,
+    createdAt: "2026-09-26T10:00:00Z",
+    updatedAt: "2026-09-26T10:05:00Z",
+    code: "void setup() {}",
+    circuit: { schemaVersion: 1 },
+  };
+
+  it("accepts a project and its summary in a list", () => {
+    expect(ProjectDetailSchema.parse(project)).toEqual(project);
+    const summary = Object.fromEntries(
+      Object.entries(project).filter(([key]) => key !== "code" && key !== "circuit"),
+    );
+    expect(ProjectListSchema.parse({ items: [summary] }).items[0]).toEqual(summary);
+    expect(ProjectSummarySchema.safeParse({ ...summary, board: "esp32" }).success).toBe(false);
   });
 });

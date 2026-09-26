@@ -15,7 +15,7 @@ function codeFontFamily(): string {
 
 /**
  * Редактор кода скетча на Monaco. Загружается отдельным чанком (React.lazy).
- * Текст синхронизируется с editorStore; экземпляр редактора живёт, пока смонтирован
+ * Текст синхронизируется с editorStore в обе стороны; экземпляр редактора живёт, пока смонтирован
  * компонент.
  */
 export default function CodeEditor() {
@@ -59,7 +59,16 @@ export default function CodeEditor() {
       useEditorStore.getState().setCode(editor.getValue());
     });
 
+    // Открыт другой проект: текст заменяется, история правок редактора сбрасывается
+    // (setValue очищает стек отмены модели).
+    const unsubscribe = useEditorStore.subscribe((state, previous) => {
+      if (state.documentVersion !== previous.documentVersion) {
+        editor.setValue(state.code);
+      }
+    });
+
     return () => {
+      unsubscribe();
       subscription.dispose();
       editor.getModel()?.dispose();
       editor.dispose();

@@ -6,7 +6,7 @@
 import asyncio
 
 from alembic import command
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -33,7 +33,61 @@ def test_migrations_downgrade_and_upgrade(test_database_url: str) -> None:
     assert asyncio.run(_tables(test_database_url)) == {"alembic_version"}
 
     command.upgrade(config, "head")
-    assert asyncio.run(_tables(test_database_url)) == {"alembic_version", "users", "projects"}
+    assert asyncio.run(_tables(test_database_url)) == {
+        "alembic_version",
+        "users",
+        "projects",
+        "project_revisions",
+    }
+
+
+def test_migration_0002_snapshots_existing_projects(test_database_url: str) -> None:
+    config = make_alembic_config(test_database_url)
+    command.downgrade(config, "0001")
+    try:
+        asyncio.run(_insert_legacy_project(test_database_url))
+        command.upgrade(config, "head")
+        assert asyncio.run(_legacy_revisions(test_database_url)) == [(1, 1, "legacy")]
+        command.downgrade(config, "0001")
+        command.upgrade(config, "head")
+    finally:
+        asyncio.run(_truncate(test_database_url))
+        command.upgrade(config, "head")
+
+
+async def _execute(database_url: str, sql: str) -> list[tuple[object, ...]]:
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as conn:
+            result = await conn.execute(text(sql))
+            return [tuple(row) for row in result] if result.returns_rows else []
+    finally:
+        await engine.dispose()
+
+
+async def _insert_legacy_project(database_url: str) -> None:
+    await _execute(
+        database_url,
+        "INSERT INTO users (id, username) VALUES "
+        "('00000000-0000-0000-0000-0000000000aa', 'legacy-user')",
+    )
+    await _execute(
+        database_url,
+        "INSERT INTO projects (owner_id, name, board, code, circuit, schema_version) VALUES "
+        "('00000000-0000-0000-0000-0000000000aa', 'p', 'arduino-uno-r3', 'legacy', '{}', 1)",
+    )
+
+
+async def _legacy_revisions(database_url: str) -> list[tuple[object, ...]]:
+    return await _execute(
+        database_url,
+        "SELECT p.revision, r.revision, r.code FROM projects p "
+        "JOIN project_revisions r ON r.project_id = p.id",
+    )
+
+
+async def _truncate(database_url: str) -> None:
+    await _execute(database_url, "TRUNCATE users, projects CASCADE")
 
 
 def test_models_match_migrations(test_database_url: str) -> None:

@@ -1,18 +1,10 @@
-import type { PlainTranslationKey } from "@/i18n/t";
+import { saveNow } from "@/features/projects/project-session";
 import { useCircuitStore } from "@/stores/circuit-store";
 import { useUiStore } from "@/stores/ui-store";
 
 /** Глобальные сочетания клавиш рабочего пространства. */
 export type ShortcutAction = "save" | "run";
 
-/**
- * Сохранение и запуск ещё не реализованы: сочетание не должно открывать браузерный
- * диалог «Сохранить страницу», а пользователь получает честное уведомление.
- */
-const UNAVAILABLE_NOTICE: Record<ShortcutAction, PlainTranslationKey> = {
-  save: "notice.saveUnavailable",
-  run: "notice.runUnavailable",
-};
 
 /**
  * Определяет действие по нажатию: Cmd/Ctrl+S — сохранение, Cmd/Ctrl+Enter — запуск.
@@ -32,8 +24,13 @@ export function matchShortcut(event: KeyboardEvent): ShortcutAction | null {
   return null;
 }
 
+/** Сохранение выполняется сразу; запуск ещё не реализован — честное уведомление. */
 export function runShortcut(action: ShortcutAction): void {
-  useUiStore.getState().showNotice(UNAVAILABLE_NOTICE[action]);
+  if (action === "save") {
+    void saveNow();
+  } else {
+    useUiStore.getState().showNotice("notice.runUnavailable");
+  }
 }
 
 /** Отмена и повтор изменений схемы. */

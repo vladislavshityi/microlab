@@ -10,6 +10,9 @@ import {
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { CircuitCanvas } from "@/features/circuit-editor/circuit-canvas";
 import { ComponentsSidebar } from "@/features/components-library/components-sidebar";
+import { ConflictDialog } from "@/features/projects/conflict-dialog";
+import { LoadErrorBanner } from "@/features/projects/load-error-banner";
+import { useProjectBootstrap } from "@/features/projects/use-project-bootstrap";
 import { PropertiesPanel } from "@/features/properties-panel/properties-panel";
 import { t } from "@/i18n/t";
 import { useUiStore, type CollapsiblePanel } from "@/stores/ui-store";
@@ -78,6 +81,7 @@ function useCollapsible(panel: CollapsiblePanel, panelRef: RefObject<PanelImpera
  * разделителю сворачивает или разворачивает соседнюю панель.
  */
 export function Workspace() {
+  useProjectBootstrap();
   // Сохранённые размеры читаются один раз при монтировании.
   const [horizontalLayout] = useState(() => readLayout(HORIZONTAL_GROUP, HORIZONTAL_PANELS));
   const [verticalLayout] = useState(() => readLayout(VERTICAL_GROUP, VERTICAL_PANELS));
@@ -118,6 +122,8 @@ export function Workspace() {
         {t("workspace.narrowViewport")}
       </p>
       <Toolbar />
+      <LoadErrorBanner />
+      <ConflictDialog />
       <main className="min-h-0 flex-1">
         <ResizablePanelGroup
           id={VERTICAL_GROUP}

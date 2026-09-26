@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from microlab_api.api import circuits, compilation, components, health
+from microlab_api.api import circuits, compilation, components, health, projects
 
 API_PREFIX = "/api/v1"
 
@@ -9,3 +9,4 @@ api_router.include_router(health.router)
 api_router.include_router(components.router)
 api_router.include_router(compilation.router)
 api_router.include_router(circuits.router)
+api_router.include_router(projects.router)

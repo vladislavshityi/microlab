@@ -38,6 +38,23 @@ DATABASE_UNAVAILABLE_ERRORS: tuple[type[Exception], ...] = (
 )
 
 
+class ApiError(Exception):
+    """Ошибка запроса со стабильным кодом; преобразуется в конверт ошибки API."""
+
+    def __init__(
+        self,
+        status_code: int,
+        code: ErrorCode,
+        message: str,
+        details: list[ErrorDetail] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        self.details = details or []
+
+
 def error_response(
     status_code: int,
     code: ErrorCode,
@@ -65,6 +82,12 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
     return error_response(
         exc.status_code, code, _status_message(exc.status_code), headers=exc.headers
     )
+
+
+async def api_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, ApiError):
+        raise exc
+    return error_response(exc.status_code, exc.code, exc.message, exc.details)
 
 
 def _field_path(loc: tuple[int | str, ...]) -> str:
@@ -109,6 +132,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     for exc_type in DATABASE_UNAVAILABLE_ERRORS:

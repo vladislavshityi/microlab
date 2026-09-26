@@ -15,6 +15,11 @@ export type ErrorCode = components["schemas"]["ErrorCode"];
 export type IssueCode = components["schemas"]["IssueCode"];
 export type CircuitIssue = components["schemas"]["CircuitIssue"];
 export type CircuitValidationResponse = components["schemas"]["CircuitValidationResponse"];
+export type ProjectSummary = components["schemas"]["ProjectSummary"];
+export type ProjectDetail = components["schemas"]["ProjectDetail"];
+export type ProjectList = components["schemas"]["ProjectList"];
+export type ProjectCreate = components["schemas"]["ProjectCreate"];
+export type ProjectUpdate = components["schemas"]["ProjectUpdate"];
 
 // Tolerant reader: неизвестные лишние ключи отбрасываются, а не отвергаются, чтобы
 // аддитивное обратно совместимое изменение backend не превращало исправную систему
@@ -45,6 +50,12 @@ export const ErrorCodeSchema = z.enum([
   "COMPILER_BUSY",
   "COMPILATION_TIMEOUT",
   "COMPILER_OUTPUT_TOO_LARGE",
+  "AUTH_NOT_CONFIGURED",
+  "DEV_USER_MISSING",
+  "PROJECT_NOT_FOUND",
+  "REVISION_NOT_FOUND",
+  "REVISION_CONFLICT",
+  "INVALID_CIRCUIT",
 ]) satisfies z.ZodType<ErrorCode>;
 
 export const ErrorResponseSchema = z.object({
@@ -108,6 +119,27 @@ export const CircuitValidationResponseSchema = z.object({
   issues: z.array(CircuitIssueSchema),
   nets: z.array(z.object({ id: z.string(), members: z.array(z.string()) })),
 }) satisfies z.ZodType<CircuitValidationResponse>;
+
+export const ProjectSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  board: z.literal("arduino-uno-r3"),
+  schemaVersion: z.number().int(),
+  revision: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+}) satisfies z.ZodType<ProjectSummary>;
+
+export const ProjectDetailSchema = ProjectSummarySchema.extend({
+  code: z.string(),
+  // Документ схемы разбирается отдельно (parseCircuitDocument) с проверкой schemaVersion.
+  circuit: z.record(z.string(), z.unknown()),
+}) satisfies z.ZodType<ProjectDetail>;
+
+export const ProjectListSchema = z.object({
+  items: z.array(ProjectSummarySchema),
+}) satisfies z.ZodType<ProjectList>;
 
 /**
  * Код ошибки в том виде, в каком его видит пользователь: известный {@link ErrorCode} или более

@@ -1,8 +1,14 @@
 import asyncio
+from collections.abc import AsyncIterator
 
 from fastapi import Request
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from microlab_api.config import Settings
 
@@ -27,6 +33,8 @@ class Database:
 
     def __init__(self, settings: Settings) -> None:
         self.engine = create_engine(settings)
+        # expire_on_commit=False: объекты остаются читаемыми после commit (сериализация ответа).
+        self.sessionmaker = async_sessionmaker(self.engine, expire_on_commit=False)
 
     async def ping(self, seconds: float = HEALTH_CHECK_TIMEOUT_SECONDS) -> None:
         """Выполняет ``SELECT 1``. Бросает исключение при ошибке или по истечении ``seconds``."""
@@ -40,3 +48,9 @@ class Database:
 def get_database(request: Request) -> Database:
     database: Database = request.app.state.database
     return database
+
+
+async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
+    """Сессия на время запроса; транзакцию фиксирует обработчик явно."""
+    async with get_database(request).sessionmaker() as session:
+        yield session

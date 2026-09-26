@@ -7,8 +7,6 @@
 
 import asyncio
 import sys
-import uuid
-from typing import Final
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -16,10 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from microlab_api.config import Settings, get_settings
 from microlab_api.db.database import create_engine
+from microlab_api.dev_user import DEV_USER_ID, DEV_USER_USERNAME
 from microlab_api.models import User
 
-DEV_USER_ID: Final = uuid.UUID("00000000-0000-0000-0000-000000000001")
-DEV_USER_USERNAME: Final = "dev-user"
+__all__ = ["DEV_USER_ID", "DEV_USER_USERNAME", "SeedError", "main", "seed_dev_user"]
 
 
 class SeedError(RuntimeError):

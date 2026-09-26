@@ -1,8 +1,8 @@
 """Проверка документа схемы без состояния.
 
-Эндпоинт в контексте проекта (``POST /projects/{id}/validate``) появится вместе с API
-проектов и будет использовать ту же проверку. Замечания к схеме — результат проверки,
-а не ошибка запроса: ответ 200 даже для документа с ошибками.
+Эндпоинт в контексте проекта (``POST /projects/{id}/validate``) использует ту же проверку
+(:func:`build_validation_response`). Замечания к схеме — результат проверки, а не ошибка
+запроса: ответ 200 даже для документа с ошибками.
 """
 
 from typing import Annotated, Any
@@ -39,6 +39,10 @@ async def validate(
         dict[str, Any], Body(description="Circuit document (CircuitDocument, schemaVersion 1).")
     ],
 ) -> CircuitValidationResponse:
+    return build_validation_response(document)
+
+
+def build_validation_response(document: object) -> CircuitValidationResponse:
     result = validate_circuit(document, get_definition_registry())
     return CircuitValidationResponse(
         issues=[

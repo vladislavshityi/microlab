@@ -4,7 +4,9 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 
 import { useCircuitStore } from "@/stores/circuit-store";
+import { resetProjectSession } from "@/features/projects/project-session";
 import { useEditorStore } from "@/stores/editor-store";
+import { useProjectStore } from "@/stores/project-store";
 import { useUiStore } from "@/stores/ui-store";
 
 // jsdom не реализует API, которые используют панели и холст схемы.
@@ -45,6 +47,7 @@ Object.defineProperty(globalThis, "DOMMatrixReadOnly", {
 const initialUiState = useUiStore.getState();
 const initialEditorState = useEditorStore.getState();
 const initialCircuitState = useCircuitStore.getState();
+const initialProjectState = useProjectStore.getState();
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -52,6 +55,8 @@ beforeEach(() => {
   useUiStore.setState(initialUiState, true);
   useEditorStore.setState(initialEditorState, true);
   useCircuitStore.setState(initialCircuitState, true);
+  useProjectStore.setState(initialProjectState, true);
+  resetProjectSession();
 });
 
 afterEach(() => {

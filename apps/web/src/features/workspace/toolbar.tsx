@@ -1,5 +1,8 @@
 import { getComponentDefinition } from "@microlab/circuit-schema";
 
+import { ProjectName } from "@/features/projects/project-name";
+import { ProjectsMenu } from "@/features/projects/projects-menu";
+import { SaveStatusControl } from "@/features/projects/save-status";
 import { localized } from "@/i18n/localized";
 import { t } from "@/i18n/t";
 import { useCircuitStore } from "@/stores/circuit-store";
@@ -7,9 +10,8 @@ import { useCircuitStore } from "@/stores/circuit-store";
 import { ThemeMenu } from "./theme-menu";
 
 /**
- * Верхняя панель. Кнопки запуска, остановки и сохранения появятся вместе
- * с соответствующими функциями; до тех пор их нет, чтобы не создавать видимость
- * работающих действий.
+ * Верхняя панель: проекты, название, плата, состояние сохранения. Кнопок запуска и
+ * остановки нет, пока нет симуляции, чтобы не создавать видимость работающих действий.
  */
 export function Toolbar() {
   const boardType = useCircuitStore((state) => state.board.type);
@@ -19,10 +21,14 @@ export function Toolbar() {
       <div className="flex min-w-0 items-center gap-3 text-sm">
         <span className="font-semibold">{t("app.name")}</span>
         <span aria-hidden="true" className="h-4 w-px bg-border" />
-        <span className="truncate">{t("workspace.project.untitled")}</span>
+        <ProjectsMenu />
+        <ProjectName />
         <span className="truncate text-xs text-muted-foreground">{board === undefined ? t("workspace.board.none") : localized(board.displayName)}</span>
       </div>
-      <ThemeMenu />
+      <div className="flex items-center gap-2">
+        <SaveStatusControl />
+        <ThemeMenu />
+      </div>
     </header>
   );
 }

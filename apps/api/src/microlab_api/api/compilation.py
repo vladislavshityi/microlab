@@ -1,8 +1,8 @@
 """Компиляция Arduino-скетча для Arduino UNO R3 (arduino:avr:uno, arduino:avr 1.8.8).
 
-Эндпоинт без состояния: компилирует переданный код. Эндпоинт в контексте проекта
-(``POST /projects/{id}/compile``) появится вместе с API проектов и будет использовать
-тот же сервис.
+Эндпоинт без состояния компилирует переданный код; эндпоинт в контексте проекта
+(``POST /projects/{id}/compile``) компилирует сохранённый код проекта через
+:func:`run_compilation`.
 
 Ошибки в коде пользователя — это результат компиляции, а не сбой запроса: ответ 200
 со ``status: "error"`` и диагностиками. Коды 4xx/5xx означают, что компиляцию выполнить
@@ -34,7 +34,7 @@ def get_compiler(request: Request) -> CompilerClient:
     return compiler
 
 
-_RESPONSES: dict[int | str, dict[str, Any]] = {
+COMPILE_RESPONSES: dict[int | str, dict[str, Any]] = {
     413: {"model": ErrorResponse, "description": "Source exceeds 256 KiB (SOURCE_TOO_LARGE)."},
     422: {"model": ErrorResponse, "description": "Invalid request or oversized compiler output."},
     500: {"model": ErrorResponse, "description": "Unexpected server error."},
@@ -49,15 +49,19 @@ _RESPONSES: dict[int | str, dict[str, Any]] = {
 @router.post(
     "/compile",
     response_model=CompileResponse,
-    responses=_RESPONSES,
+    responses=COMPILE_RESPONSES,
     summary="Compile an Arduino sketch for Arduino UNO R3",
     operation_id="compileSketch",
 )
 async def compile_sketch(
     body: CompileRequest, compiler: Annotated[CompilerClient, Depends(get_compiler)]
 ) -> CompileResponse | JSONResponse:
+    return await run_compilation(compiler, body.code)
+
+
+async def run_compilation(compiler: CompilerClient, code: str) -> CompileResponse | JSONResponse:
     try:
-        outcome = await compiler.compile(body.code)
+        outcome = await compiler.compile(code)
     except CompilerError as exc:
         return error_response(exc.status_code, exc.code, exc.message)
 
