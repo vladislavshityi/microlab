@@ -11,7 +11,11 @@ pytestmark = [pytest.mark.anyio, pytest.mark.usefixtures("clean_db")]
 async def _create_user(engine: AsyncEngine) -> object:
     async with engine.begin() as conn:
         return (
-            await conn.execute(insert(User).values(username="owner").returning(User.id))
+            await conn.execute(
+                insert(User)
+                .values(email="owner@example.edu", display_name="o", role="student")
+                .returning(User.id)
+            )
         ).scalar_one()
 
 
@@ -57,7 +61,15 @@ async def test_owner_with_projects_cannot_be_deleted(engine: AsyncEngine) -> Non
             await conn.execute(delete(User).where(User.id == owner_id))
 
 
-async def test_username_is_unique(engine: AsyncEngine) -> None:
+async def test_email_is_unique(engine: AsyncEngine) -> None:
     await _create_user(engine)
-    with pytest.raises(IntegrityError, match="uq_users_username"):
+    with pytest.raises(IntegrityError, match="uq_users_email"):
         await _create_user(engine)
+
+
+async def test_email_must_be_lowercase(engine: AsyncEngine) -> None:
+    with pytest.raises(IntegrityError, match="ck_users_email_lowercase"):
+        async with engine.begin() as conn:
+            await conn.execute(
+                insert(User).values(email="A@example.edu", display_name="a", role="student")
+            )

@@ -73,6 +73,31 @@ class Settings(BaseSettings):
     # Сессия без подписчиков WebSocket останавливается через это время.
     simulation_idle_timeout_seconds: float = Field(default=300.0, gt=0)
 
+    # --- Аутентификация ---
+    # Флаг Secure у cookie сессии. None — включён везде, кроме development/test; для
+    # production по обычному HTTP (без TLS) задайте false явно.
+    session_cookie_secure: bool | None = None
+    # Сессия завершается после простоя и в любом случае по истечении абсолютного срока.
+    session_idle_timeout_hours: float = Field(default=24.0, gt=0)
+    session_absolute_timeout_hours: float = Field(default=14 * 24.0, gt=0)
+    # Разрешённые Origin для изменяющих запросов и WebSocket помимо собственного хоста
+    # (например, ["https://lab.example.edu"]; в окружении — JSON-список).
+    allowed_origins: list[str] = Field(default_factory=list)
+    # Ограничение неудачных попыток входа (скользящее окно в памяти процесса API).
+    login_attempts_per_ip: int = Field(default=50, ge=1)
+    login_attempts_per_account: int = Field(default=10, ge=1)
+    login_window_seconds: float = Field(default=900.0, gt=0)
+    # Квоты пользователя.
+    max_simulations_per_user: int = Field(default=1, ge=1)
+    compile_rate_per_minute: int = Field(default=10, ge=1)
+    max_projects_per_user: int = Field(default=200, ge=1)
+
+    @property
+    def cookie_secure(self) -> bool:
+        if self.session_cookie_secure is not None:
+            return self.session_cookie_secure
+        return self.env == "production"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

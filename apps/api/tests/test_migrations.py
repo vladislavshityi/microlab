@@ -38,6 +38,10 @@ def test_migrations_downgrade_and_upgrade(test_database_url: str) -> None:
         "users",
         "projects",
         "project_revisions",
+        "groups",
+        "group_members",
+        "invite_codes",
+        "sessions",
     }
 
 
@@ -88,6 +92,28 @@ async def _legacy_revisions(database_url: str) -> list[tuple[object, ...]]:
 
 async def _truncate(database_url: str) -> None:
     await _execute(database_url, "TRUNCATE users, projects CASCADE")
+
+
+def test_migration_0003_keeps_existing_users_and_projects(test_database_url: str) -> None:
+    config = make_alembic_config(test_database_url)
+    command.downgrade(config, "0002")
+    try:
+        asyncio.run(_insert_legacy_project(test_database_url))
+        command.upgrade(config, "head")
+        rows = asyncio.run(
+            _execute(
+                test_database_url,
+                "SELECT u.email, u.display_name, u.role::text, u.password_hash, p.code "
+                "FROM users u JOIN projects p ON p.owner_id = u.id",
+            )
+        )
+        assert rows == [("legacy-user@local.invalid", "legacy-user", "student", None, "legacy")]
+        command.downgrade(config, "0002")
+        names = asyncio.run(_execute(test_database_url, "SELECT username FROM users"))
+        assert names == [("legacy-user",)]
+    finally:
+        command.upgrade(config, "head")
+        asyncio.run(_truncate(test_database_url))
 
 
 def test_models_match_migrations(test_database_url: str) -> None:

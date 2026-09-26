@@ -1,3 +1,4 @@
+import { apiFetch } from "./http";
 import type { CircuitDocument } from "@microlab/circuit-schema";
 
 import { CircuitValidationResponseSchema, type CircuitValidationResponse } from "./schemas";
@@ -30,7 +31,7 @@ export async function validateCircuit(
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   let response: Response;
   try {
-    response = await fetch(VALIDATE_CIRCUIT_URL, {
+    response = await apiFetch(VALIDATE_CIRCUIT_URL, {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify(document),

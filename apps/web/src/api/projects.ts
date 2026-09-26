@@ -1,3 +1,4 @@
+import { apiFetch } from "./http";
 import type { CircuitDocument } from "@microlab/circuit-schema";
 
 import {
@@ -69,7 +70,7 @@ async function request(
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await apiFetch(url, {
       method: init.method,
       headers:
         init.body === undefined

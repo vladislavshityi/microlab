@@ -46,6 +46,7 @@ export default function CodeEditor() {
       scrollBeyondLastLine: false,
       renderLineHighlight: "line",
       fixedOverflowWidgets: true,
+      readOnly: useEditorStore.getState().readOnly,
     });
 
     // Сочетания регистрируются в самом редакторе: иначе Cmd/Ctrl+Enter обрабатывался бы
@@ -64,6 +65,9 @@ export default function CodeEditor() {
     // Открыт другой проект: текст заменяется, история правок редактора сбрасывается
     // (setValue очищает стек отмены модели).
     const unsubscribe = useEditorStore.subscribe((state, previous) => {
+      if (state.readOnly !== previous.readOnly) {
+        editor.updateOptions({ readOnly: state.readOnly });
+      }
       if (state.documentVersion !== previous.documentVersion) {
         editor.setValue(state.code);
       }

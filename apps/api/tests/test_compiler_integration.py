@@ -16,6 +16,7 @@ from httpx import ASGITransport, AsyncClient
 
 from microlab_api.app import create_app
 from microlab_api.config import Settings, get_settings
+from tests.conftest import CSRF_HEADERS, authenticate_as, fake_student
 
 pytestmark = [pytest.mark.anyio, pytest.mark.compiler]
 
@@ -60,8 +61,11 @@ def compiler_url() -> str:
 @pytest.fixture
 async def client(unreachable_settings: Settings, compiler_url: str) -> AsyncIterator[AsyncClient]:
     app = create_app(unreachable_settings.model_copy(update={"compiler_url": compiler_url}))
+    authenticate_as(app, fake_student())
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as http:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver", headers=CSRF_HEADERS
+    ) as http:
         yield http
     await app.state.compiler.aclose()
     await app.state.database.dispose()

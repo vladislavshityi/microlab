@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from microlab_api.app import create_app
 from microlab_api.circuit_schema.paths import package_dir
 from microlab_api.config import Settings, get_settings
+from tests.conftest import login_sync
 
 pytestmark = pytest.mark.simulator
 
@@ -74,6 +75,7 @@ def client(
         test_settings.model_copy(update={"compiler_url": compiler, "simulator_url": simulator})
     )
     with TestClient(app, base_url="http://testserver") as http:
+        login_sync(http)
         yield http
 
 

@@ -1,13 +1,11 @@
 import copy
 import json
 import uuid
-from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
-from pydantic import SecretStr
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -15,9 +13,9 @@ from microlab_api.app import create_app
 from microlab_api.circuit_schema.paths import package_dir
 from microlab_api.config import Settings
 from microlab_api.models import Project, ProjectRevision, User
-from microlab_api.scripts.seed_dev_user import seed_dev_user
 from microlab_api.services import project_service
 from microlab_api.services.compiler_service import CompilerClient
+from tests.conftest import CSRF_HEADERS, STUDENT_EMAIL, create_user, login
 
 pytestmark = pytest.mark.anyio
 
@@ -33,9 +31,8 @@ def _example(name: str) -> dict[str, Any]:
 
 
 @pytest.fixture
-async def api(client: AsyncClient, engine: AsyncEngine, clean_db: None) -> AsyncClient:
-    await seed_dev_user(engine)
-    return client
+async def api(student_client: AsyncClient) -> AsyncClient:
+    return student_client
 
 
 async def _create(api: AsyncClient, **body: Any) -> dict[str, Any]:
@@ -102,7 +99,11 @@ async def test_list_sorted_by_updated_at_desc(api: AsyncClient) -> None:
 
 async def test_other_users_projects_are_not_found(api: AsyncClient, engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
-        await conn.execute(insert(User).values(id=OTHER_USER_ID, username="someone"))
+        await conn.execute(
+            insert(User).values(
+                id=OTHER_USER_ID, email="someone@example.edu", display_name="s", role="student"
+            )
+        )
         foreign_id = await conn.scalar(
             insert(Project)
             .values(
@@ -260,37 +261,32 @@ async def test_code_size_limit(api: AsyncClient) -> None:
     assert response.json()["error"]["code"] == "SOURCE_TOO_LARGE"
 
 
-async def test_missing_dev_user(client: AsyncClient, clean_db: None) -> None:
+async def test_requires_authentication(client: AsyncClient, clean_db: None) -> None:
     response = await client.get(URL)
-    assert response.status_code == 503
-    error = response.json()["error"]
-    assert error["code"] == "DEV_USER_MISSING"
-    assert "seed_dev_user" in error["message"]
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
 
 
-@pytest.fixture
-async def production_client(test_database_url: str) -> AsyncIterator[AsyncClient]:
-    settings = Settings(env="production", database_url=SecretStr(test_database_url))
-    app = create_app(settings)
+async def test_project_limit(test_settings: Settings, engine: AsyncEngine, clean_db: None) -> None:
+    await create_user(engine, STUDENT_EMAIL)
+    app = create_app(test_settings.model_copy(update={"max_projects_per_user": 2}))
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as http:
-        yield http
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver", headers=CSRF_HEADERS
+    ) as http:
+        await login(http, STUDENT_EMAIL)
+        await _create(http)
+        await _create(http)
+        response = await http.post(URL, json={"name": "x"})
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "PROJECT_LIMIT_REACHED"
     await app.state.database.dispose()
-
-
-async def test_production_without_auth_is_refused(
-    production_client: AsyncClient, engine: AsyncEngine, clean_db: None
-) -> None:
-    await seed_dev_user(engine)
-    response = await production_client.get(URL)
-    assert response.status_code == 501
-    assert response.json()["error"]["code"] == "AUTH_NOT_CONFIGURED"
 
 
 async def test_project_compile_uses_stored_code(
     test_settings: Settings, engine: AsyncEngine, clean_db: None
 ) -> None:
-    await seed_dev_user(engine)
+    await create_user(engine, STUDENT_EMAIL)
     sources: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -301,7 +297,10 @@ async def test_project_compile_uses_stored_code(
     app = create_app(settings)
     app.state.compiler = CompilerClient(settings, transport=httpx.MockTransport(handler))
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as http:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver", headers=CSRF_HEADERS
+    ) as http:
+        await login(http, STUDENT_EMAIL)
         project = await _create(http, code="// stored")
         response = await http.post(f"{URL}/{project['id']}/compile")
         assert response.json()["error"]["code"] == "COMPILER_BUSY"

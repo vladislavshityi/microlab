@@ -9,6 +9,8 @@ interface StoredProject {
   revision: number;
   createdAt: string;
   updatedAt: string;
+  owner: { id: string; displayName: string };
+  access: "owner" | "viewer";
   code: string;
   circuit: Record<string, unknown>;
 }
@@ -92,6 +94,8 @@ export class FakeProjectsServer {
       revision: 1,
       createdAt: now,
       updatedAt: now,
+      owner: { id: "user-1", displayName: "Студент" },
+      access: "owner",
       code: "void setup() {\n}\n\nvoid loop() {\n}\n",
       circuit: structuredClone(EMPTY_CIRCUIT),
       ...data,

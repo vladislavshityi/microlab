@@ -7,6 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from microlab_api.app import create_app
 from microlab_api.circuit_schema.paths import definitions_dir
 from microlab_api.config import Settings
+from tests.conftest import CSRF_HEADERS, authenticate_as, fake_student
 
 pytestmark = pytest.mark.anyio
 
@@ -15,8 +16,13 @@ pytestmark = pytest.mark.anyio
 async def http(unreachable_settings: Settings) -> AsyncIterator[AsyncClient]:
     # Определения не требуют базы данных.
     app = create_app(unreachable_settings)
+    authenticate_as(app, fake_student())
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers=CSRF_HEADERS,
+    ) as client:
         yield client
     await app.state.database.dispose()
 

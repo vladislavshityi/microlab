@@ -17,16 +17,21 @@ import contextlib
 import logging
 import uuid
 from typing import Annotated, Any
-from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Request, WebSocket
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from microlab_api.api.circuits import validation_response
-from microlab_api.api.compilation import COMPILE_RESPONSES, compile_response, get_compiler
-from microlab_api.api.current_user import CurrentUser, resolve_user
+from microlab_api.api.compilation import (
+    COMPILE_RESPONSES,
+    check_compile_rate,
+    compile_response,
+    get_compiler,
+)
+from microlab_api.api.current_user import CurrentUser, origin_allowed
 from microlab_api.api.errors import DATABASE_UNAVAILABLE_ERRORS, ApiError, error_response
+from microlab_api.auth.sessions import SESSION_COOKIE, resolve_session
 from microlab_api.circuit_schema.definitions import get_definition_registry
 from microlab_api.db.database import Database, get_session
 from microlab_api.domain.circuit import Severity, parse_circuit
@@ -80,7 +85,9 @@ def _error(description: str) -> dict[str, Any]:
 _COMMON: dict[int | str, dict[str, Any]] = {
     404: _error("Project not found (PROJECT_NOT_FOUND)."),
     500: _error("Unexpected server error."),
-    501: _error("Authentication is not configured (AUTH_NOT_CONFIGURED)."),
+    401: _error("Not logged in (AUTH_REQUIRED)."),
+    403: _error("CSRF_FAILED or PASSWORD_CHANGE_REQUIRED."),
+    429: _error("Per-user compile rate limit exceeded (RATE_LIMITED)."),
     502: _error("Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."),
     503: _error(
         "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), "
@@ -142,14 +149,16 @@ async def get_simulation(
     summary="Validate, compile and start simulating the stored project",
     operation_id="startSimulation",
 )
-async def start_simulation(
+async def start_simulation(  # noqa: PLR0913, PLR0917 - зависимости FastAPI
     project_id: uuid.UUID,
+    request: Request,
     session: Session,
     user: CurrentUser,
     compiler: Annotated[CompilerClient, Depends(get_compiler)],
     simulations: Simulations,
 ) -> SimulationStartResponse | JSONResponse:
     code, circuit = await _load_project(session, user, project_id)
+    user_id = user.id
 
     registry = get_definition_registry()
     validation = validate_circuit(circuit, registry)
@@ -167,6 +176,7 @@ async def start_simulation(
         )
         return JSONResponse(status_code=422, content=body.model_dump(mode="json"))
 
+    check_compile_rate(request, user_id)
     try:
         outcome = await compiler.compile(code)
     except CompilerError as exc:
@@ -194,7 +204,7 @@ async def start_simulation(
 
     payload = build_circuit_payload(document, validation.nets, registry)
     try:
-        started = await simulations.start(project_id, firmware_hex, payload)
+        started = await simulations.start(project_id, firmware_hex, payload, owner_id=user_id)
     except SimulationError as exc:
         return _simulation_error(exc)
     return SimulationStartResponse(
@@ -308,10 +318,7 @@ async def send_serial(
 
 def _same_origin(websocket: WebSocket) -> bool:
     """Браузер всегда передаёт Origin: подключение с чужой страницы отклоняется."""
-    origin = websocket.headers.get("origin")
-    if origin is None:
-        return True
-    return urlsplit(origin).netloc == websocket.headers.get("host")
+    return origin_allowed(websocket.headers, websocket.app.state.settings)
 
 
 async def _authorize(websocket: WebSocket, project_id: uuid.UUID) -> int | None:
@@ -319,13 +326,19 @@ async def _authorize(websocket: WebSocket, project_id: uuid.UUID) -> int | None:
     database: Database = websocket.app.state.database
     try:
         async with database.sessionmaker() as db:
-            user = await resolve_user(websocket.app.state.settings, db)
-            await project_service.get_project(db, user, project_id)
+            token = websocket.cookies.get(SESSION_COOKIE)
+            resolved = (
+                None
+                if token is None
+                else await resolve_session(db, websocket.app.state.settings, token)
+            )
+            if resolved is None or resolved[1].must_change_password:
+                return WS_CLOSE_UNAUTHORIZED
+            # Поток событий — только владельцу: сессия симуляции принадлежит ему.
+            await project_service.get_project(db, resolved[1], project_id)
     except ApiError as exc:
         if exc.code is ErrorCode.PROJECT_NOT_FOUND:
             return WS_CLOSE_NOT_FOUND
-        if exc.code is ErrorCode.AUTH_NOT_CONFIGURED:
-            return WS_CLOSE_UNAUTHORIZED
         return WS_CLOSE_UNAVAILABLE
     except DATABASE_UNAVAILABLE_ERRORS:
         return WS_CLOSE_UNAVAILABLE

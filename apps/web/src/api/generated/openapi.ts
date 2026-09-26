@@ -4,6 +4,160 @@
  */
 
 export interface paths {
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List users (search by email or name, filter by role) */
+        get: operations["listUsers"];
+        put?: never;
+        /** Create a user (temporary password if none is given) */
+        post: operations["createUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a user's name, role or active state */
+        patch: operations["updateUser"];
+        trace?: never;
+    };
+    "/api/v1/admin/users/{user_id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset a password to a temporary one (shown once; must be changed at next login) */
+        post: operations["resetUserPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change the password; other sessions of the user are ended */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Log in with email and password (sets the session cookie) */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End the current session */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End all sessions of the current user */
+        post: operations["logoutAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current user */
+        get: operations["getCurrentUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register a student account with a group invite code */
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/circuits/validate": {
         parameters: {
             query?: never;
@@ -72,6 +226,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Groups visible to the user (teacher: own, admin: all, student: joined) */
+        get: operations["listGroups"];
+        put?: never;
+        /** Create a group */
+        post: operations["createGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Join a group with an invite code (students) */
+        post: operations["joinGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a managed group */
+        get: operations["getGroup"];
+        put?: never;
+        post?: never;
+        /** Delete a group (members' accounts and projects are kept) */
+        delete: operations["deleteGroup"];
+        options?: never;
+        head?: never;
+        /** Rename a group */
+        patch: operations["updateGroup"];
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List invite codes of a group (newest first) */
+        get: operations["listGroupInvites"];
+        put?: never;
+        /** Create an invite code (expiry and max uses optional) */
+        post: operations["createGroupInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/invites/{invite_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke an invite code */
+        post: operations["revokeGroupInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List group members */
+        get: operations["listGroupMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a member from a group */
+        delete: operations["removeGroupMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Projects of the group's members (most recently updated first) */
+        get: operations["listGroupProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -114,7 +408,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a project */
+        /** Get a project (own, or read-only for a teacher of the owner's group or an admin) */
         get: operations["getProject"];
         put?: never;
         post?: never;
@@ -334,6 +628,61 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminUserCreate */
+        AdminUserCreate: {
+            displayName: components["schemas"]["DisplayName"];
+            email: components["schemas"]["Email"];
+            /** @description Omit to generate a temporary password (returned once; must be changed). */
+            password?: components["schemas"]["Password"] | null;
+            role: components["schemas"]["Role"];
+        };
+        /** AdminUserCreated */
+        AdminUserCreated: {
+            /**
+             * Temporarypassword
+             * @description Shown only once.
+             */
+            temporaryPassword: string | null;
+            user: components["schemas"]["AdminUserInfo"];
+        };
+        /** AdminUserInfo */
+        AdminUserInfo: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Displayname */
+            displayName: string;
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Isactive */
+            isActive: boolean;
+            /** Lastloginat */
+            lastLoginAt: string | null;
+            /** Mustchangepassword */
+            mustChangePassword: boolean;
+            role: components["schemas"]["Role"];
+        };
+        /** AdminUserList */
+        AdminUserList: {
+            /** Items */
+            items: components["schemas"]["AdminUserInfo"][];
+            /** Total */
+            total: number;
+        };
+        /** AdminUserUpdate */
+        AdminUserUpdate: {
+            displayName?: components["schemas"]["DisplayName"] | null;
+            /** Isactive */
+            isActive?: boolean | null;
+            role?: components["schemas"]["Role"] | null;
+        };
         /**
          * BoardElectricalLimits
          * @description Electrical values used by circuit validation. Operating limits only, never absolute maximum ratings.
@@ -362,6 +711,11 @@ export interface components {
         ButtonInput: {
             /** Pressed */
             pressed: boolean;
+        };
+        /** ChangePasswordRequest */
+        ChangePasswordRequest: {
+            currentPassword: components["schemas"]["Password"];
+            newPassword: components["schemas"]["Password"];
         };
         /** CircuitIssue */
         CircuitIssue: {
@@ -506,6 +860,8 @@ export interface components {
              */
             status: "ok" | "error";
         };
+        DisplayName: string;
+        Email: string;
         /** EnumOption */
         EnumOption: {
             label: components["schemas"]["LocalizedText"];
@@ -542,7 +898,7 @@ export interface components {
          * @description Stable machine-readable error codes. The UI relies only on these values.
          * @enum {string}
          */
-        ErrorCode: "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "VALIDATION_ERROR" | "HTTP_ERROR" | "INTERNAL_ERROR" | "DATABASE_UNAVAILABLE" | "UNKNOWN_COMPONENT_TYPE" | "SOURCE_TOO_LARGE" | "COMPILER_UNAVAILABLE" | "COMPILER_BUSY" | "COMPILATION_TIMEOUT" | "COMPILER_OUTPUT_TOO_LARGE" | "AUTH_NOT_CONFIGURED" | "DEV_USER_MISSING" | "PROJECT_NOT_FOUND" | "REVISION_NOT_FOUND" | "REVISION_CONFLICT" | "INVALID_CIRCUIT" | "CIRCUIT_HAS_ERRORS" | "COMPILATION_FAILED" | "SIMULATOR_UNAVAILABLE" | "SIMULATOR_BUSY" | "SIMULATION_NOT_RUNNING" | "SIMULATION_START_FAILED" | "INVALID_SIMULATION_INPUT";
+        ErrorCode: "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "VALIDATION_ERROR" | "HTTP_ERROR" | "INTERNAL_ERROR" | "DATABASE_UNAVAILABLE" | "UNKNOWN_COMPONENT_TYPE" | "SOURCE_TOO_LARGE" | "COMPILER_UNAVAILABLE" | "COMPILER_BUSY" | "COMPILATION_TIMEOUT" | "COMPILER_OUTPUT_TOO_LARGE" | "AUTH_REQUIRED" | "FORBIDDEN" | "CSRF_FAILED" | "INVALID_CREDENTIALS" | "PASSWORD_CHANGE_REQUIRED" | "WEAK_PASSWORD" | "EMAIL_TAKEN" | "INVALID_INVITE_CODE" | "RATE_LIMITED" | "USER_NOT_FOUND" | "GROUP_NOT_FOUND" | "INVITE_NOT_FOUND" | "PROJECT_LIMIT_REACHED" | "PROJECT_NOT_FOUND" | "REVISION_NOT_FOUND" | "REVISION_CONFLICT" | "INVALID_CIRCUIT" | "CIRCUIT_HAS_ERRORS" | "COMPILATION_FAILED" | "SIMULATOR_UNAVAILABLE" | "SIMULATOR_BUSY" | "SIMULATION_NOT_RUNNING" | "SIMULATION_START_FAILED" | "INVALID_SIMULATION_INPUT";
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -589,6 +945,88 @@ export interface components {
             /** Mcupins */
             mcuPins: components["schemas"]["McuPin"][];
         };
+        /** GroupCreate */
+        GroupCreate: {
+            name: components["schemas"]["GroupName"];
+            /**
+             * Teacherid
+             * @description Admin only: owner teacher (defaults to the caller).
+             */
+            teacherId?: string | null;
+        };
+        /** GroupList */
+        GroupList: {
+            /** Items */
+            items: components["schemas"]["GroupSummary"][];
+        };
+        /** GroupMemberInfo */
+        GroupMemberInfo: {
+            /** Displayname */
+            displayName: string;
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Joinedat
+             * Format: date-time
+             */
+            joinedAt: string;
+        };
+        /** GroupMemberList */
+        GroupMemberList: {
+            /** Items */
+            items: components["schemas"]["GroupMemberInfo"][];
+        };
+        GroupName: string;
+        /** GroupProjectList */
+        GroupProjectList: {
+            /** Items */
+            items: components["schemas"]["GroupProjectSummary"][];
+        };
+        /** GroupProjectSummary */
+        GroupProjectSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            owner: components["schemas"]["UserRef"];
+            /** Revision */
+            revision: number;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+        };
+        /** GroupSummary */
+        GroupSummary: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Membercount */
+            memberCount: number;
+            /** Name */
+            name: string;
+            teacher: components["schemas"]["UserRef"];
+        };
+        /** GroupUpdate */
+        GroupUpdate: {
+            name: components["schemas"]["GroupName"];
+        };
         /** HealthChecks */
         HealthChecks: {
             database: components["schemas"]["DatabaseCheck"];
@@ -606,6 +1044,49 @@ export interface components {
         };
         /** InternalConnection */
         InternalConnection: string[];
+        /** InviteCreate */
+        InviteCreate: {
+            /**
+             * Expiresinhours
+             * @default 168
+             */
+            expiresInHours: number | null;
+            /** Maxuses */
+            maxUses?: number | null;
+        };
+        /** InviteInfo */
+        InviteInfo: {
+            /**
+             * Active
+             * @description Not revoked, not expired and uses left.
+             */
+            active: boolean;
+            /** Code */
+            code: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Expiresat */
+            expiresAt: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Maxuses */
+            maxUses: number | null;
+            /** Revoked */
+            revoked: boolean;
+            /** Uses */
+            uses: number;
+        };
+        /** InviteList */
+        InviteList: {
+            /** Items */
+            items: components["schemas"]["InviteInfo"][];
+        };
         /**
          * IssueCode
          * @description Stable machine-readable circuit issue codes. The UI relies only on these values.
@@ -618,6 +1099,11 @@ export interface components {
             id: string;
             /** @description component: board or component id; connection: wire id; pin: componentId.pinId; net: netlist id; field: document field path. */
             kind: components["schemas"]["RefKind"];
+        };
+        /** JoinGroupRequest */
+        JoinGroupRequest: {
+            /** Invitecode */
+            inviteCode: string;
         };
         /**
          * LedModel
@@ -645,6 +1131,12 @@ export interface components {
             key: string;
             /** Ru */
             ru: string;
+        };
+        /** LoginRequest */
+        LoginRequest: {
+            /** Email */
+            email: string;
+            password: components["schemas"]["Password"];
         };
         /** McuPin */
         McuPin: string;
@@ -674,6 +1166,7 @@ export interface components {
              */
             unit: "ohm" | "volt" | "percent";
         };
+        Password: string;
         /** PinDefinition */
         PinDefinition: {
             /** Arduinopin */
@@ -729,6 +1222,12 @@ export interface components {
         ProjectDescription: string;
         /** ProjectDetail */
         ProjectDetail: {
+            /**
+             * Access
+             * @description viewer: read-only access (teacher of the owner's group or admin).
+             * @enum {string}
+             */
+            access: "owner" | "viewer";
             board: components["schemas"]["BoardType"];
             /**
              * Circuit
@@ -753,6 +1252,7 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            owner: components["schemas"]["ProjectOwner"];
             /**
              * Revision
              * @description Current project revision (optimistic concurrency token).
@@ -772,6 +1272,16 @@ export interface components {
             items: components["schemas"]["ProjectSummary"][];
         };
         ProjectName: string;
+        /** ProjectOwner */
+        ProjectOwner: {
+            /** Displayname */
+            displayName: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /** ProjectRevisionDetail */
         ProjectRevisionDetail: {
             /** Circuit */
@@ -868,6 +1378,14 @@ export interface components {
          * @enum {string}
          */
         RefKind: "component" | "connection" | "pin" | "net" | "field";
+        /** RegisterRequest */
+        RegisterRequest: {
+            displayName: components["schemas"]["DisplayName"];
+            email: components["schemas"]["Email"];
+            /** Invitecode */
+            inviteCode: string;
+            password: components["schemas"]["Password"];
+        };
         /**
          * ResistorModel
          * @description Two-terminal resistor; resistance in ohms comes from a number property.
@@ -883,6 +1401,8 @@ export interface components {
             /** Terminals */
             terminals: components["schemas"]["PinId"][];
         };
+        /** @enum {string} */
+        Role: "student" | "teacher" | "admin";
         /** SerialInputRequest */
         SerialInputRequest: {
             /**
@@ -978,6 +1498,11 @@ export interface components {
             /** Terminals */
             terminals: components["schemas"]["PinId"][];
         };
+        /** TemporaryPassword */
+        TemporaryPassword: {
+            /** Temporarypassword */
+            temporaryPassword: string;
+        };
         /** Toolchain */
         Toolchain: {
             /** Arduinocli */
@@ -986,6 +1511,31 @@ export interface components {
             fqbn: string;
             /** Platform */
             platform: string;
+        };
+        /** UserInfo */
+        UserInfo: {
+            /** Displayname */
+            displayName: string;
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mustchangepassword */
+            mustChangePassword: boolean;
+            role: components["schemas"]["Role"];
+        };
+        /** UserRef */
+        UserRef: {
+            /** Displayname */
+            displayName: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
         };
         /**
          * VisualModel
@@ -1010,6 +1560,708 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listUsers: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                role?: components["schemas"]["Role"] | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserList"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admins only (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserCreated"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admins only (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Email is already registered (EMAIL_TAKEN). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserInfo"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admins only (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description USER_NOT_FOUND. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    resetUserPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemporaryPassword"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admins only (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description USER_NOT_FOUND. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserInfo"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED) or wrong current password (INVALID_CREDENTIALS). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cross-site request rejected (CSRF_FAILED). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too many failed attempts (RATE_LIMITED). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserInfo"];
+                };
+            };
+            /** @description Wrong email or password (INVALID_CREDENTIALS). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cross-site request rejected (CSRF_FAILED). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too many failed attempts (RATE_LIMITED). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cross-site request rejected (CSRF_FAILED). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    logoutAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cross-site request rejected (CSRF_FAILED). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCurrentUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserInfo"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cross-site request rejected (CSRF_FAILED). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserInfo"];
+                };
+            };
+            /** @description Invite code is invalid, revoked, expired or used up (INVALID_INVITE_CODE). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cross-site request rejected (CSRF_FAILED). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Email is already registered (EMAIL_TAKEN). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too many failed attempts (RATE_LIMITED). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     validateCircuit: {
         parameters: {
             query?: never;
@@ -1032,6 +2284,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CircuitValidationResponse"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Request validation failed. */
@@ -1076,6 +2346,24 @@ export interface operations {
                     "application/json": components["schemas"]["CompileResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Source exceeds 256 KiB (SOURCE_TOO_LARGE). */
             413: {
                 headers: {
@@ -1087,6 +2375,15 @@ export interface operations {
             };
             /** @description Request validation failed. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1201,6 +2498,899 @@ export interface operations {
             };
         };
     };
+    listGroups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupList"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupSummary"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    joinGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupSummary"];
+                };
+            };
+            /** @description Invite code is invalid, revoked, expired or used up (INVALID_INVITE_CODE). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupSummary"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Group not found (GROUP_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Group not found (GROUP_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupSummary"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Group not found (GROUP_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGroupInvites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteList"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Group not found (GROUP_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createGroupInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteInfo"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Group not found (GROUP_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revokeGroupInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteInfo"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description GROUP_NOT_FOUND or INVITE_NOT_FOUND. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGroupMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupMemberList"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Group not found (GROUP_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeGroupMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description GROUP_NOT_FOUND or USER_NOT_FOUND. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGroupProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupProjectList"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient role (FORBIDDEN), CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Group not found (GROUP_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getHealth: {
         parameters: {
             query?: never;
@@ -1257,6 +3447,24 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectList"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Unexpected server error. */
             500: {
                 headers: {
@@ -1266,16 +3474,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1308,6 +3507,33 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Per-user project limit reached (PROJECT_LIMIT_REACHED). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Source exceeds 256 KiB (SOURCE_TOO_LARGE). */
             413: {
                 headers: {
@@ -1335,16 +3561,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1375,6 +3592,24 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -1402,16 +3637,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1440,6 +3666,24 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -1467,16 +3711,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1509,6 +3744,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Project not found (PROJECT_NOT_FOUND). */
@@ -1556,16 +3809,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1596,6 +3840,24 @@ export interface operations {
                     "application/json": components["schemas"]["CompileResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -1623,6 +3885,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Unexpected server error. */
             500: {
                 headers: {
@@ -1632,16 +3903,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1681,6 +3943,24 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectRevisionList"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -1708,16 +3988,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1749,6 +4020,24 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectRevisionDetail"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description PROJECT_NOT_FOUND or REVISION_NOT_FOUND. */
             404: {
                 headers: {
@@ -1776,16 +4065,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1816,6 +4096,24 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationState"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -1834,8 +4132,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected server error. */
-            500: {
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1843,8 +4141,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
+            /** @description Unexpected server error. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1896,6 +4194,24 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationCommandResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -1923,8 +4239,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected server error. */
-            500: {
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1932,8 +4248,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
+            /** @description Unexpected server error. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1981,6 +4297,24 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationCommandResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -2008,8 +4342,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected server error. */
-            500: {
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2017,8 +4351,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
+            /** @description Unexpected server error. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2066,6 +4400,24 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationCommandResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -2093,8 +4445,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected server error. */
-            500: {
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2102,8 +4454,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
+            /** @description Unexpected server error. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2151,6 +4503,24 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationCommandResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -2178,8 +4548,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected server error. */
-            500: {
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2187,8 +4557,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
+            /** @description Unexpected server error. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2240,6 +4610,24 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationCommandResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -2267,8 +4655,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected server error. */
-            500: {
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2276,8 +4664,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
+            /** @description Unexpected server error. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2325,6 +4713,24 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationStartResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -2352,8 +4758,8 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationStartErrorResponse"];
                 };
             };
-            /** @description Unexpected server error. */
-            500: {
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2361,8 +4767,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
+            /** @description Unexpected server error. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2419,6 +4825,24 @@ export interface operations {
                     "application/json": components["schemas"]["SimulationCommandResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -2446,8 +4870,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected server error. */
-            500: {
+            /** @description Per-user compile rate limit exceeded (RATE_LIMITED). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2455,8 +4879,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
+            /** @description Unexpected server error. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2504,6 +4928,24 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitValidationResponse"];
                 };
             };
+            /** @description Not logged in (AUTH_REQUIRED). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CSRF_FAILED or PASSWORD_CHANGE_REQUIRED. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Project not found (PROJECT_NOT_FOUND). */
             404: {
                 headers: {
@@ -2531,16 +4973,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            /** @description Database is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;

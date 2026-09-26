@@ -47,12 +47,14 @@ class ApiError(Exception):
         code: ErrorCode,
         message: str,
         details: list[ErrorDetail] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.details = details or []
+        self.headers = headers
 
 
 def error_response(
@@ -87,7 +89,7 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
 async def api_error_handler(request: Request, exc: Exception) -> JSONResponse:
     if not isinstance(exc, ApiError):
         raise exc
-    return error_response(exc.status_code, exc.code, exc.message, exc.details)
+    return error_response(exc.status_code, exc.code, exc.message, exc.details, exc.headers)
 
 
 def _field_path(loc: tuple[int | str, ...]) -> str:

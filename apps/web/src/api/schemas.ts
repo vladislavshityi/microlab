@@ -26,6 +26,15 @@ export type SimulationInfo = components["schemas"]["SimulationInfo"];
 export type SimulationStartResponse = components["schemas"]["SimulationStartResponse"];
 export type SimulationStartErrorResponse = components["schemas"]["SimulationStartErrorResponse"];
 export type SimulationCommandResponse = components["schemas"]["SimulationCommandResponse"];
+export type UserInfo = components["schemas"]["UserInfo"];
+export type UserRole = UserInfo["role"];
+export type GroupSummary = components["schemas"]["GroupSummary"];
+export type GroupMemberInfo = components["schemas"]["GroupMemberInfo"];
+export type InviteInfo = components["schemas"]["InviteInfo"];
+export type GroupProjectSummary = components["schemas"]["GroupProjectSummary"];
+export type AdminUserInfo = components["schemas"]["AdminUserInfo"];
+export type AdminUserList = components["schemas"]["AdminUserList"];
+export type AdminUserCreated = components["schemas"]["AdminUserCreated"];
 
 // Tolerant reader: неизвестные лишние ключи отбрасываются, а не отвергаются, чтобы
 // аддитивное обратно совместимое изменение backend не превращало исправную систему
@@ -56,8 +65,19 @@ export const ErrorCodeSchema = z.enum([
   "COMPILER_BUSY",
   "COMPILATION_TIMEOUT",
   "COMPILER_OUTPUT_TOO_LARGE",
-  "AUTH_NOT_CONFIGURED",
-  "DEV_USER_MISSING",
+  "AUTH_REQUIRED",
+  "FORBIDDEN",
+  "CSRF_FAILED",
+  "INVALID_CREDENTIALS",
+  "PASSWORD_CHANGE_REQUIRED",
+  "WEAK_PASSWORD",
+  "EMAIL_TAKEN",
+  "INVALID_INVITE_CODE",
+  "RATE_LIMITED",
+  "USER_NOT_FOUND",
+  "GROUP_NOT_FOUND",
+  "INVITE_NOT_FOUND",
+  "PROJECT_LIMIT_REACHED",
   "PROJECT_NOT_FOUND",
   "REVISION_NOT_FOUND",
   "REVISION_CONFLICT",
@@ -145,6 +165,8 @@ export const ProjectSummarySchema = z.object({
 }) satisfies z.ZodType<ProjectSummary>;
 
 export const ProjectDetailSchema = ProjectSummarySchema.extend({
+  owner: z.object({ id: z.string(), displayName: z.string() }),
+  access: z.enum(["owner", "viewer"]),
   code: z.string(),
   // Документ схемы разбирается отдельно (parseCircuitDocument) с проверкой schemaVersion.
   circuit: z.record(z.string(), z.unknown()),
@@ -212,6 +234,81 @@ export const SimulationCommandResponseSchema = z.object({
   session: SimulationInfoSchema,
   appliedCycle: z.number().int().nullable(),
 }) satisfies z.ZodType<SimulationCommandResponse>;
+
+const RoleSchema = z.enum(["student", "teacher", "admin"]);
+const UserRefSchema = z.object({ id: z.string(), displayName: z.string() });
+
+export const UserInfoSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  displayName: z.string(),
+  role: RoleSchema,
+  mustChangePassword: z.boolean(),
+}) satisfies z.ZodType<UserInfo>;
+
+export const GroupSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  teacher: UserRefSchema,
+  memberCount: z.number().int(),
+  createdAt: z.string(),
+}) satisfies z.ZodType<GroupSummary>;
+
+export const GroupListSchema = z.object({ items: z.array(GroupSummarySchema) });
+
+export const GroupMemberListSchema = z.object({
+  items: z.array(
+    z.object({ id: z.string(), email: z.string(), displayName: z.string(), joinedAt: z.string() }),
+  ),
+});
+
+export const InviteInfoSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  expiresAt: z.string().nullable(),
+  maxUses: z.number().int().nullable(),
+  uses: z.number().int(),
+  revoked: z.boolean(),
+  active: z.boolean(),
+  createdAt: z.string(),
+}) satisfies z.ZodType<InviteInfo>;
+
+export const InviteListSchema = z.object({ items: z.array(InviteInfoSchema) });
+
+export const GroupProjectListSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      owner: UserRefSchema,
+      revision: z.number().int(),
+      updatedAt: z.string(),
+    }),
+  ),
+});
+
+export const AdminUserInfoSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  displayName: z.string(),
+  role: RoleSchema,
+  isActive: z.boolean(),
+  mustChangePassword: z.boolean(),
+  createdAt: z.string(),
+  lastLoginAt: z.string().nullable(),
+}) satisfies z.ZodType<AdminUserInfo>;
+
+export const AdminUserListSchema = z.object({
+  items: z.array(AdminUserInfoSchema),
+  total: z.number().int(),
+}) satisfies z.ZodType<AdminUserList>;
+
+export const AdminUserCreatedSchema = z.object({
+  user: AdminUserInfoSchema,
+  temporaryPassword: z.string().nullable(),
+}) satisfies z.ZodType<AdminUserCreated>;
+
+export const TemporaryPasswordSchema = z.object({ temporaryPassword: z.string() });
 
 /**
  * Код ошибки в том виде, в каком его видит пользователь: известный {@link ErrorCode} или более

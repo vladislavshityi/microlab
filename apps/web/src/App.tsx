@@ -2,7 +2,7 @@ import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 
 import { AppErrorBoundary } from "@/components/app-error-boundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Workspace } from "@/features/workspace/workspace";
+import { AppRoutes } from "@/features/auth/app-routes";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { useThemeSync } from "@/hooks/use-theme-sync";
 
@@ -14,7 +14,7 @@ export function App({ queryClient }: { queryClient: QueryClient }) {
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={400}>
-          <Workspace />
+          <AppRoutes />
         </TooltipProvider>
       </QueryClientProvider>
     </AppErrorBoundary>

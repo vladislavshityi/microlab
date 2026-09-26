@@ -268,6 +268,7 @@ class SimulationSession:
     project_id: uuid.UUID
     simulation_id: str
     publish: Callable[[str], None]
+    owner_id: uuid.UUID | None = None
     status: SimulationStatus = "starting"
     start_time: datetime = field(default_factory=_now)
     end_time: datetime | None = None
@@ -425,6 +426,7 @@ class SimulationManager:
         self._connect_timeout = settings.simulator_connect_timeout_seconds
         self._command_timeout = settings.simulator_command_timeout_seconds
         self._idle_timeout = settings.simulation_idle_timeout_seconds
+        self._max_per_user = settings.max_simulations_per_user
         self._sessions: dict[uuid.UUID, SimulationSession] = {}
         self._subscribers: dict[uuid.UUID, set[Subscriber]] = {}
         self._locks: dict[uuid.UUID, asyncio.Lock] = {}
@@ -480,11 +482,36 @@ class SimulationManager:
     def _lock(self, project_id: uuid.UUID) -> asyncio.Lock:
         return self._locks.setdefault(project_id, asyncio.Lock())
 
+    async def _enforce_user_quota(self, project_id: uuid.UUID, owner_id: uuid.UUID) -> None:
+        """Квота одновременных симуляций пользователя: старейшие сессии других проектов
+        пользователя останавливаются (reason "quota"), чтобы запуск нового проекта не
+        упирался в забытую вкладку."""
+        others = sorted(
+            (
+                s
+                for s in self._sessions.values()
+                if s.active and s.owner_id == owner_id and s.project_id != project_id
+            ),
+            key=lambda s: s.start_time,
+        )
+        while len(others) >= self._max_per_user:
+            oldest = others.pop(0)
+            async with self._lock(oldest.project_id):
+                if oldest.active:
+                    await self._stop_session(oldest, reason="quota")
+
     async def start(
-        self, project_id: uuid.UUID, firmware_hex: str, circuit: dict[str, Any]
+        self,
+        project_id: uuid.UUID,
+        firmware_hex: str,
+        circuit: dict[str, Any],
+        *,
+        owner_id: uuid.UUID | None = None,
     ) -> SimulationSession:
         if self._url is None:
             raise _unavailable("Simulator is not configured.")
+        if owner_id is not None:
+            await self._enforce_user_quota(project_id, owner_id)
         async with self._lock(project_id):
             previous = self._sessions.get(project_id)
             if previous is not None and previous.active:
@@ -494,6 +521,7 @@ class SimulationManager:
                 project_id=project_id,
                 simulation_id=str(uuid.uuid4()),
                 publish=lambda text: self.publish(project_id, text),
+                owner_id=owner_id,
             )
             self._sessions[project_id] = session
             self.publish(project_id, session.state_message())

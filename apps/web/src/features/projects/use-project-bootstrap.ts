@@ -3,20 +3,24 @@ import { useEffect } from "react";
 
 import { useProjectStore } from "@/stores/project-store";
 
+import { getProject } from "@/api/projects";
+
 import { failLoading, openProject, resolveStartupProject, startProjectSession } from "./project-session";
 
 export const STARTUP_PROJECT_KEY = ["projects", "startup"] as const;
 
 /**
  * При запуске приложения открывает проект (последний открытый, иначе последний изменённый,
- * иначе новый) и подключает автосохранение.
+ * иначе новый) и подключает автосохранение. `viewProjectId` — открыть указанный проект
+ * (чужой проект открывается только для просмотра).
  */
-export function useProjectBootstrap() {
+export function useProjectBootstrap(viewProjectId?: string) {
   useEffect(() => startProjectSession(), []);
 
   const query = useQuery({
-    queryKey: STARTUP_PROJECT_KEY,
-    queryFn: ({ signal }) => resolveStartupProject(signal),
+    queryKey: viewProjectId === undefined ? STARTUP_PROJECT_KEY : [...STARTUP_PROJECT_KEY, viewProjectId],
+    queryFn: ({ signal }) =>
+      viewProjectId === undefined ? resolveStartupProject(signal) : getProject(viewProjectId, signal),
     retry: false,
     staleTime: Infinity,
     gcTime: Infinity,

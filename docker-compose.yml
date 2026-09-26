@@ -87,7 +87,7 @@ services:
     networks: [simulator-internal]
     logging: *logging
 
-  # Одноразовая задача: миграции БД и dev-пользователь (только MICROLAB_ENV=development).
+  # Одноразовая задача: миграции БД.
   migrate:
     image: microlab-api:local
     pull_policy: never
@@ -105,6 +105,8 @@ services:
       MICROLAB_SIMULATOR_URL: ws://simulator:8080
       # X-Forwarded-* принимаются только от nginx (подсеть сети edge).
       MICROLAB_FORWARDED_ALLOW_IPS: ${MICROLAB_EDGE_SUBNET:-10.253.83.0/29}
+      # Флаг Secure у cookie сессии; docker-compose.tls.yml включает его.
+      MICROLAB_SESSION_COOKIE_SECURE: ${MICROLAB_SESSION_COOKIE_SECURE:-false}
     depends_on:
       postgres:
         condition: service_healthy

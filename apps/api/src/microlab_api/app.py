@@ -10,6 +10,7 @@ from microlab_api.api.errors import register_exception_handlers
 from microlab_api.api.middleware import RequestIdMiddleware
 from microlab_api.api.openapi import install_openapi
 from microlab_api.api.router import api_router
+from microlab_api.auth.rate_limit import RateLimits
 from microlab_api.config import Settings, get_settings
 from microlab_api.db.database import Database
 from microlab_api.logging import configure_logging
@@ -43,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.database = database
     app.state.compiler = compiler
     app.state.simulations = simulations
+    app.state.rate_limits = RateLimits(settings)
 
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)

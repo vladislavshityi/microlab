@@ -88,10 +88,12 @@ jobs:
           uv run alembic downgrade base &&
           uv run alembic upgrade head
 
-      - name: Seed dev-user (idempotent)
+      - name: Create admin (second run reports an existing account)
+        env:
+          MICROLAB_ADMIN_PASSWORD: ci-admin-password
         run: >-
-          uv run python -m microlab_api.scripts.seed_dev_user &&
-          uv run python -m microlab_api.scripts.seed_dev_user
+          uv run python -m microlab_api.scripts.create_admin --email admin@ci.local &&
+          ! uv run python -m microlab_api.scripts.create_admin --email admin@ci.local
 
       - name: Tests
         run: uv run pytest

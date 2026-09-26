@@ -10,7 +10,7 @@ import json
 import uuid
 from typing import Any, Final
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from microlab_api.api.errors import ApiError
@@ -23,9 +23,10 @@ from microlab_api.domain.circuit import (
     check_references,
     parse_circuit,
 )
-from microlab_api.models import Project, ProjectRevision, User
+from microlab_api.models import Project, ProjectRevision, User, UserRole
 from microlab_api.schemas.errors import ErrorCode, ErrorDetail
 from microlab_api.schemas.projects import ProjectCreate, ProjectUpdate
+from microlab_api.services import group_service
 from microlab_api.services.compiler_service import MAX_SOURCE_BYTES
 
 MAX_STORED_REVISIONS: Final = 50
@@ -153,7 +154,43 @@ async def get_project(
     return project
 
 
-async def create_project(session: AsyncSession, owner: User, data: ProjectCreate) -> Project:
+async def get_readable_project(
+    session: AsyncSession, user: User, project_id: uuid.UUID
+) -> tuple[Project, User]:
+    """Проект и его владелец, если пользователь может его читать.
+
+    Читать можно свои проекты; преподаватель — проекты студентов своих групп;
+    администратор — любые. Остальные — PROJECT_NOT_FOUND.
+    """
+    row = (
+        await session.execute(
+            select(Project, User)
+            .join(User, User.id == Project.owner_id)
+            .where(Project.id == project_id)
+        )
+    ).one_or_none()
+    if row is None:
+        raise _not_found()
+    project, owner = row
+    if owner.id == user.id or user.role is UserRole.ADMIN:
+        return project, owner
+    if user.role is UserRole.TEACHER and await group_service.teaches(session, user.id, owner.id):
+        return project, owner
+    raise _not_found()
+
+
+async def create_project(
+    session: AsyncSession, owner: User, data: ProjectCreate, *, max_projects: int
+) -> Project:
+    count = await session.scalar(
+        select(func.count()).select_from(Project).where(Project.owner_id == owner.id)
+    )
+    if (count or 0) >= max_projects:
+        raise ApiError(
+            409,
+            ErrorCode.PROJECT_LIMIT_REACHED,
+            f"Project limit reached ({max_projects}); delete unused projects.",
+        )
     circuit = (
         empty_circuit(data.board)
         if data.circuit is None
@@ -232,9 +269,9 @@ async def delete_project(session: AsyncSession, owner: User, project_id: uuid.UU
 
 
 async def list_revisions(
-    session: AsyncSession, owner: User, project_id: uuid.UUID
+    session: AsyncSession, user: User, project_id: uuid.UUID
 ) -> list[ProjectRevision]:
-    await get_project(session, owner, project_id)
+    await get_readable_project(session, user, project_id)
     result = await session.scalars(
         select(ProjectRevision)
         .where(ProjectRevision.project_id == project_id)
@@ -244,9 +281,9 @@ async def list_revisions(
 
 
 async def get_revision(
-    session: AsyncSession, owner: User, project_id: uuid.UUID, revision: int
+    session: AsyncSession, user: User, project_id: uuid.UUID, revision: int
 ) -> ProjectRevision:
-    await get_project(session, owner, project_id)
+    await get_readable_project(session, user, project_id)
     snapshot = await session.scalar(
         select(ProjectRevision).where(
             ProjectRevision.project_id == project_id, ProjectRevision.revision == revision

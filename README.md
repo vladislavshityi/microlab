@@ -48,6 +48,25 @@ docker compose down                     # остановить (данные Б�
 docker compose down -v                  # остановить и удалить данные
 ```
 
+## Пользователи и доступ
+
+Вход — по адресу почты и паролю (cookie сессии: HttpOnly, SameSite=Lax, Secure включает `docker-compose.tls.yml`). Роли: студент видит только свои проекты; преподаватель управляет своими группами и открывает проекты студентов групп только для просмотра (без запуска симуляции); администратор управляет пользователями и видит всё.
+
+1. Первый администратор (пароль — из переменной окружения или с терминала, не аргументом):
+
+   ```sh
+   docker compose exec -it api python -m microlab_api.scripts.create_admin --email admin@example.edu --name "Администратор"
+   # в разработке: cd apps/api && uv run python -m microlab_api.scripts.create_admin --email ...
+   ```
+
+2. Администратор в меню учётной записи → «Пользователи» создаёт преподавателей; временный пароль показывается один раз и меняется при первом входе. Там же — смена роли, сброс пароля, отключение.
+3. Преподаватель → «Мои группы»: создаёт группу и код приглашения (срок действия, число регистраций), копирует ссылку `https://<хост>/join/<код>`, отзывает коды, видит студентов и их проекты.
+4. Студент регистрируется по ссылке или коду на `/register`.
+
+Ограничения (переменные `MICROLAB_*`): неудачные входы — 50 на IP и 10 на адрес за 15 минут (`LOGIN_ATTEMPTS_PER_IP`, `LOGIN_ATTEMPTS_PER_ACCOUNT`, `LOGIN_WINDOW_SECONDS`); компиляций — 10 в минуту (`COMPILE_RATE_PER_MINUTE`); проектов — 200 (`MAX_PROJECTS_PER_USER`); одновременных симуляций — 1 (`MAX_SIMULATIONS_PER_USER`, при запуске другого проекта предыдущая симуляция останавливается). Сессия истекает после 24 ч простоя и через 14 дней (`SESSION_IDLE_TIMEOUT_HOURS`, `SESSION_ABSOLUTE_TIMEOUT_HOURS`). Счётчики хранятся в памяти единственного процесса API и сбрасываются при перезапуске. Изменяющие запросы к API требуют заголовок `X-MicroLab-Request: 1` и собственный `Origin` (дополнительные — `MICROLAB_ALLOWED_ORIGINS`, JSON-список).
+
+Учётные записи, существовавшие до появления входа (в том числе dev-user режима разработки), сохраняются вместе с проектами как студенты без пароля (`<имя>@local.invalid`): войти в них можно после сброса пароля администратором.
+
 ## Разработка
 
 Требования (macOS):
@@ -77,7 +96,7 @@ Backend:
 cd apps/api
 uv sync --locked                                        # создаёт apps/api/.venv
 uv run alembic upgrade head                             # миграции
-uv run python -m microlab_api.scripts.seed_dev_user     # dev-пользователь (только MICROLAB_ENV=development), идемпотентно
+uv run python -m microlab_api.scripts.create_admin --email admin@example.edu   # первый администратор
 uv run uvicorn microlab_api.main:app --app-dir src --reload --reload-dir src --host 127.0.0.1 --port 8000
 curl -i http://127.0.0.1:8000/api/v1/health             # 200 — API и БД доступны, 503 — БД недоступна
 ```
@@ -95,7 +114,7 @@ Vite проксирует `/api` → `http://127.0.0.1:8000`; другой ад�
 
 ## Развёртывание на сервере
 
-> **Внимание.** Аутентификации пока нет. API работает в однопользовательском режиме `MICROLAB_ENV=development`: любой, кто откроет сайт, видит и изменяет все проекты. Не публикуйте MicroLab в интернете без защиты доступа — basic auth (`docker-compose.auth.yml`), VPN или закрытая сеть. В `MICROLAB_ENV=production` API проектов отключён до появления аутентификации.
+На сервере задайте `MICROLAB_ENV=production`. Доступ к данным защищён входом по паролю (раздел «Пользователи и доступ»); basic auth (`docker-compose.auth.yml`) — необязательный дополнительный барьер.
 
 Linux-сервер с Docker Engine и плагином compose (https://docs.docker.com/engine/install/), открытые порты 80 и 443, DNS-имя (ниже `lab.example.org`).
 
@@ -108,7 +127,7 @@ Linux-сервер с Docker Engine и плагином compose (https://docs.do
 
    В `.env` задать `MICROLAB_POSTGRES_PASSWORD=$(openssl rand -hex 24)` (до первого запуска: пароль применяется только при создании volume), `MICROLAB_TLS_DIR=/etc/microlab/tls`, `MICROLAB_HTPASSWD_FILE=/etc/microlab/htpasswd`.
 
-2. Пользователи basic auth (nginx в контейнере работает с gid 101):
+2. (Необязательно) пользователи basic auth (nginx в контейнере работает с gid 101):
 
    ```sh
    sudo install -d -m 0755 /etc/microlab /etc/microlab/tls
@@ -173,7 +192,6 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy
 uv run alembic upgrade head && uv run alembic check && uv run alembic downgrade base && uv run alembic upgrade head
-uv run python -m microlab_api.scripts.seed_dev_user && uv run python -m microlab_api.scripts.seed_dev_user
 uv run pytest
 uv run python -m microlab_api.scripts.export_openapi --check
 uv run python -m microlab_api.scripts.gen_circuit_schema --check

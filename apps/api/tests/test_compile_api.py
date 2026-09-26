@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 from microlab_api.app import create_app
 from microlab_api.config import Settings
 from microlab_api.services.compiler_service import MAX_SOURCE_BYTES, CompilerClient
+from tests.conftest import CSRF_HEADERS, authenticate_as, fake_student
 
 pytestmark = pytest.mark.anyio
 
@@ -46,10 +47,12 @@ def make_client(unreachable_settings: Settings) -> Callable[[Handler], AsyncClie
             update={"compiler_url": "http://compiler.test:8080"}
         )
         app = create_app(settings)
+        authenticate_as(app, fake_student())
         app.state.compiler = CompilerClient(settings, transport=httpx.MockTransport(handler))
         return AsyncClient(
             transport=ASGITransport(app=app, raise_app_exceptions=False),
             base_url="http://testserver",
+            headers=CSRF_HEADERS,
         )
 
     return factory
@@ -190,8 +193,11 @@ async def test_source_too_large_is_rejected_before_worker(
 
 async def test_compiler_not_configured(unreachable_settings: Settings) -> None:
     app = create_app(unreachable_settings.model_copy(update={"compiler_url": None}))
+    authenticate_as(app, fake_student())
     async with AsyncClient(
-        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://testserver"
+        transport=ASGITransport(app=app, raise_app_exceptions=False),
+        base_url="http://testserver",
+        headers=CSRF_HEADERS,
     ) as client:
         response = await client.post("/api/v1/compile", json={"code": "void setup(){}"})
 

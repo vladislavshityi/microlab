@@ -131,6 +131,8 @@ describe("ProjectDetailSchema", () => {
     revision: 3,
     createdAt: "2026-09-26T10:00:00Z",
     updatedAt: "2026-09-26T10:05:00Z",
+    owner: { id: "u1", displayName: "Иван" },
+    access: "owner",
     code: "void setup() {}",
     circuit: { schemaVersion: 1 },
   };
@@ -138,7 +140,7 @@ describe("ProjectDetailSchema", () => {
   it("accepts a project and its summary in a list", () => {
     expect(ProjectDetailSchema.parse(project)).toEqual(project);
     const summary = Object.fromEntries(
-      Object.entries(project).filter(([key]) => key !== "code" && key !== "circuit"),
+      Object.entries(project).filter(([key]) => !["code", "circuit", "owner", "access"].includes(key)),
     );
     expect(ProjectListSchema.parse({ items: [summary] }).items[0]).toEqual(summary);
     expect(ProjectSummarySchema.safeParse({ ...summary, board: "esp32" }).success).toBe(false);

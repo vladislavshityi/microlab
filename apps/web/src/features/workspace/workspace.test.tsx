@@ -10,9 +10,20 @@ import { render } from "@testing-library/react";
 
 vi.mock("@/features/code-editor/code-editor", () => import("@/test/monaco-mock"));
 
-function renderApp() {
-  return render(<App queryClient={createQueryClient()} />);
+async function renderApp() {
+  const result = render(<App queryClient={createQueryClient()} />);
+  // Сначала проверяется сессия (GET /auth/me), затем открывается рабочее пространство.
+  await screen.findByRole("banner");
+  return result;
 }
+
+const TEST_USER = {
+  id: "user-1",
+  email: "student@example.edu",
+  displayName: "Студент",
+  role: "student",
+  mustChangePassword: false,
+};
 
 describe("Workspace", () => {
   let server: FakeProjectsServer;
@@ -22,6 +33,7 @@ describe("Workspace", () => {
     stubFetch((input, init) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       if (server.handles(url)) return server.handle(url, init);
+      if (url.endsWith("/auth/me")) return Promise.resolve(jsonResponse(TEST_USER, 200));
       return Promise.resolve(
         url.endsWith("/circuits/validate")
           ? jsonResponse({ issues: [], nets: [] }, 200)
@@ -31,7 +43,7 @@ describe("Workspace", () => {
   });
 
   it("renders all regions with accessible names and honest empty states", async () => {
-    renderApp();
+    await renderApp();
 
     expect(screen.getByRole("banner")).toHaveTextContent("MicroLab");
     expect(screen.getByRole("banner")).toHaveTextContent("Arduino UNO R3");
@@ -73,7 +85,7 @@ describe("Workspace", () => {
 
   it("switches bottom tabs", async () => {
     const user = userEvent.setup();
-    renderApp();
+    await renderApp();
     const tabs = screen.getByRole("tablist", { name: "Вкладки нижней панели" });
 
     const codeTab = within(tabs).getByRole("tab", { name: "Код" });
@@ -111,7 +123,7 @@ describe("Workspace", () => {
     ["Ctrl+S", { key: "s", code: "KeyS", ctrlKey: true }],
     ["Ctrl+S (русская раскладка)", { key: "ы", code: "KeyS", ctrlKey: true }],
   ])("%s saves immediately", async (_name, init) => {
-    renderApp();
+    await renderApp();
     const editor = await screen.findByRole("textbox", { name: "Редактор кода скетча" });
     await screen.findByText("Сохранено");
     fireEvent.change(editor, { target: { value: "// изменено" } });
@@ -124,7 +136,7 @@ describe("Workspace", () => {
   });
 
   it("Cmd+Enter saves the project and starts the simulation", async () => {
-    renderApp();
+    await renderApp();
     const editor = await screen.findByRole("textbox", { name: "Редактор кода скетча" });
     await screen.findByText("Сохранено");
     fireEvent.change(editor, { target: { value: "void setup(){}\nvoid loop(){}\n" } });
@@ -142,8 +154,8 @@ describe("Workspace", () => {
     expect(within(controls).getByRole("button", { name: "Остановить" })).toBeEnabled();
   });
 
-  it("does not intercept other shortcuts", () => {
-    renderApp();
+  it("does not intercept other shortcuts", async () => {
+    await renderApp();
     expect(fireEvent.keyDown(window, { key: "f", code: "KeyF", metaKey: true })).toBe(true);
     expect(fireEvent.keyDown(window, { key: "s", code: "KeyS" })).toBe(true);
   });

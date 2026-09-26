@@ -1,3 +1,4 @@
+import { apiFetch } from "./http";
 import {
   CircuitValidationResponseSchema,
   CompileResponseSchema,
@@ -74,7 +75,7 @@ function readExtra(body: unknown): { validation: CircuitValidationResponse | nul
 async function post(url: string, body: unknown, timeoutMs: number): Promise<{ status: number; body: unknown }> {
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await apiFetch(url, {
       method: "POST",
       headers:
         body === undefined

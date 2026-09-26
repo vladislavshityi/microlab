@@ -29,7 +29,16 @@ class ProjectSummary(ApiModel):
     updated_at: datetime
 
 
+class ProjectOwner(ApiModel):
+    id: uuid.UUID
+    display_name: str
+
+
 class ProjectDetail(ProjectSummary):
+    owner: ProjectOwner
+    access: Literal["owner", "viewer"] = Field(
+        description="viewer: read-only access (teacher of the owner's group or admin)."
+    )
     code: str
     circuit: dict[str, Any] = Field(description="Circuit document (CircuitDocument).")
 

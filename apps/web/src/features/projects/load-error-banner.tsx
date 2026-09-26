@@ -12,7 +12,7 @@ const MESSAGE: Record<LoadErrorKind, PlainTranslationKey> = {
   network: "loadError.network",
   invalidDocument: "loadError.invalidDocument",
   unsupportedVersion: "loadError.unsupportedVersion",
-  devUserMissing: "loadError.devUserMissing",
+  notFound: "loadError.notFound",
   server: "loadError.server",
 };
 

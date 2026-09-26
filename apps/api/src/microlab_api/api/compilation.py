@@ -14,7 +14,9 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
+from microlab_api.api.current_user import CurrentUser
 from microlab_api.api.errors import error_response
+from microlab_api.auth.rate_limit import RateLimits
 from microlab_api.schemas.compile import (
     CompileDiagnostic,
     CompileRequest,
@@ -36,7 +38,16 @@ def get_compiler(request: Request) -> CompilerClient:
 
 COMPILE_RESPONSES: dict[int | str, dict[str, Any]] = {
     413: {"model": ErrorResponse, "description": "Source exceeds 256 KiB (SOURCE_TOO_LARGE)."},
+    401: {"model": ErrorResponse, "description": "Not logged in (AUTH_REQUIRED)."},
+    403: {
+        "model": ErrorResponse,
+        "description": "CSRF_FAILED or PASSWORD_CHANGE_REQUIRED.",
+    },
     422: {"model": ErrorResponse, "description": "Invalid request or oversized compiler output."},
+    429: {
+        "model": ErrorResponse,
+        "description": "Per-user compile rate limit exceeded (RATE_LIMITED).",
+    },
     500: {"model": ErrorResponse, "description": "Unexpected server error."},
     503: {
         "model": ErrorResponse,
@@ -54,9 +65,19 @@ COMPILE_RESPONSES: dict[int | str, dict[str, Any]] = {
     operation_id="compileSketch",
 )
 async def compile_sketch(
-    body: CompileRequest, compiler: Annotated[CompilerClient, Depends(get_compiler)]
+    body: CompileRequest,
+    request: Request,
+    user: CurrentUser,
+    compiler: Annotated[CompilerClient, Depends(get_compiler)],
 ) -> CompileResponse | JSONResponse:
+    check_compile_rate(request, user.id)
     return await run_compilation(compiler, body.code)
+
+
+def check_compile_rate(request: Request, user_id: object) -> None:
+    """Квота компиляций пользователя в минуту (429 RATE_LIMITED)."""
+    limits: RateLimits = request.app.state.rate_limits
+    limits.compile.check_and_hit(str(user_id))
 
 
 async def run_compilation(compiler: CompilerClient, code: str) -> CompileResponse | JSONResponse:

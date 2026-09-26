@@ -33,6 +33,9 @@ interface CircuitState extends NormalizedCircuit {
   pendingConnection: PinRef | null;
 
   /** Заменяет схему документом; при ошибке состояние не меняется. История очищается. */
+  /** Схема только для просмотра: команды изменения игнорируются. */
+  readOnly: boolean;
+  setReadOnly: (readOnly: boolean) => void;
   loadDocument: (document: CircuitDocument) => void;
   /** Разбирает JSON-данные (с проверкой schemaVersion) и загружает схему. */
   deserialize: (raw: unknown) => void;
@@ -117,6 +120,9 @@ export const useCircuitStore = create<CircuitState>()((set, get) => {
   /** Применяет команду; при активном жесте изменение не создаёт отдельного шага отмены. */
   const apply = (command: (circuit: NormalizedCircuit) => NormalizedCircuit) => {
     const state = get();
+    if (state.readOnly) {
+      return;
+    }
     const current = pickCircuit(state);
     const next = command(current);
     if (sameCircuit(next, current)) {
@@ -141,6 +147,10 @@ export const useCircuitStore = create<CircuitState>()((set, get) => {
 
   return {
     ...initialState(normalizeCircuit(createEmptyCircuit())),
+    readOnly: false,
+    setReadOnly: (readOnly) => {
+      set({ readOnly, pendingConnection: null });
+    },
 
     loadDocument: (document) => {
       load(normalizeCircuit(document));
@@ -154,6 +164,7 @@ export const useCircuitStore = create<CircuitState>()((set, get) => {
     },
 
     addComponent: (type, position) => {
+      if (get().readOnly) return "";
       let id = "";
       apply((circuit) => {
         const result = commands.addComponent(circuit, type, position);
@@ -195,6 +206,7 @@ export const useCircuitStore = create<CircuitState>()((set, get) => {
       apply((circuit) => commands.setProperty(circuit, componentId, propertyId, value));
     },
     connect: (from, to) => {
+      if (get().readOnly) return null;
       try {
         let id = "";
         apply((circuit) => {

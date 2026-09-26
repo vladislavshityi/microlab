@@ -56,7 +56,10 @@ export function connectSimulationStream(
 
 /** Поток событий открытого проекта; при смене проекта состояние симуляции сбрасывается. */
 export function useSimulationStream(): void {
-  const projectId = useProjectStore((state) => (state.phase === "ready" ? state.projectId : null));
+  // Поток событий доступен только владельцу проекта (режим просмотра без симуляции).
+  const projectId = useProjectStore((state) =>
+    state.phase === "ready" && state.readOnly === null ? state.projectId : null,
+  );
   useEffect(() => {
     useSimulationStore.getState().resetForProject();
     if (projectId === null || typeof WebSocket === "undefined") return undefined;

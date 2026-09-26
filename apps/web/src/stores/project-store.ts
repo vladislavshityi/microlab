@@ -22,7 +22,7 @@ export type LoadErrorKind =
   | "network"
   | "invalidDocument"
   | "unsupportedVersion"
-  | "devUserMissing"
+  | "notFound"
   | "server";
 
 export type ProjectPhase = "loading" | "ready" | "loadError";
@@ -38,6 +38,8 @@ interface ProjectState {
   status: SaveStatus;
   errorKind: SaveErrorKind | null;
   conflict: ConflictKind | null;
+  /** Чужой проект открыт только для просмотра (владелец — `ownerName`); автосохранения нет. */
+  readOnly: { ownerName: string } | null;
 }
 
 /**
@@ -54,6 +56,7 @@ export const useProjectStore = create<ProjectState>()(() => ({
   status: "saved",
   errorKind: null,
   conflict: null,
+  readOnly: null,
 }));
 
 /** Есть изменения, которые ещё не сохранены на сервере. */

@@ -7,23 +7,76 @@
 """
 
 import asyncio
+import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from pydantic import SecretStr
-from sqlalchemy import make_url, text
+from sqlalchemy import insert, make_url, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from microlab_api.api.current_user import get_current_user
 from microlab_api.app import create_app
+from microlab_api.auth.passwords import hash_password
 from microlab_api.config import Settings, get_settings
 from microlab_api.db.database import create_engine
-from microlab_api.scripts.seed_dev_user import seed_dev_user
+from microlab_api.models import User, UserRole
 
 API_DIR = Path(__file__).resolve().parents[1]
+TRUNCATE_ALL = text(
+    "TRUNCATE users, projects, groups, group_members, invite_codes, sessions "
+    "RESTART IDENTITY CASCADE"
+)
+# Заголовок защиты от CSRF, который отправляет frontend.
+CSRF_HEADERS = {"X-MicroLab-Request": "1"}
+DEFAULT_PASSWORD = "correct-horse-battery"  # noqa: S105 - тестовый пароль
+STUDENT_EMAIL = "student@example.edu"
+# Хеш вычисляется один раз: Argon2id намеренно медленный.
+_HASHES: dict[str, str] = {}
+
+
+def password_hash(password: str) -> str:
+    if password not in _HASHES:
+        _HASHES[password] = hash_password(password)
+    return _HASHES[password]
+
+
+async def create_user(  # noqa: PLR0913
+    engine: AsyncEngine,
+    email: str,
+    role: UserRole = UserRole.STUDENT,
+    *,
+    password: str = DEFAULT_PASSWORD,
+    must_change_password: bool = False,
+    is_active: bool = True,
+    name: str | None = None,
+) -> object:
+    async with engine.begin() as conn:
+        return await conn.scalar(
+            insert(User)
+            .values(
+                email=email,
+                display_name=name or email.split("@", maxsplit=1)[0],
+                role=role,
+                password_hash=password_hash(password),
+                must_change_password=must_change_password,
+                is_active=is_active,
+            )
+            .returning(User.id)
+        )
+
+
+async def login(http: AsyncClient, email: str, password: str = DEFAULT_PASSWORD) -> None:
+    response = await http.post("/api/v1/auth/login", json={"email": email, "password": password})
+    assert response.status_code == 200, response.text
+
+
 # На loopback порт 1 никто не слушает: соединения отклоняются сразу.
 UNREACHABLE_DATABASE_URL = "postgresql+asyncpg://microlab:secret-password@127.0.0.1:1/microlab"
 
@@ -97,21 +150,30 @@ async def engine(test_settings: Settings) -> AsyncIterator[AsyncEngine]:
 
 @pytest.fixture
 async def clean_db(engine: AsyncEngine) -> AsyncIterator[None]:
-    truncate = text("TRUNCATE users, projects RESTART IDENTITY CASCADE")
     async with engine.begin() as conn:
-        await conn.execute(truncate)
+        await conn.execute(TRUNCATE_ALL)
     yield
     async with engine.begin() as conn:
-        await conn.execute(truncate)
+        await conn.execute(TRUNCATE_ALL)
 
 
 @pytest.fixture
 async def client(test_settings: Settings) -> AsyncIterator[AsyncClient]:
     app = create_app(test_settings)
     transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as http:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver", headers=CSRF_HEADERS
+    ) as http:
         yield http
     await app.state.database.dispose()
+
+
+@pytest.fixture
+async def student_client(client: AsyncClient, engine: AsyncEngine, clean_db: None) -> AsyncClient:
+    """Клиент, вошедший как студент ``STUDENT_EMAIL``."""
+    await create_user(engine, STUDENT_EMAIL)
+    await login(client, STUDENT_EMAIL)
+    return client
 
 
 @pytest.fixture
@@ -126,15 +188,41 @@ def unreachable_settings() -> Settings:
 
 @pytest.fixture
 def seeded_db(test_database_url: str) -> None:
-    """Чистая база с dev-user для синхронных тестов (TestClient со своим event loop)."""
+    """Чистая база со студентом ``STUDENT_EMAIL`` для синхронных тестов (TestClient)."""
 
     async def prepare() -> None:
         engine = create_async_engine(test_database_url)
         try:
             async with engine.begin() as conn:
-                await conn.execute(text("TRUNCATE users, projects RESTART IDENTITY CASCADE"))
-            await seed_dev_user(engine)
+                await conn.execute(TRUNCATE_ALL)
+            await create_user(engine, STUDENT_EMAIL)
         finally:
             await engine.dispose()
 
     asyncio.run(prepare())
+
+
+def fake_student() -> User:
+    return User(
+        id=uuid.uuid4(),
+        email="fake@example.edu",
+        display_name="fake",
+        role=UserRole.STUDENT,
+        is_active=True,
+        must_change_password=False,
+    )
+
+
+def authenticate_as(app: FastAPI, user: User) -> None:
+    """Подменяет текущего пользователя (тесты без базы данных)."""
+
+    async def current() -> User:
+        return user
+
+    app.dependency_overrides[get_current_user] = current
+
+
+def login_sync(http: TestClient, email: str = STUDENT_EMAIL) -> None:
+    http.headers.update(CSRF_HEADERS)
+    response = http.post("/api/v1/auth/login", json={"email": email, "password": DEFAULT_PASSWORD})
+    assert response.status_code == 200, response.text

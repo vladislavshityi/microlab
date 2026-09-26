@@ -22,6 +22,7 @@ import { BottomPanel } from "./bottom-panel";
 import { readLayout, writeLayout } from "./layout-storage";
 import { SidePanel } from "./side-panel";
 import { StatusBar } from "./status-bar";
+import { ReadOnlyBanner } from "./read-only-banner";
 import { Toolbar } from "./toolbar";
 
 const HORIZONTAL_GROUP = "workspace-horizontal";
@@ -81,8 +82,8 @@ function useCollapsible(panel: CollapsiblePanel, panelRef: RefObject<PanelImpera
  * перетаскиванием или клавишами-стрелками на разделителе; двойной щелчок по
  * разделителю сворачивает или разворачивает соседнюю панель.
  */
-export function Workspace() {
-  useProjectBootstrap();
+export function Workspace({ viewProjectId }: { viewProjectId?: string } = {}) {
+  useProjectBootstrap(viewProjectId);
   useSimulationStream();
   // Сохранённые размеры читаются один раз при монтировании.
   const [horizontalLayout] = useState(() => readLayout(HORIZONTAL_GROUP, HORIZONTAL_PANELS));
@@ -124,6 +125,7 @@ export function Workspace() {
         {t("workspace.narrowViewport")}
       </p>
       <Toolbar />
+      <ReadOnlyBanner />
       <LoadErrorBanner />
       <ConflictDialog />
       <main className="min-h-0 flex-1">

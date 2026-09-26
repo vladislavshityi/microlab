@@ -1,6 +1,9 @@
 """Проекты текущего пользователя: CRUD, история версий, проверка и компиляция проекта.
 
-Чужие проекты неотличимы от несуществующих (404 PROJECT_NOT_FOUND). Изменение проекта
+Список содержит только собственные проекты. Чтение проекта и его истории доступно также
+преподавателю группы владельца и администратору (``access: "viewer"``); изменение,
+проверка и компиляция — только владельцу. Недоступные проекты неотличимы от
+несуществующих (404 PROJECT_NOT_FOUND). Изменение проекта
 требует номер версии, на которой основано изменение (``revision``); при расхождении —
 409 REVISION_CONFLICT, данные не перезаписываются.
 """
@@ -8,21 +11,28 @@
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from microlab_api.api.circuits import build_validation_response
-from microlab_api.api.compilation import COMPILE_RESPONSES, get_compiler, run_compilation
+from microlab_api.api.compilation import (
+    COMPILE_RESPONSES,
+    check_compile_rate,
+    get_compiler,
+    run_compilation,
+)
 from microlab_api.api.current_user import CurrentUser
+from microlab_api.config import Settings
 from microlab_api.db.database import get_session
-from microlab_api.models import Project, ProjectRevision
+from microlab_api.models import Project, ProjectRevision, User
 from microlab_api.schemas.compile import CompileResponse
 from microlab_api.schemas.errors import ErrorResponse
 from microlab_api.schemas.projects import (
     ProjectCreate,
     ProjectDetail,
     ProjectList,
+    ProjectOwner,
     ProjectRevisionDetail,
     ProjectRevisionList,
     ProjectRevisionSummary,
@@ -43,9 +53,10 @@ def _error(description: str) -> dict[str, Any]:
 
 
 _COMMON: dict[int | str, dict[str, Any]] = {
+    401: _error("Not logged in (AUTH_REQUIRED)."),
+    403: _error("CSRF_FAILED or PASSWORD_CHANGE_REQUIRED."),
     500: _error("Unexpected server error."),
-    501: _error("Authentication is not configured (AUTH_NOT_CONFIGURED)."),
-    503: _error("Database is unavailable or the development user is missing (DEV_USER_MISSING)."),
+    503: _error("Database is unavailable."),
 }
 _NOT_FOUND: dict[int | str, dict[str, Any]] = {
     404: _error("Project not found (PROJECT_NOT_FOUND).")
@@ -69,9 +80,13 @@ def _summary(project: Project) -> ProjectSummary:
     )
 
 
-def _detail(project: Project) -> ProjectDetail:
+def _detail(project: Project, owner: User, viewer: User) -> ProjectDetail:
     return ProjectDetail(
-        **_summary(project).model_dump(), code=project.code, circuit=project.circuit
+        **_summary(project).model_dump(),
+        owner=ProjectOwner(id=owner.id, display_name=owner.display_name),
+        access="owner" if owner.id == viewer.id else "viewer",
+        code=project.code,
+        circuit=project.circuit,
     )
 
 
@@ -99,23 +114,34 @@ async def list_projects(session: Session, user: CurrentUser) -> ProjectList:
     "",
     status_code=201,
     response_model=ProjectDetail,
-    responses={**_COMMON, **_WRITE},
+    responses={
+        **_COMMON,
+        **_WRITE,
+        409: _error("Per-user project limit reached (PROJECT_LIMIT_REACHED)."),
+    },
     summary="Create a project",
     operation_id="createProject",
 )
-async def create_project(body: ProjectCreate, session: Session, user: CurrentUser) -> ProjectDetail:
-    return _detail(await project_service.create_project(session, user, body))
+async def create_project(
+    body: ProjectCreate, request: Request, session: Session, user: CurrentUser
+) -> ProjectDetail:
+    settings: Settings = request.app.state.settings
+    project = await project_service.create_project(
+        session, user, body, max_projects=settings.max_projects_per_user
+    )
+    return _detail(project, user, user)
 
 
 @router.get(
     "/{project_id}",
     response_model=ProjectDetail,
     responses={**_COMMON, **_NOT_FOUND},
-    summary="Get a project",
+    summary="Get a project (own, or read-only for a teacher of the owner's group or an admin)",
     operation_id="getProject",
 )
 async def get_project(project_id: uuid.UUID, session: Session, user: CurrentUser) -> ProjectDetail:
-    return _detail(await project_service.get_project(session, user, project_id))
+    project, owner = await project_service.get_readable_project(session, user, project_id)
+    return _detail(project, owner, user)
 
 
 @router.patch(
@@ -133,7 +159,9 @@ async def get_project(project_id: uuid.UUID, session: Session, user: CurrentUser
 async def update_project(
     project_id: uuid.UUID, body: ProjectUpdate, session: Session, user: CurrentUser
 ) -> ProjectDetail:
-    return _detail(await project_service.update_project(session, user, project_id, body))
+    return _detail(
+        await project_service.update_project(session, user, project_id, body), user, user
+    )
 
 
 @router.delete(
@@ -202,11 +230,13 @@ async def validate_project(
 )
 async def compile_project(
     project_id: uuid.UUID,
+    request: Request,
     session: Session,
     user: CurrentUser,
     compiler: Annotated[CompilerClient, Depends(get_compiler)],
 ) -> CompileResponse | JSONResponse:
     project = await project_service.get_project(session, user, project_id)
+    check_compile_rate(request, user.id)
     # Транзакция чтения не должна оставаться открытой на время компиляции.
     code = project.code
     await session.close()

@@ -6,6 +6,9 @@
 # пользователем nginx с uid/gid 101). Порядок получения сертификата — README.
 
 services:
+  api:
+    environment:
+      MICROLAB_SESSION_COOKIE_SECURE: "true"
   web:
     ports: !override
       - "${MICROLAB_HTTP_BIND:-0.0.0.0}:80:8080"

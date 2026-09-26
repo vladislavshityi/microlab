@@ -9,6 +9,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body
 
+from microlab_api.api.current_user import CurrentUser
 from microlab_api.circuit_schema.definitions import get_definition_registry
 from microlab_api.domain.validation import ValidationResult, validate_circuit
 from microlab_api.schemas.errors import ErrorResponse
@@ -22,6 +23,8 @@ from microlab_api.schemas.validation import (
 router = APIRouter(prefix="/circuits", tags=["circuits"])
 
 _RESPONSES: dict[int | str, dict[str, Any]] = {
+    401: {"model": ErrorResponse, "description": "Not logged in (AUTH_REQUIRED)."},
+    403: {"model": ErrorResponse, "description": "CSRF_FAILED or PASSWORD_CHANGE_REQUIRED."},
     422: {"model": ErrorResponse, "description": "Request body is not a JSON object."},
     500: {"model": ErrorResponse, "description": "Unexpected server error."},
 }
@@ -38,6 +41,7 @@ async def validate(
     document: Annotated[
         dict[str, Any], Body(description="Circuit document (CircuitDocument, schemaVersion 1).")
     ],
+    _user: CurrentUser,
 ) -> CircuitValidationResponse:
     return build_validation_response(document)
 

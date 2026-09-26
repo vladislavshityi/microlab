@@ -337,6 +337,7 @@ function CircuitFlow({ containerRef }: { containerRef: RefObject<HTMLDivElement 
     },
     [fit],
   );
+  const readOnly = useCircuitStore((state) => state.readOnly);
 
   return (
     <PinActionsContext.Provider value={pinActions}>
@@ -361,6 +362,7 @@ function CircuitFlow({ containerRef }: { containerRef: RefObject<HTMLDivElement 
           nodeTypes={NODE_TYPES}
           edgeTypes={EDGE_TYPES}
           onNodesChange={onNodesChange}
+          nodesDraggable={!readOnly}
           onEdgesChange={onEdgesChange}
           onNodeDragStart={beginGesture}
           onNodeDragStop={endGesture}

@@ -89,7 +89,7 @@ function loadErrorKind(error: unknown): LoadErrorKind {
     return error.code === "UNSUPPORTED_SCHEMA_VERSION" ? "unsupportedVersion" : "invalidDocument";
   }
   if (error instanceof ProjectApiError) {
-    if (error.code === "DEV_USER_MISSING") return "devUserMissing";
+    if (error.code === "PROJECT_NOT_FOUND") return "notFound";
     return error.retryable ? "network" : "server";
   }
   return "server";
@@ -108,6 +108,8 @@ export function failLoading(error: unknown): void {
  * отмены схемы и редактора кода сбрасывается.
  */
 export function openProject(project: ProjectDetail): boolean {
+  // Чужой проект (преподаватель, администратор) открывается только для просмотра.
+  const readOnly = project.access === "viewer";
   let circuit: CircuitDocument;
   try {
     circuit = parseCircuitDocument(project.circuit);
@@ -120,6 +122,8 @@ export function openProject(project: ProjectDetail): boolean {
   generation += 1;
   loading = true;
   try {
+    useCircuitStore.getState().setReadOnly(readOnly);
+    useEditorStore.setState({ readOnly });
     useCircuitStore.getState().loadDocument(circuit);
     useEditorStore.getState().loadCode(project.code);
   } finally {
@@ -138,15 +142,16 @@ export function openProject(project: ProjectDetail): boolean {
     status: "saved",
     errorKind: null,
     conflict: null,
+    readOnly: readOnly ? { ownerName: project.owner.displayName } : null,
   });
-  writeStorage(LAST_PROJECT_KEY, project.id);
+  if (!readOnly) writeStorage(LAST_PROJECT_KEY, project.id);
   return true;
 }
 
 /** Отмечает изменение рабочего документа и планирует автосохранение. */
 export function markChanged(): void {
   const state = useProjectStore.getState();
-  if (loading || state.phase !== "ready") return;
+  if (loading || state.phase !== "ready" || state.readOnly !== null) return;
   changeSeq += 1;
   if (state.status === "conflict") return;
   if (state.status !== "saving") {
@@ -168,6 +173,7 @@ async function performSave(): Promise<boolean> {
   if (state.phase !== "ready" || state.projectId === null || state.status === "conflict") {
     return false;
   }
+  if (state.readOnly !== null) return true;
   if (changeSeq === savedSeq) {
     if (state.status !== "saved") useProjectStore.setState({ status: "saved", errorKind: null });
     return true;

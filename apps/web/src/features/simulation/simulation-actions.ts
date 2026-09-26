@@ -49,6 +49,7 @@ export async function runSimulation(): Promise<void> {
   const projectId = currentProjectId();
   const store = useSimulationStore.getState();
   if (projectId === null || PENDING_PHASES.has(store.phase)) return;
+  if (useProjectStore.getState().readOnly !== null) return;
   store.beginRun();
   // Сервер проверяет и компилирует сохранённый проект: несохранённые правки сначала сохраняются.
   const saved = await flushBeforeLeave();

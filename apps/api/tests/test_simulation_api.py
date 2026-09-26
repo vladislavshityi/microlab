@@ -15,6 +15,7 @@ from microlab_api.app import create_app
 from microlab_api.circuit_schema.paths import package_dir
 from microlab_api.config import Settings
 from microlab_api.services.compiler_service import CompilerClient
+from tests.conftest import login_sync
 from tests.fake_supervisor import D13_HIGH, LED_ON, SERIAL, FakeSupervisor
 
 HEX = ":00000001FF\n"
@@ -101,6 +102,7 @@ def make_client(
         app.state.compiler = CompilerClient(settings, transport=httpx.MockTransport(compiler_stub))
         client = TestClient(app, base_url="http://testserver")
         client.__enter__()
+        login_sync(client)
         clients.append(client)
         return client
 
@@ -454,3 +456,29 @@ def test_start_payload_does_not_mutate_stored_circuit(make_client: ClientFactory
     client.post(_url(project_id, "start"))
     stored = client.get(f"/api/v1/projects/{project_id}").json()["circuit"]
     assert stored == circuit
+
+
+def test_websocket_requires_session(make_client: ClientFactory) -> None:
+    client = make_client()
+    project_id = _create_project(client)
+    client.cookies.clear()
+    with (
+        client.websocket_connect(_ws(project_id)) as ws,
+        pytest.raises(WebSocketDisconnect) as closed,
+    ):
+        ws.receive_json()
+    assert closed.value.code == 4401
+
+
+def test_second_project_replaces_users_running_simulation(make_client: ClientFactory) -> None:
+    client = make_client()
+    first = _create_project(client, _external_led())
+    second = _create_project(client, _external_led())
+    assert client.post(f"/api/v1/projects/{first}/simulation/start").status_code == 200
+    assert client.post(f"/api/v1/projects/{second}/simulation/start").status_code == 200
+    assert client.get(f"/api/v1/projects/{first}/simulation").json()["session"]["status"] == (
+        "stopped"
+    )
+    assert client.get(f"/api/v1/projects/{second}/simulation").json()["session"]["status"] == (
+        "running"
+    )
