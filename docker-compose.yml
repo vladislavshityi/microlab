@@ -71,8 +71,62 @@ services:
       timeout: 3s
       retries: 30
 
+  # Сервис симуляции: супервизор сессий и процессы microlab-sim-worker (недоверенная прошивка
+  # выполняется в эмуляторе). Без выхода в интернет и без опубликованных портов.
+  simulator:
+    build:
+      context: .
+      dockerfile: services/simulator/Dockerfile
+    image: microlab-simulator:dev
+    # tini в роли PID 1 собирает завершённые процессы worker.
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: 4
+    pids_limit: 64
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    environment:
+      SIM_MAX_SESSIONS: "8"
+      SIM_MAX_SESSION_SECONDS: "1800"
+      SIM_IDLE_TIMEOUT_SECONDS: "300"
+    networks: [simulator-internal]
+
+  # Только для разработки: WebSocket-прокси 127.0.0.1:8082 → simulator:8080 (как compiler-gateway).
+  # В production API подключается к simulator-internal напрямую.
+  simulator-gateway:
+    image: nginx:1.30.5-alpine@sha256:bf3201ab56f23e5954646379c775d511fc466e9f11376d9725361064ad07ed35
+    depends_on:
+      simulator:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+    pids_limit: 32
+    tmpfs:
+      - /var/cache/nginx:size=8m
+      - /var/run:size=1m
+    volumes:
+      - ./services/simulator/gateway.conf:/etc/nginx/nginx.conf:ro
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    ports:
+      - "127.0.0.1:${MICROLAB_SIMULATOR_PORT:-8082}:8080"
+    networks: [default, simulator-internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
 networks:
   compiler-internal:
+    internal: true
+  simulator-internal:
     internal: true
 
 volumes:

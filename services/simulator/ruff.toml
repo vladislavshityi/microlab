@@ -1,0 +1,11 @@
+# Настройки линтера супервизора симуляции (вне workspace API).
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = ["S101"]
+
+[lint.per-file-ignores]
+"supervisor.py" = ["E501"]
+"tests/*" = ["E501"]
