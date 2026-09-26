@@ -13,16 +13,44 @@ MicroLab — виртуальная лаборатория электроник�
 ## Структура
 
 ```text
-apps/api/                 FastAPI backend (Python 3.13, uv)
-apps/web/                 React + Vite + TypeScript frontend (pnpm)
+apps/api/                 FastAPI backend (Python 3.13, uv); Dockerfile — образ API и задачи миграций
+apps/web/                 React + Vite + TypeScript frontend (pnpm); Dockerfile — сборка SPA + nginx
 packages/circuit-schema/  единый источник формата схемы и определений компонентов
 services/compiler/        изолированный воркер компиляции (arduino-cli 1.5.1, arduino:avr 1.8.8)
-simulation/               зарезервировано под Simulation Worker
-docker-compose.yml        PostgreSQL 18 и воркер компиляции для разработки
-.github/workflows/        CI: backend.yml, frontend.yml
+services/simulator/       изолированный сервис симуляции (супервизор + microlab-sim-worker)
+simulation/               эмулятор ATmega328P и модели компонентов (Rust)
+deploy/nginx/             конфигурация nginx: SPA, прокси API/WebSocket, TLS, basic auth
+docker-compose.yml        полный стек в контейнерах
+docker-compose.dev.yml    дополнение для разработки: PostgreSQL и dev-шлюзы на 127.0.0.1
+docker-compose.tls.yml    дополнение для сервера: HTTPS
+docker-compose.auth.yml   дополнение: basic auth на весь сайт
+.github/workflows/        CI: backend.yml, frontend.yml, simulation.yml, docker.yml
 ```
 
-## Требования (macOS)
+## Быстрый запуск (Docker)
+
+Нужен только Docker (Docker Desktop, OrbStack или Docker Engine с плагином compose).
+
+```sh
+cp .env.example .env
+docker compose up -d --build --wait
+```
+
+Приложение: http://localhost:8080. Первая сборка скачивает toolchain Arduino и собирает эмулятор (несколько минут, ≈2 GB образов); повторные сборки используют кэш.
+
+Состав: `web` (nginx: SPA, прокси `/api/` и WebSocket `/api/v1/ws/`) → `api` (FastAPI) → `postgres`, `compiler`, `simulator`. Одноразовый `migrate` применяет миграции (и в `development` создаёт dev-пользователя) перед стартом API. Опубликован только порт nginx, по умолчанию на `127.0.0.1`; остальные контейнеры находятся во внутренних сетях без выхода в интернет.
+
+```sh
+docker compose ps                       # состояние
+docker compose logs -f api web          # логи
+docker compose up -d --build --wait     # после обновления кода
+docker compose down                     # остановить (данные БД сохраняются в volume)
+docker compose down -v                  # остановить и удалить данные
+```
+
+## Разработка
+
+Требования (macOS):
 
 | Инструмент | Версия | Установка |
 |---|---|---|
@@ -31,74 +59,109 @@ docker-compose.yml        PostgreSQL 18 и воркер компиляции д�
 | pnpm | 12.6.0 (`packageManager` в `package.json`) | `brew install pnpm` |
 | Docker | Docker Desktop или OrbStack с `docker compose` | https://www.docker.com/products/docker-desktop/ / https://orbstack.dev |
 
-Python устанавливать не нужно — uv скачает CPython 3.13 по `apps/api/.python-version`. Python-зависимости живут только в виртуальном окружении `apps/api/.venv`, которым управляет uv; не используйте `pip install` в системный Python, `sudo` и глобальные `npm -g`.
+Python устанавливать не нужно — uv скачает CPython 3.13 по `apps/api/.python-version`. Python-зависимости живут только в `apps/api/.venv`; не используйте `pip install` в системный Python, `sudo` и глобальные `npm -g`.
 
-## Запуск
-
-### 1. Конфигурация и PostgreSQL
-
-Из корня репозитория:
+API и Vite работают на хосте, в Docker — PostgreSQL, воркер компиляции и сервис симуляции. Контейнеры во внутренних сетях недоступны с хоста, поэтому `docker-compose.dev.yml` публикует PostgreSQL на `127.0.0.1:5433` и добавляет dev-шлюзы `127.0.0.1:8081` → `compiler` и `127.0.0.1:8082` → `simulator` (сами сервисы остаются без выхода в интернет).
 
 ```sh
-cp .env.example .env              # .env не коммитится
-docker compose up -d --wait       # PostgreSQL 18 на 127.0.0.1:5433, воркер компиляции на 127.0.0.1:8081
+cp .env.example .env
+# в .env раскомментировать: COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
+docker compose up -d --wait postgres compiler-gateway simulator-gateway
 ```
 
-Первая сборка образа воркера компиляции скачивает arduino-cli и toolchain (≈400 MB, несколько минут).
+Без `COMPOSE_FILE` в `.env` указывайте оба файла: `docker compose -f docker-compose.yml -f docker-compose.dev.yml ...`.
 
-### 2. Backend
+Backend:
 
 ```sh
 cd apps/api
 uv sync --locked                                        # создаёт apps/api/.venv
 uv run alembic upgrade head                             # миграции
 uv run python -m microlab_api.scripts.seed_dev_user     # dev-пользователь (только MICROLAB_ENV=development), идемпотентно
-uv run uvicorn microlab_api.main:app --host 127.0.0.1 --port 8000
-```
-
-С автоперезапуском при изменении кода:
-
-```sh
 uv run uvicorn microlab_api.main:app --app-dir src --reload --reload-dir src --host 127.0.0.1 --port 8000
-```
-
-Проверка:
-
-```sh
-curl -i http://127.0.0.1:8000/api/v1/health
-# 200 {"status":"ok","version":"0.1.0","checks":{"database":{"status":"ok"}}}
-# 503 {"status":"unavailable",...,"checks":{"database":{"status":"error","code":"DATABASE_UNAVAILABLE"}}} — БД недоступна
+curl -i http://127.0.0.1:8000/api/v1/health             # 200 — API и БД доступны, 503 — БД недоступна
 ```
 
 Swagger UI (кроме production): http://127.0.0.1:8000/api/docs.
 
-### 3. Frontend
-
-В другом терминале, из корня репозитория:
+Frontend (в другом терминале, из корня):
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev                          # http://localhost:5173
 ```
 
-Vite проксирует `/api` → `http://127.0.0.1:8000`; другой адрес API задаётся переменной `API_PROXY_TARGET`. Без запущенного backend страница показывает «Backend недоступен», при остановленной БД — «БД недоступна».
+Vite проксирует `/api` → `http://127.0.0.1:8000`; другой адрес API задаётся переменной `API_PROXY_TARGET`.
+
+## Развёртывание на сервере
+
+> **Внимание.** Аутентификации пока нет. API работает в однопользовательском режиме `MICROLAB_ENV=development`: любой, кто откроет сайт, видит и изменяет все проекты. Не публикуйте MicroLab в интернете без защиты доступа — basic auth (`docker-compose.auth.yml`), VPN или закрытая сеть. В `MICROLAB_ENV=production` API проектов отключён до появления аутентификации.
+
+Linux-сервер с Docker Engine и плагином compose (https://docs.docker.com/engine/install/), открытые порты 80 и 443, DNS-имя (ниже `lab.example.org`).
+
+1. Код и конфигурация:
+
+   ```sh
+   sudo git clone <repo-url> /opt/microlab && cd /opt/microlab
+   sudo cp .env.example .env && sudo chmod 600 .env
+   ```
+
+   В `.env` задать `MICROLAB_POSTGRES_PASSWORD=$(openssl rand -hex 24)` (до первого запуска: пароль применяется только при создании volume), `MICROLAB_TLS_DIR=/etc/microlab/tls`, `MICROLAB_HTPASSWD_FILE=/etc/microlab/htpasswd`.
+
+2. Пользователи basic auth (nginx в контейнере работает с gid 101):
+
+   ```sh
+   sudo install -d -m 0755 /etc/microlab /etc/microlab/tls
+   printf 'teacher:%s\n' "$(openssl passwd -6)" | sudo tee -a /etc/microlab/htpasswd >/dev/null
+   sudo chgrp 101 /etc/microlab/htpasswd && sudo chmod 0640 /etc/microlab/htpasswd
+   ```
+
+3. Сертификат Let's Encrypt (certbot на хосте, режим standalone: на время выпуска и продления nginx останавливается, затем сертификат копируется в `/etc/microlab/tls`):
+
+   ```sh
+   C="docker compose --project-directory /opt/microlab -f /opt/microlab/docker-compose.yml -f /opt/microlab/docker-compose.tls.yml -f /opt/microlab/docker-compose.auth.yml"
+   sudo certbot certonly --standalone -d lab.example.org \
+     --pre-hook "$C stop web" --post-hook "$C start web" \
+     --deploy-hook 'install -m 0644 "$RENEWED_LINEAGE/fullchain.pem" /etc/microlab/tls/fullchain.pem && install -m 0640 -g 101 "$RENEWED_LINEAGE/privkey.pem" /etc/microlab/tls/privkey.pem'
+   ```
+
+   Хуки сохраняются в конфигурации certbot, и `certbot renew` (таймер systemd пакета certbot) выполняет их при продлении.
+
+4. Запуск:
+
+   ```sh
+   sudo docker compose -f docker-compose.yml -f docker-compose.tls.yml -f docker-compose.auth.yml up -d --build --wait
+   ```
+
+   HTTP (80) перенаправляет на HTTPS (443), включены HTTP/2 и HSTS. Если TLS завершается внешним прокси, вместо `docker-compose.tls.yml` задайте `MICROLAB_HTTP_BIND`/`MICROLAB_HTTP_PORT` и проксируйте на этот порт (включая WebSocket `/api/v1/ws/`).
+
+5. Обновление: `git pull`, затем та же команда `up -d --build --wait` (миграции применяются автоматически).
+
+6. Резервная копия и восстановление БД:
+
+   ```sh
+   sudo docker compose exec -T postgres pg_dump -U microlab -d microlab -Fc > microlab-$(date +%F).dump
+   sudo docker compose exec -T postgres pg_restore -U microlab -d microlab --clean --if-exists < microlab-2026-01-01.dump
+   ```
 
 ## Конфигурация
 
-Переменные окружения `MICROLAB_*` (полный список с комментариями — `.env.example`):
+Переменные окружения `MICROLAB_*` (полный список с комментариями — `.env.example`). Порядок источников для API на хосте: окружение процесса → `apps/api/.env` → `.env` в корне. В контейнерах значения задаёт `docker-compose.yml`.
 
 | Переменная | По умолчанию | Назначение |
 |---|---|---|
 | `MICROLAB_ENV` | — (обязательна) | `development` / `test` / `production` |
-| `MICROLAB_DATABASE_URL` | — (обязательна) | DSN `postgresql+asyncpg://...` |
+| `MICROLAB_POSTGRES_PASSWORD` | — (обязательна для compose) | пароль БД; на сервере — случайный |
+| `MICROLAB_HTTP_BIND` / `MICROLAB_HTTP_PORT` | `127.0.0.1` / `8080` | адрес и порт nginx полного стека |
+| `MICROLAB_EDGE_SUBNET` | `10.253.83.0/29` | подсеть nginx ↔ API (доверие к `X-Forwarded-*`) |
+| `MICROLAB_TLS_DIR` / `MICROLAB_HTPASSWD_FILE` | — | сертификаты и htpasswd для `docker-compose.tls.yml` / `docker-compose.auth.yml` |
+| `MICROLAB_DATABASE_URL` | — (обязательна для API на хосте) | DSN `postgresql+asyncpg://...` |
 | `MICROLAB_LOG_LEVEL` | `INFO` | уровень логирования |
-| `MICROLAB_LOG_FORMAT` | `json` | `json` или `console` |
-| `MICROLAB_POSTGRES_PORT` | `5433` | порт PostgreSQL на хосте (читает `docker-compose.yml`) |
+| `MICROLAB_LOG_FORMAT` | `json` | `json` или `console` (API на хосте) |
 | `MICROLAB_COMPILER_URL` | — | адрес воркера компиляции; не задан — `POST /compile` отвечает 503 |
 | `MICROLAB_COMPILER_TIMEOUT_SECONDS` | `90` | общий таймаут запроса к воркеру |
-| `MICROLAB_COMPILER_PORT` | `8081` | порт dev-шлюза воркера на хосте (читает `docker-compose.yml`) |
-
-Порядок источников: переменные окружения процесса → `apps/api/.env` → `.env` в корне репозитория.
+| `MICROLAB_SIMULATOR_URL` | — | адрес сервиса симуляции (WebSocket) |
+| `MICROLAB_POSTGRES_PORT` / `MICROLAB_COMPILER_PORT` / `MICROLAB_SIMULATOR_PORT` | `5433` / `8081` / `8082` | порты `docker-compose.dev.yml` на 127.0.0.1 |
 
 ## Проверки (как в CI)
 
@@ -147,7 +210,7 @@ cd ../.. && pnpm gen:api && pnpm typecheck                            # обно
 
 Воркер `services/compiler` запускается только в контейнере: версии arduino-cli, базового образа и платформы зафиксированы, контрольные суммы проверяются при сборке образа; профиль `sketch.yaml` фиксирует FQBN и `arduino:avr (1.8.8)` без сторонних библиотек (доступны только библиотеки платформы). Изоляция: пользователь без root, read-only root FS, `cap_drop: ALL`, `no-new-privileges`, лимиты памяти/CPU/процессов, tmpfs с `noexec`, внутренняя сеть без выхода в интернет. Каждая компиляция — новая временная директория, таймаут 60 с (все процессы сборки завершаются), `prlimit` на CPU/память/размер файлов/число процессов, исходник до 256 KiB, вывод до 64 KB, не более 2 компиляций одновременно (очередь ждёт 10 с, затем `COMPILER_BUSY`).
 
-Контейнеры во внутренней сети недоступны с хоста, поэтому для разработки добавлен шлюз `compiler-gateway` (nginx, `127.0.0.1:8081` → `compiler:8080`). В production API подключается к внутренней сети напрямую, шлюз не нужен. Каждый ответ содержит заголовок `X-Request-ID`, этот же id пишется в логи.
+Воркер доступен только во внутренней сети: в полном стеке API обращается к нему напрямую, при разработке — через dev-шлюз `compiler-gateway` (`127.0.0.1:8081`). Каждый ответ содержит заголовок `X-Request-ID`, этот же id пишется в логи.
 
 ## Миграции
 
@@ -164,8 +227,8 @@ uv run alembic revision --autogenerate --rev-id 0002 -m "описание"
 ## Остановка
 
 ```sh
-docker compose stop        # остановить PostgreSQL, данные сохраняются
-docker compose down -v     # удалить контейнер и данные
+docker compose stop        # остановить контейнеры, данные сохраняются
+docker compose down -v     # удалить контейнеры и данные
 ```
 
 ## Особенности окружения

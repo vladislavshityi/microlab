@@ -1,37 +1,57 @@
-# MicroLab — локальная инфраструктура для разработки.
-# PostgreSQL и изолированный воркер компиляции; API запускается локально через uv.
+# MicroLab — полный стек в контейнерах (локальный запуск и сервер).
+#
+#   docker compose up -d --build     → http://localhost:8080
+#
+# Наружу публикуется только nginx (web). PostgreSQL, API, воркер компиляции и сервис
+# симуляции находятся во внутренних сетях без выхода в интернет.
+# Дополнительные файлы:
+#   docker-compose.dev.yml   — разработка: API и Vite на хосте (PostgreSQL и dev-шлюзы на 127.0.0.1)
+#   docker-compose.tls.yml   — HTTPS на сервере (порты 80/443)
+#   docker-compose.auth.yml  — basic auth на весь сайт
 name: microlab
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
 
 services:
   postgres:
-    image: postgres:18
+    image: postgres:18.6-trixie@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+    restart: unless-stopped
     environment:
-      # Учётные данные только для разработки. Не использовать в production.
       POSTGRES_USER: microlab
-      POSTGRES_PASSWORD: microlab
       POSTGRES_DB: microlab
-    ports:
-      # Только loopback: БД не доступна из локальной сети.
-      - "127.0.0.1:${MICROLAB_POSTGRES_PORT:-5433}:5432"
+      # Обязателен; применяется только при создании пустого volume.
+      POSTGRES_PASSWORD: ${MICROLAB_POSTGRES_PASSWORD:?задайте MICROLAB_POSTGRES_PASSWORD в .env}
     volumes:
       # Для образов postgres 18+ volume монтируется в /var/lib/postgresql.
       - postgres-data:/var/lib/postgresql
+    security_opt: ["no-new-privileges:true"]
+    shm_size: 128m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U microlab -d microlab"]
       interval: 2s
       timeout: 3s
       retries: 30
       start_period: 5s
+    networks: [db]
+    logging: *logging
 
   # Воркер компиляции: выполняет недоверенный код (сборку скетча) без доступа в сеть.
   compiler:
     build: services/compiler
     image: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8
+    restart: unless-stopped
     # tini в роли PID 1 собирает осиротевшие процессы компилятора после таймаута.
     init: true
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
+    <<: *hardening
     mem_limit: 1g
     memswap_limit: 1g
     cpus: 2
@@ -41,35 +61,7 @@ services:
       - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
     # Только внутренняя сеть: нет выхода в интернет и нет опубликованных портов.
     networks: [compiler-internal]
-
-  # Только для разработки: API запускается на хосте, а контейнеры во внутренней сети
-  # недоступны с хоста. Шлюз проксирует 127.0.0.1:8081 → compiler:8080; сам воркер при этом
-  # остаётся без выхода в интернет. В production API подключается к compiler-internal напрямую.
-  compiler-gateway:
-    image: nginx:1.30.5-alpine@sha256:bf3201ab56f23e5954646379c775d511fc466e9f11376d9725361064ad07ed35
-    depends_on:
-      compiler:
-        condition: service_healthy
-    read_only: true
-    cap_drop: [ALL]
-    cap_add: [CHOWN, SETGID, SETUID]
-    security_opt: ["no-new-privileges:true"]
-    mem_limit: 64m
-    pids_limit: 32
-    tmpfs:
-      - /var/cache/nginx:size=8m
-      - /var/run:size=1m
-    volumes:
-      - ./services/compiler/gateway.conf:/etc/nginx/nginx.conf:ro
-    entrypoint: ["nginx", "-g", "daemon off;"]
-    ports:
-      - "127.0.0.1:${MICROLAB_COMPILER_PORT:-8081}:8080"
-    networks: [default, compiler-internal]
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+    logging: *logging
 
   # Сервис симуляции: супервизор сессий и процессы microlab-sim-worker (недоверенная прошивка
   # выполняется в эмуляторе). Без выхода в интернет и без опубликованных портов.
@@ -78,11 +70,10 @@ services:
       context: .
       dockerfile: services/simulator/Dockerfile
     image: microlab-simulator:dev
+    restart: unless-stopped
     # tini в роли PID 1 собирает завершённые процессы worker.
     init: true
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
+    <<: *hardening
     mem_limit: 1g
     memswap_limit: 1g
     cpus: 4
@@ -94,36 +85,86 @@ services:
       SIM_MAX_SESSION_SECONDS: "1800"
       SIM_IDLE_TIMEOUT_SECONDS: "300"
     networks: [simulator-internal]
+    logging: *logging
 
-  # Только для разработки: WebSocket-прокси 127.0.0.1:8082 → simulator:8080 (как compiler-gateway).
-  # В production API подключается к simulator-internal напрямую.
-  simulator-gateway:
-    image: nginx:1.30.5-alpine@sha256:bf3201ab56f23e5954646379c775d511fc466e9f11376d9725361064ad07ed35
+  # Одноразовая задача: миграции БД и dev-пользователь (только MICROLAB_ENV=development).
+  migrate:
+    image: microlab-api:local
+    pull_policy: never
+    command: ["microlab-migrate"]
+    restart: "no"
+    <<: *hardening
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    environment: &api-env
+      MICROLAB_ENV: ${MICROLAB_ENV:?задайте MICROLAB_ENV в .env}
+      MICROLAB_DATABASE_URL: postgresql+asyncpg://microlab:${MICROLAB_POSTGRES_PASSWORD}@postgres:5432/microlab
+      MICROLAB_LOG_LEVEL: ${MICROLAB_LOG_LEVEL:-INFO}
+      MICROLAB_LOG_FORMAT: json
+      MICROLAB_COMPILER_URL: http://compiler:8080
+      MICROLAB_SIMULATOR_URL: ws://simulator:8080
+      # X-Forwarded-* принимаются только от nginx (подсеть сети edge).
+      MICROLAB_FORWARDED_ALLOW_IPS: ${MICROLAB_EDGE_SUBNET:-10.253.83.0/29}
     depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [db]
+    logging: *logging
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: microlab-api:local
+    restart: unless-stopped
+    <<: *hardening
+    mem_limit: 512m
+    pids_limit: 64
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    environment: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      compiler:
+        condition: service_healthy
       simulator:
         condition: service_healthy
-    read_only: true
-    cap_drop: [ALL]
-    cap_add: [CHOWN, SETGID, SETUID]
-    security_opt: ["no-new-privileges:true"]
-    mem_limit: 64m
-    pids_limit: 32
+    # Все сети внутренние: API доступен только через nginx и не имеет выхода в интернет.
+    networks: [edge, db, compiler-internal, simulator-internal]
+    logging: *logging
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: microlab-web:local
+    restart: unless-stopped
+    <<: *hardening
+    mem_limit: 128m
+    pids_limit: 64
     tmpfs:
-      - /var/cache/nginx:size=8m
-      - /var/run:size=1m
-    volumes:
-      - ./services/simulator/gateway.conf:/etc/nginx/nginx.conf:ro
-    entrypoint: ["nginx", "-g", "daemon off;"]
+      - /tmp:size=32m,mode=1777,noexec,nosuid,nodev
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
-      - "127.0.0.1:${MICROLAB_SIMULATOR_PORT:-8082}:8080"
-    networks: [default, simulator-internal]
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+      # По умолчанию только loopback; на сервере — MICROLAB_HTTP_BIND=0.0.0.0 или docker-compose.tls.yml.
+      - "${MICROLAB_HTTP_BIND:-127.0.0.1}:${MICROLAB_HTTP_PORT:-8080}:8080"
+    networks: [edge, public]
+    logging: *logging
 
 networks:
+  # nginx ↔ API. Фиксированная подсеть: API доверяет X-Forwarded-* только из неё.
+  edge:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${MICROLAB_EDGE_SUBNET:-10.253.83.0/29}
+  # Сеть для публикации порта nginx.
+  public: {}
+  db:
+    internal: true
   compiler-internal:
     internal: true
   simulator-internal:

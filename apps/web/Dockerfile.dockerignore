@@ -1,0 +1,12 @@
+# Контекст сборки — корень репозитория; в образ frontend попадают только перечисленные пути.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/web
+!packages/circuit-schema
+!deploy/nginx
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/.DS_Store

@@ -1,0 +1,128 @@
+name: docker
+
+# Сборка всех образов и smoke-тест полного стека (docker-compose.yml) через nginx.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    env:
+      BASE_URL: http://127.0.0.1:8080
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4.4.1
+
+      # Теги совпадают с image сервисов в docker-compose.yml; кэш слоёв — в GitHub Actions.
+      - name: Build compiler image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: services/compiler
+          tags: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8
+          load: true
+          cache-from: type=gha,scope=compiler
+          cache-to: type=gha,scope=compiler,mode=max
+
+      - name: Build simulator image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: services/simulator/Dockerfile
+          tags: microlab-simulator:dev
+          load: true
+          cache-from: type=gha,scope=simulator
+          cache-to: type=gha,scope=simulator,mode=max
+
+      - name: Build API image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          tags: microlab-api:local
+          load: true
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Build web image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          tags: microlab-web:local
+          load: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+      - name: Start stack
+        run: |
+          cp .env.example .env
+          docker compose up -d --no-build --wait --wait-timeout 180
+
+      - name: Only nginx is published
+        run: |
+          published="$(docker compose ps --format '{{.Service}} {{.Ports}}' | grep -e '->' | awk '{print $1}' | sort -u)"
+          echo "published: ${published}"
+          test "${published}" = "web"
+
+      - name: API health through nginx
+        run: |
+          code="$(curl -s -o health.json -w '%{http_code}' "${BASE_URL}/api/v1/health")"
+          cat health.json; echo
+          test "${code}" = "200"
+
+      - name: SPA and assets
+        run: |
+          curl -fsS -D headers.txt -o index.html "${BASE_URL}/"
+          grep -q '<div id="root">' index.html
+          grep -qi '^content-security-policy:' headers.txt
+          grep -qi '^cache-control: no-cache' headers.txt
+          # История SPA: неизвестный путь отдаёт index.html.
+          curl -fsS "${BASE_URL}/projects/some-route" | grep -q '<div id="root">'
+          asset="$(grep -o '/assets/index-[^"]*\.js' index.html | head -n 1)"
+          curl -fsS -D asset-headers.txt -o /dev/null "${BASE_URL}${asset}"
+          grep -qi '^cache-control: public, max-age=31536000, immutable' asset-headers.txt
+
+      - name: Project and compilation through nginx
+        run: |
+          project="$(curl -fsS -X POST "${BASE_URL}/api/v1/projects" \
+            -H 'Content-Type: application/json' -d '{"name":"CI smoke"}' | jq -r .id)"
+          echo "PROJECT_ID=${project}" >> "${GITHUB_ENV}"
+          jq -n --arg code "$(printf 'void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(1000);\n  digitalWrite(13, LOW);\n  delay(1000);\n}\n')" '{code: $code}' \
+            | curl -fsS -X POST "${BASE_URL}/api/v1/compile" -H 'Content-Type: application/json' -d @- \
+            | jq -e '.status == "success"'
+
+      - name: WebSocket handshake through nginx
+        run: |
+          # 101 Switching Protocols; затем соединение остаётся открытым до --max-time.
+          code="$(curl -s -o /dev/null -w '%{http_code}' --http1.1 --max-time 5 \
+            -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+            -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+            -H 'Origin: http://127.0.0.1:8080' \
+            "${BASE_URL}/api/v1/ws/projects/${PROJECT_ID}/simulation" || true)"
+          echo "handshake: ${code}"
+          test "${code}" = "101"
+
+      - name: Stack logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v

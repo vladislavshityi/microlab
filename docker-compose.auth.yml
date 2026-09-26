@@ -1,0 +1,12 @@
+# Дополнение: basic auth на весь сайт (кроме /nginx-health). Используется, пока в приложении
+# нет собственной аутентификации.
+#
+#   docker compose -f docker-compose.yml [-f docker-compose.tls.yml] -f docker-compose.auth.yml up -d
+#
+# MICROLAB_HTPASSWD_FILE — файл htpasswd на хосте (создание — README).
+
+services:
+  web:
+    volumes:
+      - ./deploy/nginx/basic-auth.conf:/etc/nginx/microlab/auth/basic-auth.conf:ro
+      - ${MICROLAB_HTPASSWD_FILE:?задайте MICROLAB_HTPASSWD_FILE в .env}:/etc/nginx/microlab/htpasswd:ro

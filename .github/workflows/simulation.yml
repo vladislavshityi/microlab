@@ -8,6 +8,7 @@ on:
       - "services/simulator/**"
       - "packages/circuit-schema/definitions/**"
       - "docker-compose.yml"
+      - "docker-compose.dev.yml"
       - ".github/workflows/simulation.yml"
   pull_request:
     paths:
@@ -15,6 +16,7 @@ on:
       - "services/simulator/**"
       - "packages/circuit-schema/definitions/**"
       - "docker-compose.yml"
+      - "docker-compose.dev.yml"
       - ".github/workflows/simulation.yml"
 
 permissions:
@@ -55,6 +57,12 @@ jobs:
   simulator:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+
+    # docker compose: dev-дополнение с шлюзом на 127.0.0.1:8082 (одноразовые значения CI).
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.dev.yml
+      MICROLAB_ENV: test
+      MICROLAB_POSTGRES_PASSWORD: microlab
 
     steps:
       - uses: actions/checkout@v7

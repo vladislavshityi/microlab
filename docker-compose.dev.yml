@@ -1,0 +1,58 @@
+# Дополнение для разработки: API (uv) и Vite запускаются на хосте.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml \
+#     up -d --wait postgres compiler-gateway simulator-gateway
+#
+# Публикует PostgreSQL на 127.0.0.1 и добавляет dev-шлюзы к воркеру компиляции и сервису
+# симуляции: контейнеры во внутренних сетях недоступны с хоста, а сами сервисы остаются
+# без выхода в интернет. В полном стеке (docker-compose.yml) API подключается к ним напрямую.
+
+x-gateway: &gateway
+  image: nginx:1.30.5-alpine@sha256:bf3201ab56f23e5954646379c775d511fc466e9f11376d9725361064ad07ed35
+  read_only: true
+  cap_drop: [ALL]
+  cap_add: [CHOWN, SETGID, SETUID]
+  security_opt: ["no-new-privileges:true"]
+  mem_limit: 64m
+  pids_limit: 32
+  tmpfs:
+    - /var/cache/nginx:size=8m
+    - /var/run:size=1m
+  entrypoint: ["nginx", "-g", "daemon off;"]
+  healthcheck:
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+    interval: 2s
+    timeout: 3s
+    retries: 30
+
+services:
+  postgres:
+    ports:
+      # Только loopback: БД не доступна из локальной сети.
+      - "127.0.0.1:${MICROLAB_POSTGRES_PORT:-5433}:5432"
+    # Сеть db внутренняя; публикация порта требует обычной сети.
+    networks: [db, default]
+
+  # 127.0.0.1:8081 → compiler:8080
+  compiler-gateway:
+    <<: *gateway
+    depends_on:
+      compiler:
+        condition: service_healthy
+    volumes:
+      - ./services/compiler/gateway.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "127.0.0.1:${MICROLAB_COMPILER_PORT:-8081}:8080"
+    networks: [default, compiler-internal]
+
+  # 127.0.0.1:8082 → simulator:8080 (WebSocket /sessions)
+  simulator-gateway:
+    <<: *gateway
+    depends_on:
+      simulator:
+        condition: service_healthy
+    volumes:
+      - ./services/simulator/gateway.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "127.0.0.1:${MICROLAB_SIMULATOR_PORT:-8082}:8080"
+    networks: [default, simulator-internal]

@@ -8,6 +8,7 @@ on:
       - "packages/circuit-schema/**"
       - "services/compiler/**"
       - "docker-compose.yml"
+      - "docker-compose.dev.yml"
       - ".env.example"
       - ".github/workflows/backend.yml"
   pull_request:
@@ -16,6 +17,7 @@ on:
       - "packages/circuit-schema/**"
       - "services/compiler/**"
       - "docker-compose.yml"
+      - "docker-compose.dev.yml"
       - ".env.example"
       - ".github/workflows/backend.yml"
 
@@ -33,8 +35,8 @@ jobs:
 
     services:
       postgres:
-        # Тот же тег, что в docker-compose.yml.
-        image: postgres:18
+        # Тот же образ, что в docker-compose.yml.
+        image: postgres:18.6-trixie@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
         env:
           POSTGRES_USER: microlab
           POSTGRES_PASSWORD: microlab
@@ -113,6 +115,9 @@ jobs:
       # Недоступный воркер — ошибка, а не пропуск тестов.
       MICROLAB_REQUIRE_COMPILER: "1"
       MICROLAB_LOG_FORMAT: json
+      # docker compose: dev-дополнение с шлюзом на 127.0.0.1:8081 (одноразовый пароль CI).
+      COMPOSE_FILE: docker-compose.yml:docker-compose.dev.yml
+      MICROLAB_POSTGRES_PASSWORD: microlab
 
     steps:
       - uses: actions/checkout@v7

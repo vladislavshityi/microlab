@@ -1,0 +1,15 @@
+# Дополнение для сервера: HTTPS в nginx (порты 80 → перенаправление, 443 — приложение).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
+#
+# MICROLAB_TLS_DIR — каталог на хосте с fullchain.pem и privkey.pem (ключ читается
+# пользователем nginx с uid/gid 101). Порядок получения сертификата — README.
+
+services:
+  web:
+    ports: !override
+      - "${MICROLAB_HTTP_BIND:-0.0.0.0}:80:8080"
+      - "${MICROLAB_HTTP_BIND:-0.0.0.0}:443:8443"
+    volumes:
+      - ./deploy/nginx/tls.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${MICROLAB_TLS_DIR:?задайте MICROLAB_TLS_DIR в .env}:/etc/nginx/tls:ro
