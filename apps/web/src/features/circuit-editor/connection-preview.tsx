@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useReactFlow, ViewportPortal } from "@xyflow/react";
 
 import { pinKey } from "@/features/circuit-model/connection-rules";
-import { GRID_PX, resolveInstancePin, worldToGrid } from "@/features/circuit-model/geometry";
+import { GRID_PX, instanceBox, resolveInstancePin, worldToGrid } from "@/features/circuit-model/geometry";
 import { autoRoute } from "@/features/circuit-model/routing";
 import { useCircuitStore } from "@/stores/circuit-store";
 
@@ -46,7 +46,8 @@ export function ConnectionPreview() {
     return null;
   }
   const target = worldToGrid(cursor);
-  const points = autoRoute(origin.point, origin.direction, target, null);
+  const box = origin.direction === null || source === undefined ? undefined : instanceBox(source);
+  const points = autoRoute(origin.point, origin.direction, target, null, box === undefined ? [] : [box]);
   const path = points
     .map((point, index) => `${index === 0 ? "M" : "L"}${point.x * GRID_PX} ${point.y * GRID_PX}`)
     .join(" ");

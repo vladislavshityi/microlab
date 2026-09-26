@@ -16,6 +16,7 @@ import {
 import { usePinActions } from "./canvas-context";
 import { pinLayouts, type CircuitFlowNode } from "./flow-model";
 import { rotationTransform } from "./rotation";
+import { SelectionFrame } from "./selection-frame";
 
 /** Цвет линии шины: «+» (p) — красный, «−» (n) — синий. Только визуальная пометка. */
 const RAIL_COLORS: Readonly<Record<string, string>> = { p: "#dc2626", n: "#2563eb" };
@@ -171,7 +172,7 @@ const WireEndHandles = memo(function WireEndHandles({
  * Наведение подсвечивает всю полосу (узел) отверстия; щелчок или перетаскивание от
  * отверстия начинает провод, как от обычного вывода.
  */
-export const BreadboardNode = memo(function BreadboardNode({ data }: NodeProps<CircuitFlowNode>) {
+export const BreadboardNode = memo(function BreadboardNode({ data, selected }: NodeProps<CircuitFlowNode>) {
   const { componentId, definition, rotation } = data;
   const actions = usePinActions();
   const occupied = useCircuitStore((state) => occupiedHoles(state).get(componentId) ?? "");
@@ -240,6 +241,7 @@ export const BreadboardNode = memo(function BreadboardNode({ data }: NodeProps<C
           />
         </g>
       </svg>
+      <SelectionFrame width={size.width * GRID_PX} height={size.height * GRID_PX} selected={selected} />
       <WireEndHandles componentId={componentId} definition={definition} rotation={rotation} pinIds={wireEnds} />
     </div>
   );

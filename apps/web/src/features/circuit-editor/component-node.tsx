@@ -10,6 +10,7 @@ import { useCircuitStore } from "@/stores/circuit-store";
 import { usePinActions } from "./canvas-context";
 import { componentSummary, PIN_HIT_PX, pinLayouts, type CircuitFlowNode, type PinLayout } from "./flow-model";
 import { ELECTRICAL_TYPE_LABELS } from "./pin-labels";
+import { SelectionFrame } from "./selection-frame";
 import { ComponentSymbol } from "./symbols";
 
 interface PinHandleProps {
@@ -70,9 +71,17 @@ interface NodeBodyProps {
   rotation: Rotation;
   properties: CircuitFlowNode["data"]["properties"];
   isBoard: boolean;
+  selected: boolean;
 }
 
-const NodeBody = memo(function NodeBody({ componentId, definition, rotation, properties, isBoard }: NodeBodyProps) {
+const NodeBody = memo(function NodeBody({
+  componentId,
+  definition,
+  rotation,
+  properties,
+  isBoard,
+  selected,
+}: NodeBodyProps) {
   const size = rotatedSize(definition.visual, rotation);
   const width = size.width * GRID_PX;
   const height = size.height * GRID_PX;
@@ -87,6 +96,7 @@ const NodeBody = memo(function NodeBody({ componentId, definition, rotation, pro
         widthPx={width}
         heightPx={height}
       />
+      <SelectionFrame width={width} height={height} selected={selected} />
       {layouts.map((layout) => {
         const pin = definition.pins.find((candidate) => candidate.id === layout.id);
         return pin === undefined ? null : (
@@ -94,8 +104,9 @@ const NodeBody = memo(function NodeBody({ componentId, definition, rotation, pro
         );
       })}
       {!isBoard && (
-        <div className="pointer-events-none absolute top-full left-1/2 mt-0.5 -translate-x-1/2 font-mono text-[10px] leading-none whitespace-nowrap text-muted-foreground">
-          {summary === null ? componentId : `${componentId} · ${summary}`}
+        // Центрирование без transform: сдвиг на полпикселя размывал бы подпись.
+        <div className="pointer-events-none absolute inset-x-0 top-full mt-0.5 flex justify-center font-mono text-[10px] leading-none whitespace-nowrap text-muted-foreground">
+          <span>{summary === null ? componentId : `${componentId} · ${summary}`}</span>
         </div>
       )}
     </div>
@@ -103,7 +114,7 @@ const NodeBody = memo(function NodeBody({ componentId, definition, rotation, pro
 });
 
 /** Узел холста для платы или компонента; данные — из Circuit Model. */
-export const ComponentNode = memo(function ComponentNode({ data }: NodeProps<CircuitFlowNode>) {
+export const ComponentNode = memo(function ComponentNode({ data, selected }: NodeProps<CircuitFlowNode>) {
   return (
     <NodeBody
       componentId={data.componentId}
@@ -111,6 +122,7 @@ export const ComponentNode = memo(function ComponentNode({ data }: NodeProps<Cir
       rotation={data.rotation}
       properties={data.properties}
       isBoard={data.isBoard}
+      selected={selected}
     />
   );
 });

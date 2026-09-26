@@ -189,7 +189,18 @@ function CircuitFlow({ containerRef }: { containerRef: RefObject<HTMLDivElement 
   const connectionOrder = useCircuitStore((state) => state.connectionOrder);
   const selection = useCircuitStore((state) => state.selection);
   const pending = useCircuitStore((state) => state.pendingConnection !== null);
-  const { screenToFlowPosition, fitView } = useReactFlow<CircuitFlowNode, WireFlowEdge>();
+  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow<CircuitFlowNode, WireFlowEdge>();
+
+  // Сдвиг холста округляется до целых пикселей: при дробном сдвиге линии символов
+  // попадают между пикселями экрана и сглаживаются (выглядят размытыми).
+  const snapViewport = useCallback(() => {
+    const viewport = getViewport();
+    const x = Math.round(viewport.x);
+    const y = Math.round(viewport.y);
+    if (x !== viewport.x || y !== viewport.y) {
+      void setViewport({ x, y, zoom: viewport.zoom }, { duration: 0 });
+    }
+  }, [getViewport, setViewport]);
 
   const [buildNodes] = useState(createNodeBuilder);
   const [buildEdges] = useState(createEdgeBuilder);
@@ -247,15 +258,17 @@ function CircuitFlow({ containerRef }: { containerRef: RefObject<HTMLDivElement 
   );
 
   const fit = useCallback(() => {
-    void fitView({ padding: 0.15, duration: 0 });
-  }, [fitView]);
+    void fitView({ padding: 0.15, duration: 0 }).then(snapViewport);
+  }, [fitView, snapViewport]);
 
   // Показ объектов по запросу (щелчок на замечании в панели «Проблемы»).
   const canvasFocus = useUiStore((state) => state.canvasFocus);
   useEffect(() => {
     if (canvasFocus === null || canvasFocus.ids.length === 0) return;
-    void fitView({ nodes: canvasFocus.ids.map((id) => ({ id })), padding: 0.4, maxZoom: 1.5, duration: 0 });
-  }, [canvasFocus, fitView]);
+    void fitView({ nodes: canvasFocus.ids.map((id) => ({ id })), padding: 0.4, maxZoom: 1.5, duration: 0 }).then(
+      snapViewport,
+    );
+  }, [canvasFocus, fitView, snapViewport]);
 
   const updateCenter = useCallback(() => {
     const element = containerRef.current;
@@ -264,6 +277,11 @@ function CircuitFlow({ containerRef }: { containerRef: RefObject<HTMLDivElement 
     const center = screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     useUiStore.getState().setCanvasCenter(worldToGrid(center));
   }, [containerRef, screenToFlowPosition]);
+
+  const onViewportSettled = useCallback(() => {
+    snapViewport();
+    updateCenter();
+  }, [snapViewport, updateCenter]);
 
   const onDragOver = useCallback((event: DragEvent) => {
     if (event.dataTransfer.types.includes(COMPONENT_DRAG_MIME)) {
@@ -349,8 +367,8 @@ function CircuitFlow({ containerRef }: { containerRef: RefObject<HTMLDivElement 
           onSelectionDragStart={beginGesture}
           onSelectionDragStop={endGesture}
           onPaneClick={onPaneClick}
-          onInit={updateCenter}
-          onMoveEnd={updateCenter}
+          onInit={onViewportSettled}
+          onMoveEnd={onViewportSettled}
           colorMode={colorMode}
           fitView
           fitViewOptions={{ padding: 0.15 }}

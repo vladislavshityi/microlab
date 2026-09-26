@@ -7,8 +7,9 @@ import {
   JUNCTION_MIN_ENDPOINTS,
   pinKey,
 } from "@/features/circuit-model/connection-rules";
-import { GRID_PX, resolveInstancePin } from "@/features/circuit-model/geometry";
-import { moveSegment, segments, wirePolyline } from "@/features/circuit-model/routing";
+import { GRID_PX } from "@/features/circuit-model/geometry";
+import { moveSegment, segments } from "@/features/circuit-model/routing";
+import { connectionPolyline } from "@/features/circuit-model/wire-geometry";
 import { t } from "@/i18n/t";
 import { useCircuitStore } from "@/stores/circuit-store";
 
@@ -55,10 +56,7 @@ export const WireEdge = memo(function WireEdge({ id, selected }: EdgeProps<WireF
 
   const points = useMemo(() => {
     if (connection === undefined || fromSource === undefined || toSource === undefined) return null;
-    const from = resolveInstancePin(fromSource, connection.from.pinId);
-    const to = resolveInstancePin(toSource, connection.to.pinId);
-    if (from === undefined || to === undefined) return null;
-    return wirePolyline(from.point, from.direction, to.point, to.direction, connection.route);
+    return connectionPolyline(connection, fromSource, toSource);
   }, [connection, fromSource, toSource]);
 
   if (connection === undefined || points === null) {

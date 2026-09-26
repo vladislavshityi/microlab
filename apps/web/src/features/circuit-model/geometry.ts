@@ -166,3 +166,22 @@ export function resolveInstancePin(
     ? undefined
     : { point, direction: pinDirection(definition, pinId, instance.rotation) };
 }
+
+/**
+ * Прямоугольник корпуса экземпляра в единицах сетки (с учётом поворота). Для гнёзд
+ * (макетная плата) — undefined: провода проходят над ними.
+ */
+export function instanceBox(source: {
+  id: string;
+  type: string;
+  position?: GridPoint;
+  rotation?: Rotation;
+}): { x: number; y: number; width: number; height: number } | undefined {
+  const instance = toPlacedInstance(source);
+  const definition = getComponentDefinition(instance.type);
+  if (definition === undefined || definition.socket === true) {
+    return undefined;
+  }
+  const size = rotatedSize(definition.visual, instance.rotation);
+  return { x: instance.position.x, y: instance.position.y, width: size.width, height: size.height };
+}

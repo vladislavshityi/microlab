@@ -3,6 +3,37 @@ import { describe, expect, it } from "vitest";
 
 import { autoRoute, moveSegment, orthogonalize, simplifyPolyline, wirePolyline } from "./routing";
 
+const OPPOSITE = { left: "right", right: "left", up: "down", down: "up" } as const;
+
+function direction(a: GridPoint, b: GridPoint): string {
+  if (a.x === b.x) return b.y > a.y ? "down" : "up";
+  return b.x > a.x ? "right" : "left";
+}
+
+function firstDirection(points: readonly GridPoint[]): string | undefined {
+  const [a, b] = points;
+  return a === undefined || b === undefined ? undefined : direction(a, b);
+}
+
+function lastDirection(points: readonly GridPoint[]): string | undefined {
+  const a = points.at(-2);
+  const b = points.at(-1);
+  return a === undefined || b === undefined ? undefined : direction(a, b);
+}
+
+function hasReversal(points: readonly GridPoint[]): boolean {
+  for (let i = 0; i + 2 < points.length; i += 1) {
+    const a = points[i];
+    const b = points[i + 1];
+    const c = points[i + 2];
+    if (a === undefined || b === undefined || c === undefined) continue;
+    const d1 = direction(a, b);
+    const d2 = direction(b, c);
+    if (OPPOSITE[d1 as keyof typeof OPPOSITE] === d2) return true;
+  }
+  return false;
+}
+
 function expectOrthogonal(points: readonly GridPoint[]) {
   for (let i = 0; i + 1 < points.length; i += 1) {
     const a = points[i];
@@ -12,33 +43,54 @@ function expectOrthogonal(points: readonly GridPoint[]) {
 }
 
 describe("routing", () => {
-  it("routes horizontal pins with a Z through the rounded middle", () => {
-    const points = autoRoute({ x: 0, y: 0 }, "right", { x: 5, y: 4 }, "left");
-    expect(points).toEqual([
-      { x: 0, y: 0 },
-      { x: 3, y: 0 },
-      { x: 3, y: 4 },
-      { x: 5, y: 4 },
-    ]);
+  it("leaves each pin outward and never turns back through the symbol", () => {
+    const directions = ["left", "right", "up", "down"] as const;
+    for (const a of directions) {
+      for (const b of directions) {
+        for (const to of [
+          { x: 6, y: 4 },
+          { x: -6, y: 4 },
+          { x: 6, y: -4 },
+          { x: 0, y: 5 },
+          { x: 5, y: 0 },
+        ]) {
+          const from = { x: 0, y: 0 };
+          const points = autoRoute(from, a, to, b);
+          expectOrthogonal(points);
+          expect(points[0]).toEqual(from);
+          expect(points.at(-1)).toEqual(to);
+          expect(firstDirection(points)).toBe(a);
+          expect(lastDirection(points)).toBe(OPPOSITE[b]);
+          expect(hasReversal(points)).toBe(false);
+        }
+      }
+    }
   });
 
-  it("routes vertical pins with a Z and mixed pins with an L", () => {
-    expect(autoRoute({ x: 0, y: 0 }, "down", { x: 4, y: 6 }, "up")).toEqual([
+  it("routes around the bodies of the connected components", () => {
+    // Вывод слева на корпусе 4×2, цель справа: провод обходит корпус, а не идёт сквозь него.
+    const body = { x: 0, y: 0, width: 4, height: 2 };
+    const points = autoRoute({ x: 0, y: 1 }, "left", { x: 10, y: 1 }, "left", [body]);
+    expectOrthogonal(points);
+    for (let i = 0; i + 1 < points.length; i += 1) {
+      const a = points[i];
+      const b = points[i + 1];
+      if (a === undefined || b === undefined) continue;
+      if (a.y === b.y) {
+        const inside = a.y > body.y && a.y < body.y + body.height;
+        expect(inside && Math.max(a.x, b.x) > body.x && Math.min(a.x, b.x) < body.x + body.width).toBe(false);
+      }
+    }
+  });
+
+  it("connects facing pins with a straight wire and simple offsets with a Z", () => {
+    expect(autoRoute({ x: 0, y: 0 }, "right", { x: 6, y: 0 }, "left")).toEqual([
       { x: 0, y: 0 },
-      { x: 0, y: 3 },
-      { x: 4, y: 3 },
-      { x: 4, y: 6 },
+      { x: 6, y: 0 },
     ]);
-    expect(autoRoute({ x: 0, y: 0 }, "right", { x: 4, y: 6 }, "up")).toEqual([
-      { x: 0, y: 0 },
-      { x: 4, y: 0 },
-      { x: 4, y: 6 },
-    ]);
-    expect(autoRoute({ x: 0, y: 0 }, "down", { x: 4, y: 6 }, "left")).toEqual([
-      { x: 0, y: 0 },
-      { x: 0, y: 6 },
-      { x: 4, y: 6 },
-    ]);
+    const z = autoRoute({ x: 0, y: 0 }, "right", { x: 6, y: 4 }, "left");
+    expect(z).toHaveLength(4);
+    expectOrthogonal(z);
   });
 
   it("uses a straight segment for aligned pins", () => {

@@ -7,18 +7,54 @@ import type { PinDirection } from "./geometry";
  * возвращают ломаные только из горизонтальных и вертикальных отрезков: диагональных
  * проводов не бывает. Трасса — только внешний вид; электрическое соединение задают
  * выводы на концах провода.
+ *
+ * Провод всегда выходит из вывода наружу символа (в направлении вывода с учётом
+ * поворота) на STUB единиц и только потом поворачивает. Среди вариантов трассы
+ * выбирается тот, что не разворачивается назад, не проходит через корпуса
+ * компонентов на концах провода и имеет меньше изгибов и меньшую длину.
  */
+
+/** Длина прямого участка у вывода, единицы сетки. */
+export const STUB = 1;
+
+/** Прямоугольник корпуса (единицы сетки), через который провод не должен проходить. */
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const OFFSETS: Readonly<Record<PinDirection, GridPoint>> = {
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+};
+
+const OPPOSITE: Readonly<Record<PinDirection, PinDirection>> = {
+  left: "right",
+  right: "left",
+  up: "down",
+  down: "up",
+};
 
 function samePoint(a: GridPoint, b: GridPoint): boolean {
   return a.x === b.x && a.y === b.y;
 }
 
-function isHorizontal(direction: PinDirection | null): boolean {
-  return direction === "left" || direction === "right";
+/** Точка на расстоянии STUB от вывода наружу; для вывода без направления — сам вывод. */
+export function stubPoint(point: GridPoint, direction: PinDirection | null): GridPoint {
+  if (direction === null) return { x: point.x, y: point.y };
+  const offset = OFFSETS[direction];
+  return { x: point.x + offset.x * STUB, y: point.y + offset.y * STUB };
 }
 
-function isVertical(direction: PinDirection | null): boolean {
-  return direction === "up" || direction === "down";
+/** Направление отрезка a → b (для ортогонального отрезка ненулевой длины). */
+function directionOf(a: GridPoint, b: GridPoint): PinDirection | null {
+  if (a.x === b.x && a.y !== b.y) return b.y > a.y ? "down" : "up";
+  if (a.y === b.y && a.x !== b.x) return b.x > a.x ? "right" : "left";
+  return null;
 }
 
 /** Убирает повторяющиеся точки и промежуточные точки на одной прямой. */
@@ -47,35 +83,127 @@ export function simplifyPolyline(points: readonly GridPoint[]): GridPoint[] {
   return result;
 }
 
+/** Проходит ли отрезок через внутреннюю область прямоугольника (по границе — можно). */
+function crossesBox(a: GridPoint, b: GridPoint, box: Box): boolean {
+  const minX = Math.min(a.x, b.x);
+  const maxX = Math.max(a.x, b.x);
+  const minY = Math.min(a.y, b.y);
+  const maxY = Math.max(a.y, b.y);
+  if (a.y === b.y) {
+    return a.y > box.y && a.y < box.y + box.height && maxX > box.x && minX < box.x + box.width;
+  }
+  return a.x > box.x && a.x < box.x + box.width && maxY > box.y && minY < box.y + box.height;
+}
+
 /**
- * Автоматическая трасса между двумя выводами: L или Z с учётом стороны, из которой
- * выходит каждый вывод. Середина Z округляется до узла сетки.
+ * Оценка варианта трассы (меньше — лучше): развороты назад и проходы через корпуса
+ * почти запрещены, затем учитываются изгибы и длина.
+ */
+function score(
+  points: readonly GridPoint[],
+  startDirection: PinDirection | null,
+  endDirection: PinDirection | null,
+  boxes: readonly Box[],
+): number {
+  let reversals = 0;
+  let crossings = 0;
+  let bends = 0;
+  let length = 0;
+  let previous = startDirection;
+  for (let i = 0; i + 1 < points.length; i += 1) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (a === undefined || b === undefined) continue;
+    const direction = directionOf(a, b);
+    if (direction === null) continue;
+    if (previous !== null && direction === OPPOSITE[previous]) reversals += 1;
+    else if (previous !== null && direction !== previous) bends += 1;
+    for (const box of boxes) {
+      if (crossesBox(a, b, box)) crossings += 1;
+    }
+    length += Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    previous = direction;
+  }
+  if (previous !== null && endDirection !== null && previous === OPPOSITE[endDirection]) {
+    reversals += 1;
+  }
+  return reversals * 10_000 + crossings * 1_000 + bends * 10 + length;
+}
+
+/**
+ * Ортогональный путь из `from` в `to`. `startDirection` — направление движения при
+ * входе в `from` (путь не должен сразу развернуться назад), `endDirection` — направление
+ * движения после `to`. Перебираются L-, Z- и U-образные варианты, включая обходы
+ * корпусов; результат детерминирован.
+ */
+export function connectOrthogonal(
+  from: GridPoint,
+  startDirection: PinDirection | null,
+  to: GridPoint,
+  endDirection: PinDirection | null,
+  boxes: readonly Box[] = [],
+): GridPoint[] {
+  if (samePoint(from, to)) return [{ x: from.x, y: from.y }];
+  const xs = new Set([from.x, to.x, Math.round((from.x + to.x) / 2)]);
+  const ys = new Set([from.y, to.y, Math.round((from.y + to.y) / 2)]);
+  for (const box of boxes) {
+    xs.add(box.x - STUB);
+    xs.add(box.x + box.width + STUB);
+    ys.add(box.y - STUB);
+    ys.add(box.y + box.height + STUB);
+  }
+  // Небольшой обход, если концы стоят вплотную друг к другу.
+  ys.add(Math.min(from.y, to.y) - 2 * STUB);
+  ys.add(Math.max(from.y, to.y) + 2 * STUB);
+  xs.add(Math.min(from.x, to.x) - 2 * STUB);
+  xs.add(Math.max(from.x, to.x) + 2 * STUB);
+
+  const candidates: GridPoint[][] = [];
+  if (from.x === to.x || from.y === to.y) candidates.push([from, to]);
+  candidates.push([from, { x: to.x, y: from.y }, to], [from, { x: from.x, y: to.y }, to]);
+  for (const x of xs) candidates.push([from, { x, y: from.y }, { x, y: to.y }, to]);
+  for (const y of ys) candidates.push([from, { x: from.x, y }, { x: to.x, y }, to]);
+  for (const x of xs) {
+    for (const y of ys) {
+      candidates.push([from, { x: from.x, y }, { x, y }, { x, y: to.y }, to]);
+      candidates.push([from, { x, y: from.y }, { x, y }, { x: to.x, y }, to]);
+    }
+  }
+
+  let best: GridPoint[] = [];
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const simplified = simplifyPolyline(candidate);
+    const value = score(simplified, startDirection, endDirection, boxes);
+    if (value < bestScore) {
+      best = simplified;
+      bestScore = value;
+    }
+  }
+  return best;
+}
+
+/**
+ * Автоматическая трасса между двумя выводами: провод выходит из каждого вывода наружу,
+ * затем соединяется ортогональным путём без разворотов и проходов через корпуса.
  */
 export function autoRoute(
   from: GridPoint,
   fromDirection: PinDirection | null,
   to: GridPoint,
   toDirection: PinDirection | null,
+  boxes: readonly Box[] = [],
 ): GridPoint[] {
-  if (from.x === to.x || from.y === to.y) {
-    return simplifyPolyline([from, to]);
-  }
-  if (isVertical(fromDirection) && isVertical(toDirection)) {
-    const middleY = Math.round((from.y + to.y) / 2);
-    return simplifyPolyline([from, { x: from.x, y: middleY }, { x: to.x, y: middleY }, to]);
-  }
-  if (isVertical(fromDirection) && !isVertical(toDirection)) {
-    return simplifyPolyline([from, { x: from.x, y: to.y }, to]);
-  }
-  if (isHorizontal(fromDirection) && isVertical(toDirection)) {
-    return simplifyPolyline([from, { x: to.x, y: from.y }, to]);
-  }
-  if (isVertical(toDirection)) {
-    return simplifyPolyline([from, { x: to.x, y: from.y }, to]);
-  }
-  // Оба вывода горизонтальные (или направление неизвестно): Z через середину по X.
-  const middleX = Math.round((from.x + to.x) / 2);
-  return simplifyPolyline([from, { x: middleX, y: from.y }, { x: middleX, y: to.y }, to]);
+  const start = stubPoint(from, fromDirection);
+  const end = stubPoint(to, toDirection);
+  const middle = connectOrthogonal(
+    start,
+    fromDirection,
+    end,
+    toDirection === null ? null : OPPOSITE[toDirection],
+    boxes,
+  );
+  return simplifyPolyline([from, ...middle, to]);
 }
 
 /**
@@ -94,18 +222,46 @@ export function orthogonalize(points: readonly GridPoint[]): GridPoint[] {
   return simplifyPolyline(result);
 }
 
-/** Полная трасса провода: автоматическая или через сохранённые промежуточные точки. */
+/**
+ * Полная трасса провода. Без сохранённых точек — автоматическая. С сохранёнными
+ * точками (провод, отредактированный пользователем) средняя часть сохраняется, а
+ * первый и последний участки каждый раз строятся заново от текущих выводов — так
+ * провод остаётся ортогональным и привязанным к выводам после перемещения и поворота.
+ */
 export function wirePolyline(
   from: GridPoint,
   fromDirection: PinDirection | null,
   to: GridPoint,
   toDirection: PinDirection | null,
   route: readonly GridPoint[] | undefined,
+  boxes: readonly Box[] = [],
 ): GridPoint[] {
   if (route === undefined || route.length === 0) {
-    return autoRoute(from, fromDirection, to, toDirection);
+    return autoRoute(from, fromDirection, to, toDirection, boxes);
   }
-  return orthogonalize([from, ...route, to]);
+  const inner = orthogonalize(route);
+  const first = inner[0];
+  const last = inner.at(-1);
+  if (first === undefined || last === undefined) {
+    return autoRoute(from, fromDirection, to, toDirection, boxes);
+  }
+  const second = inner[1];
+  const beforeLast = inner.at(-2);
+  const head = connectOrthogonal(
+    stubPoint(from, fromDirection),
+    fromDirection,
+    first,
+    second === undefined ? null : directionOf(first, second),
+    boxes,
+  );
+  const tail = connectOrthogonal(
+    last,
+    beforeLast === undefined || inner.length < 2 ? null : directionOf(beforeLast, last),
+    stubPoint(to, toDirection),
+    toDirection === null ? null : OPPOSITE[toDirection],
+    boxes,
+  );
+  return simplifyPolyline([from, ...head, ...inner.slice(1), ...tail.slice(1), to]);
 }
 
 /**
@@ -137,8 +293,8 @@ export function moveSegment(
     return null;
   }
   // Концы на выводах не двигаются.
-  const full = [first, ...moved.slice(index === 0 ? 0 : 1, index + 1 === points.length - 1 ? undefined : -1), last];
-  return simplifyPolyline(full).slice(1, -1);
+  const inner = moved.slice(index === 0 ? 0 : 1, index + 1 === points.length - 1 ? undefined : -1);
+  return simplifyPolyline([first, ...inner, last]).slice(1, -1);
 }
 
 /** Отрезки ломаной (для отрисовки и перетаскивания). */

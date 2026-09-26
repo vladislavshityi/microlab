@@ -196,22 +196,21 @@
   border-radius: 2px;
 }
 
-.react-flow__node-circuit.selected,
-.react-flow__node-breadboard.selected {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
+/* Выделение и фокус рисуются векторной рамкой внутри узла (selection-frame), а не
+   CSS-обводкой HTML-блока. */
+.react-flow__node-circuit,
+.react-flow__node-breadboard,
 .react-flow__node-circuit:focus-visible,
 .react-flow__node-breadboard:focus-visible {
-  outline: 2px dashed var(--ring);
-  outline-offset: 4px;
+  outline: none;
 }
 
-.react-flow__node-circuit.selected:focus-visible,
-.react-flow__node-breadboard.selected:focus-visible {
-  outline-style: double;
-  outline-width: 4px;
+.circuit-focus-frame {
+  display: none;
+}
+
+.react-flow__node:focus-visible .circuit-focus-frame {
+  display: inline;
 }
 
 /* Вывод: невидимая область захвата; при наведении и фокусе — кольцо. */
