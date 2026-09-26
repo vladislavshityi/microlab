@@ -66,14 +66,22 @@ export type PropertyId = string;
  * This interface was referenced by `ComponentDefinition`'s JSON-Schema
  * via the `definition` "PropertyUnit".
  */
-export type PropertyUnit = "ohm" | "volt" | "percent";
+export type PropertyUnit = "ohm" | "volt" | "percent" | "lux" | "microsecond" | "none";
 /**
  * Electrical model used by circuit validation and simulation.
  *
  * This interface was referenced by `ComponentDefinition`'s JSON-Schema
  * via the `definition` "ElectricalModel".
  */
-export type ElectricalModel = ResistorModel | LedModel | SwitchModel;
+export type ElectricalModel =
+  | ResistorModel
+  | LedModel
+  | SwitchModel
+  | PotentiometerModel
+  | PhotoresistorModel
+  | LedArrayModel
+  | PiezoModel
+  | ServoModel;
 /**
  * DIGITAL: logic levels only; BASIC_ELECTRICAL: simple electrical model; BEHAVIORAL: behavioral model; CONNECTIVITY: connectivity only.
  *
@@ -269,6 +277,92 @@ export interface SwitchModel {
    * @maxItems 2
    */
   terminals: [PinId, PinId];
+}
+/**
+ * Potentiometer: resistance between the end terminals, split by the wiper position (0 % = wiper at terminals[0]).
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "PotentiometerModel".
+ */
+export interface PotentiometerModel {
+  kind: "potentiometer";
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  terminals: [PinId, PinId];
+  wiper: PinId;
+  resistanceProperty: PropertyId;
+  positionProperty: PropertyId;
+}
+/**
+ * Photoresistor: R = R10 * (E / 10 lx)^(-gamma), all parameters are number properties.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "PhotoresistorModel".
+ */
+export interface PhotoresistorModel {
+  kind: "photoresistor";
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  terminals: [PinId, PinId];
+  illuminanceProperty: PropertyId;
+  resistanceAt10LuxProperty: PropertyId;
+  gammaProperty: PropertyId;
+}
+/**
+ * Several LEDs with one common terminal (RGB LED, 7-segment display). The enum property selects the polarity: common-cathode (channel pin = anode) or common-anode (channel pin = cathode).
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "LedArrayModel".
+ */
+export interface LedArrayModel {
+  kind: "led-array";
+  common: PinId;
+  polarityProperty: PropertyId;
+  /**
+   * @minItems 1
+   */
+  channels: [LedChannel, ...LedChannel[]];
+}
+/**
+ * One LED of an LED array: its own pin and forward voltage property.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "LedChannel".
+ */
+export interface LedChannel {
+  id: string;
+  pin: PinId;
+  forwardVoltageProperty: PropertyId;
+}
+/**
+ * Passive piezo buzzer: no DC path between the terminals; sound frequency is measured from the voltage across it.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "PiezoModel".
+ */
+export interface PiezoModel {
+  kind: "piezo";
+  positive: PinId;
+  negative: PinId;
+}
+/**
+ * Hobby servo: control pulse width on the signal pin sets the angle; power and ground pins must be supplied.
+ *
+ * This interface was referenced by `ComponentDefinition`'s JSON-Schema
+ * via the `definition` "ServoModel".
+ */
+export interface ServoModel {
+  kind: "servo";
+  signal: PinId;
+  power: PinId;
+  ground: PinId;
+  minPulseProperty: PropertyId;
+  maxPulseProperty: PropertyId;
+  minSupplyProperty: PropertyId;
 }
 /**
  * Symbol size and pin positions relative to the top-left corner, in grid units.

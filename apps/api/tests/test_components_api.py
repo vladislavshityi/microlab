@@ -35,8 +35,14 @@ async def test_list_components(http: AsyncClient) -> None:
         "arduino-uno-r3",
         "breadboard",
         "led",
+        "photoresistor",
+        "piezo-buzzer",
+        "potentiometer",
         "push-button",
         "resistor",
+        "rgb-led",
+        "servo",
+        "seven-segment",
     ]
 
 

@@ -1,4 +1,4 @@
-import { memo, useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { memo, useRef, type KeyboardEvent, type PointerEvent } from "react";
 import type { ComponentDefinition, ComponentInstance, Rotation } from "@microlab/circuit-schema";
 
 import { GRID_PX } from "@/features/circuit-model/geometry";
@@ -6,8 +6,9 @@ import { setButtonPressed } from "@/features/simulation/simulation-actions";
 import { t } from "@/i18n/t";
 import { ACTIVE_PHASES, builtinLedLevel, useSimulationStore } from "@/stores/simulation-store";
 
+import { LedArrayLight, LdrLabel, PiezoIndicator, PotentiometerControl, ServoHorn } from "./component-overlays";
 import { LED_FILL } from "./led-colors";
-import { rotationTransform } from "./rotation";
+import { OverlayFrame, type OverlayFrameProps } from "./overlay-frame";
 
 /**
  * Состояние симуляции поверх символа компонента. Каждый слой подписан только на своё
@@ -15,32 +16,6 @@ import { rotationTransform } from "./rotation";
  * Свечение передаётся только прозрачностью и цветом (без фильтров размытия), чтобы
  * символ оставался чётким при любом масштабе.
  */
-
-interface OverlayFrameProps {
-  definition: ComponentDefinition;
-  rotation: Rotation;
-  widthPx: number;
-  heightPx: number;
-  children: ReactNode;
-}
-
-/** SVG в тех же единицах сетки и с тем же поворотом, что и символ компонента. */
-function OverlayFrame({ definition, rotation, widthPx, heightPx, children }: OverlayFrameProps) {
-  const { width, height } = definition.visual;
-  const quarter = rotation === 90 || rotation === 270;
-  return (
-    <svg
-      aria-hidden="true"
-      width={widthPx}
-      height={heightPx}
-      viewBox={`0 0 ${quarter ? height : width} ${quarter ? width : height}`}
-      overflow="visible"
-      className="pointer-events-none absolute top-0 left-0"
-    >
-      <g transform={rotationTransform(rotation, width, height)}>{children}</g>
-    </svg>
-  );
-}
 
 /** Минимальная заметная яркость открытого светодиода (очень малый ток). */
 const MIN_VISIBLE_BRIGHTNESS = 0.15;
@@ -210,6 +185,21 @@ export const SimulationOverlay = memo(function SimulationOverlay({
   }
   if (definition.type === "push-button") {
     return <ButtonControl componentId={componentId} {...frame} />;
+  }
+  switch (definition.type) {
+    case "rgb-led":
+    case "seven-segment":
+      return <LedArrayLight componentId={componentId} properties={properties} {...frame} />;
+    case "potentiometer":
+      return <PotentiometerControl componentId={componentId} properties={properties} {...frame} />;
+    case "photoresistor":
+      return <LdrLabel componentId={componentId} {...frame} />;
+    case "piezo-buzzer":
+      return <PiezoIndicator componentId={componentId} {...frame} />;
+    case "servo":
+      return <ServoHorn componentId={componentId} {...frame} />;
+    default:
+      break;
   }
   if (definition.category === "board") {
     const pin = definition.pins.find((candidate) => candidate.capabilities?.includes("builtin-led") === true);

@@ -2,7 +2,7 @@ import type { PropertyUnit } from "@microlab/circuit-schema";
 
 /**
  * Разбор и форматирование значений свойств с единицами измерения.
- * Внутри модели значения хранятся в базовых единицах (Ом, В, %).
+ * Внутри модели значения хранятся в базовых единицах (Ом, В, %, лк, мкс).
  */
 
 /** Обозначения единиц, которые допускаются после числа (без учёта регистра). */
@@ -10,6 +10,9 @@ const UNIT_SUFFIXES: Readonly<Record<PropertyUnit, readonly string[]>> = {
   ohm: ["ohms", "ohm", "ом", "ω", "Ω"],
   volt: ["volts", "volt", "в", "v"],
   percent: ["%"],
+  lux: ["lux", "лк", "lx"],
+  microsecond: ["мкс", "µs", "μs", "us"],
+  none: [],
 };
 
 /** Множители SI. Прописная M/М — мега, строчная m/м — милли (как в обозначениях SI). */
@@ -27,6 +30,9 @@ const UNIT_ALLOWS_MULTIPLIERS: Readonly<Record<PropertyUnit, boolean>> = {
   ohm: true,
   volt: true,
   percent: false,
+  lux: true,
+  microsecond: false,
+  none: false,
 };
 
 function stripUnit(text: string, unit: PropertyUnit): string {
@@ -106,6 +112,9 @@ const UNIT_SYMBOLS: Readonly<Record<PropertyUnit, string>> = {
   ohm: "Ω",
   volt: "В",
   percent: "%",
+  lux: "лк",
+  microsecond: "мкс",
+  none: "",
 };
 
 /** Форматирует значение с подходящей приставкой (для сопротивления — Ω, kΩ, MΩ). */
@@ -116,10 +125,11 @@ export function formatQuantity(value: number, unit: PropertyUnit, locale: string
     if (Math.abs(value) >= 1e6) return { value: format(value / 1e6), unit: "MΩ" };
     if (Math.abs(value) >= 1e3) return { value: format(value / 1e3), unit: "kΩ" };
   }
+  if (unit === "lux" && Math.abs(value) >= 1e3) return { value: format(value / 1e3), unit: "клк" };
   return { value: format(value), unit: UNIT_SYMBOLS[unit] };
 }
 
 export function formatQuantityText(value: number, unit: PropertyUnit, locale: string): string {
   const formatted = formatQuantity(value, unit, locale);
-  return `${formatted.value} ${formatted.unit}`;
+  return formatted.unit === "" ? formatted.value : `${formatted.value} ${formatted.unit}`;
 }

@@ -356,3 +356,99 @@ def test_validation_is_deterministic() -> None:
     first = validate_circuit(raw, get_definition_registry())
     second = validate_circuit(json.loads(json.dumps(raw)), get_definition_registry())
     assert first == second
+
+
+def test_rgb_led_channels_without_resistor_warn_per_channel() -> None:
+    rgb = _component("rgb-led")
+    raw = _circuit(
+        [rgb],
+        [
+            ("uno1.D9", f"{rgb['id']}.R"),
+            ("uno1.D10", f"{rgb['id']}.G"),
+            (f"{rgb['id']}.COM", "uno1.GND1"),
+        ],
+    )
+    warnings = [i for i in _issues(raw) if i.code == IssueCode.LED_WITHOUT_RESISTOR]
+    assert [i.params["component"] for i in warnings] == [f"{rgb['id']} (r)", f"{rgb['id']} (g)"]
+
+
+def test_common_anode_seven_segment_on_gnd_is_reversed() -> None:
+    seg = _component("seven-segment", commonType="common-anode")
+    resistor = _component("resistor", resistanceOhms=330)
+    raw = _circuit(
+        [seg, resistor],
+        [
+            (f"{seg['id']}.COM1", "uno1.GND1"),
+            ("uno1.D2", f"{resistor['id']}.1"),
+            (f"{resistor['id']}.2", f"{seg['id']}.a"),
+        ],
+    )
+    codes = _codes(raw)
+    assert IssueCode.LED_REVERSED in codes
+    assert IssueCode.LED_WITHOUT_RESISTOR not in codes
+
+
+def test_seven_segment_with_resistors_estimates_gpio_current() -> None:
+    seg = _component("seven-segment")
+    resistor = _component("resistor", resistanceOhms=100)
+    raw = _circuit(
+        [seg, resistor],
+        [
+            (f"{seg['id']}.COM2", "uno1.GND1"),
+            ("uno1.D2", f"{resistor['id']}.1"),
+            (f"{resistor['id']}.2", f"{seg['id']}.a"),
+        ],
+    )
+    # COM1 и COM2 соединены внутри: цепь D2 → 100 Ω → сегмент a → GND, (5 − 2) / 100 = 30 mA.
+    issues = [i for i in _issues(raw) if i.code == IssueCode.GPIO_CURRENT_EXCEEDS_LIMIT]
+    assert [i.params["currentMa"] for i in issues] == [30.0]
+
+
+def test_servo_needs_power_and_ground() -> None:
+    servo = _component("servo")
+    unpowered = _circuit([servo], [("uno1.D9", f"{servo['id']}.SIG")])
+    floating = [
+        i.params["pin"] for i in _issues(unpowered) if i.code == IssueCode.FLOATING_POWER_PIN
+    ]
+    assert floating == [f"{servo['id']}.GND", f"{servo['id']}.VCC"]
+
+    powered = _circuit(
+        [servo],
+        [
+            ("uno1.D9", f"{servo['id']}.SIG"),
+            ("uno1.5V", f"{servo['id']}.VCC"),
+            ("uno1.GND1", f"{servo['id']}.GND"),
+        ],
+    )
+    assert IssueCode.FLOATING_POWER_PIN not in _codes(powered)
+
+    wrong_rail = _circuit(
+        [servo],
+        [("uno1.3V3", f"{servo['id']}.VCC"), ("uno1.GND1", f"{servo['id']}.GND")],
+    )
+    assert IssueCode.POWER_DOMAIN_MISMATCH in _codes(wrong_rail)
+
+
+def test_potentiometer_divider_and_photoresistor_have_no_warnings() -> None:
+    pot = _component("potentiometer")
+    ldr = _component("photoresistor")
+    resistor = _component("resistor", resistanceOhms=10_000)
+    raw = _circuit(
+        [pot, ldr, resistor],
+        [
+            (f"{pot['id']}.1", "uno1.GND1"),
+            (f"{pot['id']}.2", "uno1.5V"),
+            (f"{pot['id']}.W", "uno1.A0"),
+            ("uno1.5V", f"{resistor['id']}.1"),
+            (f"{resistor['id']}.2", f"{ldr['id']}.1"),
+            (f"{ldr['id']}.2", "uno1.GND2"),
+            (f"{resistor['id']}.2", "uno1.A1"),
+        ],
+    )
+    assert [i for i in _issues(raw) if i.severity != Severity.INFO] == []
+
+
+def test_piezo_is_not_a_current_path() -> None:
+    buzzer = _component("piezo-buzzer")
+    raw = _circuit([buzzer], [("uno1.D8", f"{buzzer['id']}.P"), (f"{buzzer['id']}.N", "uno1.GND1")])
+    assert [i for i in _issues(raw) if i.severity != Severity.INFO] == []

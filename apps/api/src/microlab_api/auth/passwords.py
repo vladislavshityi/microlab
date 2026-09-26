@@ -1,9 +1,11 @@
 """Хеширование паролей (Argon2id) и политика паролей."""
 
+import asyncio
 import contextlib
 import secrets
 from typing import Final
 
+import anyio
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
@@ -46,6 +48,36 @@ def _verify_dummy(password: str) -> None:
 def verify_unknown_user(password: str) -> None:
     """Выравнивает время ответа для несуществующего адреса."""
     _verify_dummy(password)
+
+
+# Argon2 — CPU-bound (≈64 МиБ памяти на вызов): в асинхронных обработчиках хеширование
+# выполняется в пуле потоков, а число одновременных вычислений ограничено, чтобы всплеск
+# входов не исчерпал память контейнера API и не занял все потоки пула.
+_HASH_CONCURRENCY: Final = 3
+# Лимитер привязан к event loop: при новом loop (тесты, перезапуск) создаётся заново.
+_hash_limiter: tuple[asyncio.AbstractEventLoop, anyio.CapacityLimiter] | None = None
+
+
+def _limiter() -> anyio.CapacityLimiter:
+    global _hash_limiter  # noqa: PLW0603 — лимитер создаётся лениво внутри event loop
+    loop = asyncio.get_running_loop()
+    if _hash_limiter is None or _hash_limiter[0] is not loop:
+        _hash_limiter = (loop, anyio.CapacityLimiter(_HASH_CONCURRENCY))
+    return _hash_limiter[1]
+
+
+async def hash_password_async(password: str) -> str:
+    return await anyio.to_thread.run_sync(hash_password, password, limiter=_limiter())
+
+
+async def verify_password_async(password_hash: str | None, password: str) -> bool:
+    return await anyio.to_thread.run_sync(
+        verify_password, password_hash, password, limiter=_limiter()
+    )
+
+
+async def verify_unknown_user_async(password: str) -> None:
+    await anyio.to_thread.run_sync(verify_unknown_user, password, limiter=_limiter())
 
 
 def needs_rehash(password_hash: str) -> bool:

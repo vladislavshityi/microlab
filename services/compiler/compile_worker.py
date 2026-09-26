@@ -9,7 +9,8 @@ HTTP API (внутренняя сеть, без аутентификации —
 процессов, с жёстким таймаутом и лимитами ресурсов (``prlimit``). Пользовательский текст
 записывается только в файл ``sketch/sketch.ino`` и никогда не попадает в командную строку
 или shell. Профиль сборки ``sketch.yaml`` фиксирует FQBN и версию платформы; каталог
-пользовательских библиотек пуст, поэтому сторонние библиотеки не участвуют в сборке.
+пользовательских библиотек пуст: кроме библиотек платформы в сборке участвует только
+закреплённая в профиле библиотека Servo 1.3.0.
 
 Выбор stdlib вместо FastAPI: в образе нет ни одной сторонней Python-зависимости,
 а API воркера состоит из двух маршрутов.
@@ -114,7 +115,8 @@ def _session_members(session_id: int) -> list[int]:
         try:
             with open(f"/proc/{entry.name}/stat", "rb") as stat_file:
                 stat = stat_file.read()
-        except FileNotFoundError:
+        except (FileNotFoundError, ProcessLookupError):
+            # Процесс завершился между scandir и чтением (параллельные сборки).
             continue
         # Поля после "(comm)": state ppid pgrp session ...
         fields = stat[stat.rindex(b")") + 2 :].split()

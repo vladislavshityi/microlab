@@ -178,6 +178,130 @@ class SwitchModel(BaseModel):
     terminals: Annotated[list[PinId], Field(max_length=2, min_length=2)]
 
 
+class PotentiometerModel(BaseModel):
+    """
+    Potentiometer: resistance between the end terminals, split by the wiper position (0 % = wiper at terminals[0]).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    kind: Literal["potentiometer"]
+    terminals: Annotated[list[PinId], Field(max_length=2, min_length=2)]
+    wiper: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    resistance_property: Annotated[
+        str,
+        Field(alias="resistanceProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId"),
+    ]
+    position_property: Annotated[
+        str, Field(alias="positionProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId")
+    ]
+
+
+class PhotoresistorModel(BaseModel):
+    """
+    Photoresistor: R = R10 * (E / 10 lx)^(-gamma), all parameters are number properties.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    kind: Literal["photoresistor"]
+    terminals: Annotated[list[PinId], Field(max_length=2, min_length=2)]
+    illuminance_property: Annotated[
+        str,
+        Field(alias="illuminanceProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId"),
+    ]
+    resistance_at10_lux_property: Annotated[
+        str,
+        Field(
+            alias="resistanceAt10LuxProperty",
+            pattern="^[a-z][A-Za-z0-9]{0,63}$",
+            title="PropertyId",
+        ),
+    ]
+    gamma_property: Annotated[
+        str, Field(alias="gammaProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId")
+    ]
+
+
+class LedChannel(BaseModel):
+    """
+    One LED of an LED array: its own pin and forward voltage property.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    id: Annotated[str, Field(pattern="^[a-z][a-z0-9]{0,15}$")]
+    pin: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    forward_voltage_property: Annotated[
+        str,
+        Field(
+            alias="forwardVoltageProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId"
+        ),
+    ]
+
+
+class LedArrayModel(BaseModel):
+    """
+    Several LEDs with one common terminal (RGB LED, 7-segment display). The enum property selects the polarity: common-cathode (channel pin = anode) or common-anode (channel pin = cathode).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    kind: Literal["led-array"]
+    common: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    polarity_property: Annotated[
+        str, Field(alias="polarityProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId")
+    ]
+    channels: Annotated[list[LedChannel], Field(min_length=1)]
+
+
+class PiezoModel(BaseModel):
+    """
+    Passive piezo buzzer: no DC path between the terminals; sound frequency is measured from the voltage across it.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    kind: Literal["piezo"]
+    positive: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    negative: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+
+
+class ServoModel(BaseModel):
+    """
+    Hobby servo: control pulse width on the signal pin sets the angle; power and ground pins must be supplied.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    kind: Literal["servo"]
+    signal: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    power: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    ground: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9_]{0,31}$", title="PinId")]
+    min_pulse_property: Annotated[
+        str, Field(alias="minPulseProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId")
+    ]
+    max_pulse_property: Annotated[
+        str, Field(alias="maxPulseProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId")
+    ]
+    min_supply_property: Annotated[
+        str,
+        Field(alias="minSupplyProperty", pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId"),
+    ]
+
+
 class NumberPropertyDefinition(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -186,7 +310,9 @@ class NumberPropertyDefinition(BaseModel):
     id: Annotated[str, Field(pattern="^[a-z][A-Za-z0-9]{0,63}$", title="PropertyId")]
     display_name: Annotated[LocalizedText, Field(alias="displayName")]
     type: Literal["number"]
-    unit: Annotated[Literal["ohm", "volt", "percent"], Field(title="PropertyUnit")]
+    unit: Annotated[
+        Literal["ohm", "volt", "percent", "lux", "microsecond", "none"], Field(title="PropertyUnit")
+    ]
     default: float
     minimum: float
     maximum: float
@@ -295,7 +421,15 @@ class ComponentDefinition(BaseModel):
     """
     properties: list[NumberPropertyDefinition | EnumPropertyDefinition]
     electrical_model: Annotated[
-        ResistorModel | LedModel | SwitchModel | None,
+        ResistorModel
+        | LedModel
+        | SwitchModel
+        | PotentiometerModel
+        | PhotoresistorModel
+        | LedArrayModel
+        | PiezoModel
+        | ServoModel
+        | None,
         Field(alias="electricalModel", title="ElectricalModel"),
     ] = None
     """

@@ -128,7 +128,7 @@ async def create_user(body: AdminUserCreate, _admin: AdminUser, db: Session) -> 
         email=body.email,
         display_name=body.display_name,
         role=UserRole(body.role),
-        password_hash=passwords.hash_password(password),
+        password_hash=await passwords.hash_password_async(password),
         is_active=True,
         must_change_password=temporary,
     )
@@ -184,7 +184,7 @@ async def update_user(
 async def reset_password(user_id: uuid.UUID, _admin: AdminUser, db: Session) -> TemporaryPassword:
     user = await _get_user(db, user_id)
     temporary = passwords.generate_temporary_password()
-    user.password_hash = passwords.hash_password(temporary)
+    user.password_hash = await passwords.hash_password_async(temporary)
     user.must_change_password = True
     await delete_user_sessions(db, user.id)
     await db.commit()

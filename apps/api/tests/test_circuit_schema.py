@@ -35,8 +35,14 @@ def test_definitions_exist() -> None:
         "arduino-uno-r3.json",
         "breadboard.json",
         "led.json",
+        "photoresistor.json",
+        "piezo-buzzer.json",
+        "potentiometer.json",
         "push-button.json",
         "resistor.json",
+        "rgb-led.json",
+        "servo.json",
+        "seven-segment.json",
     ]
 
 
@@ -74,8 +80,14 @@ def test_registry_loads_all_definitions() -> None:
         "arduino-uno-r3",
         "breadboard",
         "led",
+        "photoresistor",
+        "piezo-buzzer",
+        "potentiometer",
         "push-button",
         "resistor",
+        "rgb-led",
+        "servo",
+        "seven-segment",
     ]
     assert registry.get("capacitor") is None
 

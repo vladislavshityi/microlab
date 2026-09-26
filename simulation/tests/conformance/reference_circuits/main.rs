@@ -338,3 +338,5 @@ fn coupled_simulation_is_deterministic() {
     };
     assert_eq!(run(), run());
 }
+
+mod components;

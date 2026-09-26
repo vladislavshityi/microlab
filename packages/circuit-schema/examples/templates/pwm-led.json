@@ -1,0 +1,86 @@
+{
+  "id": "pwm-led",
+  "order": 3,
+  "name": {
+    "key": "templates.pwm-led.name",
+    "ru": "PWM-светодиод"
+  },
+  "description": {
+    "key": "templates.pwm-led.description",
+    "ru": "Плавное изменение яркости светодиода на D9 функцией analogWrite()."
+  },
+  "code": "const int LED_PIN = 9;\n\nvoid setup() {\n  pinMode(LED_PIN, OUTPUT);\n}\n\nvoid loop() {\n  for (int value = 0; value <= 255; value += 5) {\n    analogWrite(LED_PIN, value);\n    delay(30);\n  }\n  for (int value = 255; value >= 0; value -= 5) {\n    analogWrite(LED_PIN, value);\n    delay(30);\n  }\n}\n",
+  "circuit": {
+    "schemaVersion": 1,
+    "board": {
+      "id": "uno1",
+      "type": "arduino-uno-r3",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0
+    },
+    "components": [
+      {
+        "id": "r1",
+        "type": "resistor",
+        "position": {
+          "x": 16,
+          "y": 9
+        },
+        "rotation": 0,
+        "properties": {
+          "resistanceOhms": 220
+        }
+      },
+      {
+        "id": "led1",
+        "type": "led",
+        "position": {
+          "x": 22,
+          "y": 9
+        },
+        "rotation": 0,
+        "properties": {
+          "color": "green"
+        }
+      }
+    ],
+    "connections": [
+      {
+        "id": "w1",
+        "from": {
+          "componentId": "uno1",
+          "pinId": "D9"
+        },
+        "to": {
+          "componentId": "r1",
+          "pinId": "1"
+        }
+      },
+      {
+        "id": "w2",
+        "from": {
+          "componentId": "r1",
+          "pinId": "2"
+        },
+        "to": {
+          "componentId": "led1",
+          "pinId": "A"
+        }
+      },
+      {
+        "id": "w3",
+        "from": {
+          "componentId": "led1",
+          "pinId": "K"
+        },
+        "to": {
+          "componentId": "uno1",
+          "pinId": "GND3"
+        }
+      }
+    ]
+  }
+}

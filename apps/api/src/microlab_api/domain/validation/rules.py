@@ -144,19 +144,19 @@ def _led_rules(ctx: CircuitContext) -> Iterator[Issue]:
             yield _issue(
                 IssueCode.LED_WITHOUT_RESISTOR,
                 Severity.WARNING,
-                f"LED {element.instance_id} has no current-limiting resistor in its path.",
+                f"LED {element.label} has no current-limiting resistor in its path.",
                 refs,
-                component=element.instance_id,
+                component=element.label,
             )
         cathode_series = ctx.closure(ctx.node(cathode), _SERIES)
         if _any(ctx, anode_side, "is_ground") and _any(ctx, cathode_series, "can_source"):
             yield _issue(
                 IssueCode.LED_REVERSED,
                 Severity.WARNING,
-                f"LED {element.instance_id} is reversed: the anode is on GND and the cathode "
+                f"LED {element.label} is reversed: the anode is on GND and the cathode "
                 "goes to a source, so it can never be forward-biased.",
                 refs,
-                component=element.instance_id,
+                component=element.label,
             )
 
 

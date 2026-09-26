@@ -1,0 +1,258 @@
+{
+  "type": "seven-segment",
+  "displayName": {
+    "key": "components.seven-segment.displayName",
+    "ru": "7-сегментный индикатор"
+  },
+  "description": {
+    "key": "components.seven-segment.description",
+    "ru": "Одноразрядный индикатор: семь сегментов a–g и точка DP — светодиоды с общим выводом."
+  },
+  "category": "displays",
+  "pins": [
+    {
+      "id": "a",
+      "name": "A",
+      "electricalType": "passive"
+    },
+    {
+      "id": "b",
+      "name": "B",
+      "electricalType": "passive"
+    },
+    {
+      "id": "c",
+      "name": "C",
+      "electricalType": "passive"
+    },
+    {
+      "id": "d",
+      "name": "D",
+      "electricalType": "passive"
+    },
+    {
+      "id": "e",
+      "name": "E",
+      "electricalType": "passive"
+    },
+    {
+      "id": "f",
+      "name": "F",
+      "electricalType": "passive"
+    },
+    {
+      "id": "g",
+      "name": "G",
+      "electricalType": "passive"
+    },
+    {
+      "id": "dp",
+      "name": "DP",
+      "electricalType": "passive"
+    },
+    {
+      "id": "COM1",
+      "name": "Общий",
+      "electricalType": "passive"
+    },
+    {
+      "id": "COM2",
+      "name": "Общий",
+      "electricalType": "passive"
+    }
+  ],
+  "internalConnections": [
+    [
+      "COM1",
+      "COM2"
+    ]
+  ],
+  "properties": [
+    {
+      "id": "commonType",
+      "displayName": {
+        "key": "components.seven-segment.properties.commonType",
+        "ru": "Общий вывод"
+      },
+      "type": "enum",
+      "default": "common-cathode",
+      "options": [
+        {
+          "value": "common-cathode",
+          "label": {
+            "key": "components.seven-segment.properties.commonType.common-cathode",
+            "ru": "Общий катод"
+          }
+        },
+        {
+          "value": "common-anode",
+          "label": {
+            "key": "components.seven-segment.properties.commonType.common-anode",
+            "ru": "Общий анод"
+          }
+        }
+      ],
+      "simulated": true
+    },
+    {
+      "id": "forwardVoltage",
+      "displayName": {
+        "key": "components.seven-segment.properties.forwardVoltage",
+        "ru": "Прямое напряжение сегмента"
+      },
+      "type": "number",
+      "unit": "volt",
+      "default": 2,
+      "minimum": 0.5,
+      "maximum": 5,
+      "simulated": true
+    },
+    {
+      "id": "color",
+      "displayName": {
+        "key": "components.seven-segment.properties.color",
+        "ru": "Цвет"
+      },
+      "type": "enum",
+      "default": "red",
+      "options": [
+        {
+          "value": "red",
+          "label": {
+            "key": "components.seven-segment.properties.color.red",
+            "ru": "Красный"
+          }
+        },
+        {
+          "value": "green",
+          "label": {
+            "key": "components.seven-segment.properties.color.green",
+            "ru": "Зелёный"
+          }
+        },
+        {
+          "value": "yellow",
+          "label": {
+            "key": "components.seven-segment.properties.color.yellow",
+            "ru": "Жёлтый"
+          }
+        },
+        {
+          "value": "blue",
+          "label": {
+            "key": "components.seven-segment.properties.color.blue",
+            "ru": "Синий"
+          }
+        },
+        {
+          "value": "white",
+          "label": {
+            "key": "components.seven-segment.properties.color.white",
+            "ru": "Белый"
+          }
+        }
+      ],
+      "simulated": false
+    }
+  ],
+  "simulationAccuracy": "BASIC_ELECTRICAL",
+  "electricalModel": {
+    "kind": "led-array",
+    "common": "COM1",
+    "polarityProperty": "commonType",
+    "channels": [
+      {
+        "id": "a",
+        "pin": "a",
+        "forwardVoltageProperty": "forwardVoltage"
+      },
+      {
+        "id": "b",
+        "pin": "b",
+        "forwardVoltageProperty": "forwardVoltage"
+      },
+      {
+        "id": "c",
+        "pin": "c",
+        "forwardVoltageProperty": "forwardVoltage"
+      },
+      {
+        "id": "d",
+        "pin": "d",
+        "forwardVoltageProperty": "forwardVoltage"
+      },
+      {
+        "id": "e",
+        "pin": "e",
+        "forwardVoltageProperty": "forwardVoltage"
+      },
+      {
+        "id": "f",
+        "pin": "f",
+        "forwardVoltageProperty": "forwardVoltage"
+      },
+      {
+        "id": "g",
+        "pin": "g",
+        "forwardVoltageProperty": "forwardVoltage"
+      },
+      {
+        "id": "dp",
+        "pin": "dp",
+        "forwardVoltageProperty": "forwardVoltage"
+      }
+    ]
+  },
+  "limitations": [
+    "Каждый сегмент — светодиод той же модели, что и одиночный светодиод; сегмент из нескольких кристаллов не моделируется.",
+    "Прямое напряжение по умолчанию (2 В) — условное значение, не взятое из datasheet.",
+    "Расположение выводов (G F COM A B сверху, E D COM C DP снизу) — распространённое, но зависит от производителя.",
+    "Цвет — только визуальные метаданные."
+  ],
+  "visual": {
+    "width": 4,
+    "height": 6,
+    "pins": {
+      "g": {
+        "x": 0,
+        "y": 0
+      },
+      "f": {
+        "x": 1,
+        "y": 0
+      },
+      "COM1": {
+        "x": 2,
+        "y": 0
+      },
+      "a": {
+        "x": 3,
+        "y": 0
+      },
+      "b": {
+        "x": 4,
+        "y": 0
+      },
+      "e": {
+        "x": 0,
+        "y": 6
+      },
+      "d": {
+        "x": 1,
+        "y": 6
+      },
+      "COM2": {
+        "x": 2,
+        "y": 6
+      },
+      "c": {
+        "x": 3,
+        "y": 6
+      },
+      "dp": {
+        "x": 4,
+        "y": 6
+      }
+    }
+  }
+}

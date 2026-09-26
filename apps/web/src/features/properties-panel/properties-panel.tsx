@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { useCircuitStore } from "@/stores/circuit-store";
 
 import { EnumPropertyField, NumberPropertyField } from "./property-fields";
+import { hasSimulationInputs } from "./simulation-input-types";
+import { SimulationInputs } from "./simulation-inputs";
 
 const REJECTION_MESSAGES: Readonly<Record<string, PlainTranslationKey>> = {
   SAME_PIN: "canvas.connection.samePin",
@@ -251,6 +253,11 @@ function ComponentProperties({ id }: { id: string }) {
               />
             );
           })}
+        </Section>
+      )}
+      {!isBoard && hasSimulationInputs(definition.type) && (
+        <Section title={t("properties.section.simulation")}>
+          <SimulationInputs id={id} definition={definition} properties={properties} />
         </Section>
       )}
       {isBoard && (

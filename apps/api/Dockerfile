@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Образ MicroLab API (FastAPI + uvicorn) и одноразовой задачи миграций.
+# Образ MicroLab API (FastAPI + uvicorn); миграции применяются при старте контейнера.
 # Контекст сборки — корень репозитория: API читает определения компонентов
 # из packages/circuit-schema во время работы. Набор файлов ограничен Dockerfile.dockerignore.
 
@@ -46,7 +46,7 @@ COPY apps/api/pyproject.toml apps/api/alembic.ini /app/apps/api/
 COPY apps/api/alembic /app/apps/api/alembic
 COPY packages/circuit-schema/schema /app/packages/circuit-schema/schema
 COPY packages/circuit-schema/definitions /app/packages/circuit-schema/definitions
-COPY --chmod=0755 apps/api/docker/migrate.sh /usr/local/bin/microlab-migrate
+COPY --chmod=0755 apps/api/docker/entrypoint.sh /usr/local/bin/microlab-api
 
 # MICROLAB_FORWARDED_ALLOW_IPS — адреса обратного прокси (nginx), которому разрешено
 # передавать X-Forwarded-*; docker-compose.yml задаёт подсеть сети edge.
@@ -59,9 +59,8 @@ USER 10003:10003
 WORKDIR /app/apps/api
 EXPOSE 8000
 
-HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=10 \
+HEALTHCHECK --interval=5s --timeout=3s --start-period=60s --retries=10 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=2)"]
 
 # Один процесс: сессии симуляции хранятся в памяти процесса API.
-# exec заменяет shell, сигналы получает uvicorn.
-CMD ["sh", "-c", "exec uvicorn microlab_api.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips \"$MICROLAB_FORWARDED_ALLOW_IPS\" --no-server-header --timeout-graceful-shutdown 10"]
+CMD ["microlab-api"]

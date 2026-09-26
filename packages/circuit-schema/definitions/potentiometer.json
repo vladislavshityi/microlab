@@ -1,0 +1,104 @@
+{
+  "type": "potentiometer",
+  "displayName": {
+    "key": "components.potentiometer.displayName",
+    "ru": "Потенциометр"
+  },
+  "description": {
+    "key": "components.potentiometer.description",
+    "ru": "Переменный резистор с тремя выводами: движок W делит сопротивление между выводами 1 и 2."
+  },
+  "category": "passive",
+  "pins": [
+    {
+      "id": "1",
+      "name": "1",
+      "electricalType": "passive"
+    },
+    {
+      "id": "W",
+      "name": "Движок",
+      "electricalType": "passive"
+    },
+    {
+      "id": "2",
+      "name": "2",
+      "electricalType": "passive"
+    }
+  ],
+  "properties": [
+    {
+      "id": "resistanceOhms",
+      "displayName": {
+        "key": "components.potentiometer.properties.resistanceOhms",
+        "ru": "Полное сопротивление"
+      },
+      "type": "number",
+      "unit": "ohm",
+      "default": 10000,
+      "minimum": 100,
+      "maximum": 1000000,
+      "presets": [
+        1000,
+        10000,
+        100000
+      ],
+      "simulated": true
+    },
+    {
+      "id": "positionPercent",
+      "displayName": {
+        "key": "components.potentiometer.properties.positionPercent",
+        "ru": "Положение движка"
+      },
+      "type": "number",
+      "unit": "percent",
+      "default": 50,
+      "minimum": 0,
+      "maximum": 100,
+      "presets": [
+        0,
+        25,
+        50,
+        75,
+        100
+      ],
+      "simulated": true
+    }
+  ],
+  "simulationAccuracy": "BASIC_ELECTRICAL",
+  "electricalModel": {
+    "kind": "potentiometer",
+    "terminals": [
+      "1",
+      "2"
+    ],
+    "wiper": "W",
+    "resistanceProperty": "resistanceOhms",
+    "positionProperty": "positionPercent"
+  },
+  "limitations": [
+    "Линейная характеристика: сопротивление между выводом 1 и движком пропорционально положению (0 % — движок у вывода 1).",
+    "Сопротивление каждой части не меньше 1 Ω — численное допущение модели, а не параметр реального потенциометра.",
+    "Допуск, остаточное сопротивление, дребезг движка и рассеиваемая мощность не моделируются.",
+    "Положение — начальное значение: во время симуляции его можно менять на схеме или в свойствах, не сохраняя в проект."
+  ],
+  "visual": {
+    "width": 4,
+    "height": 3,
+    "pins": {
+      "1": {
+        "x": 0,
+        "y": 2
+      },
+      "W": {
+        "x": 2,
+        "y": 0
+      },
+      "2": {
+        "x": 4,
+        "y": 2
+      }
+    }
+  }
+}

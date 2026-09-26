@@ -8,9 +8,15 @@ from pathlib import Path
 from microlab_api.circuit_schema.generated.component_definition import (
     ComponentDefinition,
     EnumPropertyDefinition,
+    LedArrayModel,
     LedModel,
     NumberPropertyDefinition,
+    PhotoresistorModel,
+    PiezoModel,
+    PotentiometerModel,
     ResistorModel,
+    ServoModel,
+    SwitchModel,
 )
 from microlab_api.circuit_schema.paths import definitions_dir
 
@@ -121,6 +127,42 @@ def _check_board_limits(definition: ComponentDefinition) -> list[str]:
     return problems
 
 
+def _model_references(model: object) -> tuple[list[str], list[str], list[str]]:
+    """Выводы, числовые и enum-свойства, на которые ссылается электрическая модель."""
+    pins: list[str]
+    props: list[str] = []
+    enums: list[str] = []
+    match model:
+        case LedModel():
+            pins, props = [model.anode, model.cathode], [model.forward_voltage_property]
+        case ResistorModel():
+            pins, props = [p.root for p in model.terminals], [model.resistance_property]
+        case SwitchModel():
+            pins = [p.root for p in model.terminals]
+        case PotentiometerModel():
+            pins = [*(p.root for p in model.terminals), model.wiper]
+            props = [model.resistance_property, model.position_property]
+        case PhotoresistorModel():
+            pins = [p.root for p in model.terminals]
+            props = [
+                model.illuminance_property,
+                model.resistance_at10_lux_property,
+                model.gamma_property,
+            ]
+        case LedArrayModel():
+            pins = [model.common, *(c.pin for c in model.channels)]
+            props = sorted({c.forward_voltage_property for c in model.channels})
+            enums = [model.polarity_property]
+        case PiezoModel():
+            pins = [model.positive, model.negative]
+        case ServoModel():
+            pins = [model.signal, model.power, model.ground]
+            props = [model.min_pulse_property, model.max_pulse_property, model.min_supply_property]
+        case _:
+            raise TypeError(f"unknown electrical model {type(model).__name__}")
+    return pins, props, enums
+
+
 def _check_electrical_model(definition: ComponentDefinition) -> list[str]:
     model = definition.electrical_model
     if model is None:
@@ -130,21 +172,25 @@ def _check_electrical_model(definition: ComponentDefinition) -> list[str]:
     number_props = {
         prop.id for prop in definition.properties if isinstance(prop, NumberPropertyDefinition)
     }
-    if isinstance(model, LedModel):
-        pins = [model.anode, model.cathode]
-        props = [model.forward_voltage_property]
-    elif isinstance(model, ResistorModel):
-        pins = [pin.root for pin in model.terminals]
-        props = [model.resistance_property]
-    else:
-        pins = [pin.root for pin in model.terminals]
-        props = []
+    enum_props = {
+        prop.id: {option.value for option in prop.options}
+        for prop in definition.properties
+        if isinstance(prop, EnumPropertyDefinition)
+    }
+    pins, props, enums = _model_references(model)
     problems = [f"{prefix}: unknown pin {pin}" for pin in pins if pin not in pin_set]
     if len(set(pins)) != len(pins):
         problems.append(f"{prefix}: terminals must be distinct pins")
     problems += [
         f"{prefix}: {prop} is not a number property" for prop in props if prop not in number_props
     ]
+    for prop in enums:
+        if enum_props.get(prop) != {"common-cathode", "common-anode"}:
+            problems.append(f"{prefix}: {prop} must be a common-cathode/common-anode enum property")
+    if isinstance(model, LedArrayModel):
+        channel_ids = [c.id for c in model.channels]
+        if len(set(channel_ids)) != len(channel_ids):
+            problems.append(f"{prefix}: duplicate channel ids")
     return problems
 
 

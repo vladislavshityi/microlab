@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { FolderOpen, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { PROJECT_TEMPLATES, type ProjectTemplate } from "@microlab/circuit-schema";
 
 import { listProjects } from "@/api/projects";
 import type { ProjectSummary } from "@/api/schemas";
@@ -17,9 +18,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { localized } from "@/i18n/localized";
 import { locale, t } from "@/i18n/t";
 import { useProjectStore } from "@/stores/project-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -181,6 +184,13 @@ export function ProjectsMenu() {
   const name = useProjectStore((state) => state.name);
   const { create } = useProjectActions();
   const showNotice = useUiStore((state) => state.showNotice);
+  const createFrom = (template?: ProjectTemplate) => {
+    create.mutate(template, {
+      onSuccess: (created) => {
+        if (!created) showNotice("projects.notice.unsavedBlocked");
+      },
+    });
+  };
 
   return (
     <>
@@ -194,15 +204,27 @@ export function ProjectsMenu() {
         <DropdownMenuContent align="start">
           <DropdownMenuItem
             onSelect={() => {
-              create.mutate(undefined, {
-                onSuccess: (created) => {
-                  if (!created) showNotice("projects.notice.unsavedBlocked");
-                },
-              });
+              createFrom();
             }}
           >
             {t("projects.menu.new")}
           </DropdownMenuItem>
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+            {t("projects.menu.templates")}
+          </DropdownMenuLabel>
+          {PROJECT_TEMPLATES.map((template) => (
+            <DropdownMenuItem
+              key={template.id}
+              className="pl-4"
+              title={localized(template.description)}
+              onSelect={() => {
+                createFrom(template);
+              }}
+            >
+              {localized(template.name)}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => {
               setOpenDialog(true);

@@ -1,0 +1,86 @@
+{
+  "id": "blink",
+  "order": 1,
+  "name": {
+    "key": "templates.blink.name",
+    "ru": "Blink"
+  },
+  "description": {
+    "key": "templates.blink.description",
+    "ru": "Светодиод на D13 через резистор 220 Ω мигает раз в секунду."
+  },
+  "code": "void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(1000);\n  digitalWrite(13, LOW);\n  delay(1000);\n}\n",
+  "circuit": {
+    "schemaVersion": 1,
+    "board": {
+      "id": "uno1",
+      "type": "arduino-uno-r3",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0
+    },
+    "components": [
+      {
+        "id": "r1",
+        "type": "resistor",
+        "position": {
+          "x": 16,
+          "y": 5
+        },
+        "rotation": 0,
+        "properties": {
+          "resistanceOhms": 220
+        }
+      },
+      {
+        "id": "led1",
+        "type": "led",
+        "position": {
+          "x": 22,
+          "y": 5
+        },
+        "rotation": 0,
+        "properties": {
+          "color": "red"
+        }
+      }
+    ],
+    "connections": [
+      {
+        "id": "w1",
+        "from": {
+          "componentId": "uno1",
+          "pinId": "D13"
+        },
+        "to": {
+          "componentId": "r1",
+          "pinId": "1"
+        }
+      },
+      {
+        "id": "w2",
+        "from": {
+          "componentId": "r1",
+          "pinId": "2"
+        },
+        "to": {
+          "componentId": "led1",
+          "pinId": "A"
+        }
+      },
+      {
+        "id": "w3",
+        "from": {
+          "componentId": "led1",
+          "pinId": "K"
+        },
+        "to": {
+          "componentId": "uno1",
+          "pinId": "GND3"
+        }
+      }
+    ]
+  }
+}

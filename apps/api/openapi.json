@@ -250,6 +250,7 @@
       },
       "ButtonInput": {
         "additionalProperties": false,
+        "description": "Кнопка: нажата или отпущена.",
         "properties": {
           "pressed": {
             "title": "Pressed",
@@ -592,6 +593,21 @@
                 "$ref": "#/components/schemas/SwitchModel"
               },
               {
+                "$ref": "#/components/schemas/PotentiometerModel"
+              },
+              {
+                "$ref": "#/components/schemas/PhotoresistorModel"
+              },
+              {
+                "$ref": "#/components/schemas/LedArrayModel"
+              },
+              {
+                "$ref": "#/components/schemas/PiezoModel"
+              },
+              {
+                "$ref": "#/components/schemas/ServoModel"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -694,7 +710,18 @@
             "type": "string"
           },
           "input": {
-            "$ref": "#/components/schemas/ButtonInput"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ButtonInput"
+              },
+              {
+                "$ref": "#/components/schemas/PositionInput"
+              },
+              {
+                "$ref": "#/components/schemas/IlluminanceInput"
+              }
+            ],
+            "title": "Input"
           }
         },
         "required": [
@@ -1202,6 +1229,23 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "IlluminanceInput": {
+        "additionalProperties": false,
+        "description": "Фоторезистор: освещённость, лк.",
+        "properties": {
+          "illuminanceLux": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000.0,
+            "title": "Illuminancelux",
+            "type": "number"
+          }
+        },
+        "required": [
+          "illuminanceLux"
+        ],
+        "title": "IlluminanceInput",
+        "type": "object"
+      },
       "InternalConnection": {
         "items": {
           "type": "string"
@@ -1396,6 +1440,71 @@
         "title": "JoinGroupRequest",
         "type": "object"
       },
+      "LedArrayModel": {
+        "additionalProperties": false,
+        "description": "Several LEDs with one common terminal (RGB LED, 7-segment display). The enum property selects the polarity: common-cathode (channel pin = anode) or common-anode (channel pin = cathode).",
+        "properties": {
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/LedChannel"
+            },
+            "minItems": 1,
+            "title": "Channels",
+            "type": "array"
+          },
+          "common": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          },
+          "kind": {
+            "const": "led-array",
+            "title": "Kind",
+            "type": "string"
+          },
+          "polarityProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "common",
+          "polarityProperty",
+          "channels"
+        ],
+        "title": "LedArrayModel",
+        "type": "object"
+      },
+      "LedChannel": {
+        "additionalProperties": false,
+        "description": "One LED of an LED array: its own pin and forward voltage property.",
+        "properties": {
+          "forwardVoltageProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9]{0,15}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "pin": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pin",
+          "forwardVoltageProperty"
+        ],
+        "title": "LedChannel",
+        "type": "object"
+      },
       "LedModel": {
         "additionalProperties": false,
         "description": "Light-emitting diode; forward voltage in volts comes from a number property.",
@@ -1526,7 +1635,10 @@
             "enum": [
               "ohm",
               "volt",
-              "percent"
+              "percent",
+              "lux",
+              "microsecond",
+              "none"
             ],
             "title": "PropertyUnit",
             "type": "string"
@@ -1548,6 +1660,78 @@
       "Password": {
         "maxLength": 1024,
         "type": "string"
+      },
+      "PhotoresistorModel": {
+        "additionalProperties": false,
+        "description": "Photoresistor: R = R10 * (E / 10 lx)^(-gamma), all parameters are number properties.",
+        "properties": {
+          "gammaProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "illuminanceProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "kind": {
+            "const": "photoresistor",
+            "title": "Kind",
+            "type": "string"
+          },
+          "resistanceAt10LuxProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "terminals": {
+            "items": {
+              "$ref": "#/components/schemas/PinId"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Terminals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "terminals",
+          "illuminanceProperty",
+          "resistanceAt10LuxProperty",
+          "gammaProperty"
+        ],
+        "title": "PhotoresistorModel",
+        "type": "object"
+      },
+      "PiezoModel": {
+        "additionalProperties": false,
+        "description": "Passive piezo buzzer: no DC path between the terminals; sound frequency is measured from the voltage across it.",
+        "properties": {
+          "kind": {
+            "const": "piezo",
+            "title": "Kind",
+            "type": "string"
+          },
+          "negative": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          },
+          "positive": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "positive",
+          "negative"
+        ],
+        "title": "PiezoModel",
+        "type": "object"
       },
       "PinDefinition": {
         "additionalProperties": false,
@@ -1681,6 +1865,67 @@
           "y"
         ],
         "title": "PinPosition",
+        "type": "object"
+      },
+      "PositionInput": {
+        "additionalProperties": false,
+        "description": "Потенциометр: положение движка, 0 — у вывода 1, 1 — у вывода 2.",
+        "properties": {
+          "position": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Position",
+            "type": "number"
+          }
+        },
+        "required": [
+          "position"
+        ],
+        "title": "PositionInput",
+        "type": "object"
+      },
+      "PotentiometerModel": {
+        "additionalProperties": false,
+        "description": "Potentiometer: resistance between the end terminals, split by the wiper position (0 % = wiper at terminals[0]).",
+        "properties": {
+          "kind": {
+            "const": "potentiometer",
+            "title": "Kind",
+            "type": "string"
+          },
+          "positionProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "resistanceProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "terminals": {
+            "items": {
+              "$ref": "#/components/schemas/PinId"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Terminals",
+            "type": "array"
+          },
+          "wiper": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "terminals",
+          "wiper",
+          "resistanceProperty",
+          "positionProperty"
+        ],
+        "title": "PotentiometerModel",
         "type": "object"
       },
       "ProjectCreate": {
@@ -2139,6 +2384,58 @@
           "data"
         ],
         "title": "SerialInputRequest",
+        "type": "object"
+      },
+      "ServoModel": {
+        "additionalProperties": false,
+        "description": "Hobby servo: control pulse width on the signal pin sets the angle; power and ground pins must be supplied.",
+        "properties": {
+          "ground": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          },
+          "kind": {
+            "const": "servo",
+            "title": "Kind",
+            "type": "string"
+          },
+          "maxPulseProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "minPulseProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "minSupplyProperty": {
+            "pattern": "^[a-z][A-Za-z0-9]{0,63}$",
+            "title": "PropertyId",
+            "type": "string"
+          },
+          "power": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          },
+          "signal": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_]{0,31}$",
+            "title": "PinId",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "signal",
+          "power",
+          "ground",
+          "minPulseProperty",
+          "maxPulseProperty",
+          "minSupplyProperty"
+        ],
+        "title": "ServoModel",
         "type": "object"
       },
       "Severity": {
@@ -5774,7 +6071,7 @@
             "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
           }
         },
-        "summary": "Change a component input (e.g. press a button)",
+        "summary": "Change a component input (button, potentiometer position, illuminance)",
         "tags": [
           "simulation"
         ]

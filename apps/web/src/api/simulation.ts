@@ -116,11 +116,14 @@ export function sendSimulationCommand(projectId: string, action: SimulationComma
   return command(projectId, action);
 }
 
-/** Изменение входа компонента (нажатие кнопки). */
+/** Вход компонента: кнопка, положение движка потенциометра (0…1), освещённость фоторезистора (лк). */
+export type ComponentInput = { pressed: boolean } | { position: number } | { illuminanceLux: number };
+
+/** Изменение входа компонента. */
 export function setComponentInput(
   projectId: string,
   componentId: string,
-  input: { pressed: boolean },
+  input: ComponentInput,
 ): Promise<SimulationCommandResponse> {
   return command(projectId, "input", { componentId, input });
 }

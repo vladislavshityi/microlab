@@ -1,0 +1,72 @@
+{
+  "id": "servo-sweep",
+  "order": 5,
+  "name": {
+    "key": "templates.servo-sweep.name",
+    "ru": "Сервопривод: качание"
+  },
+  "description": {
+    "key": "templates.servo-sweep.description",
+    "ru": "Сервопривод на D9 поворачивается от 0° до 180° и обратно (библиотека Servo)."
+  },
+  "code": "#include <Servo.h>\n\nServo servo;\n\nvoid setup() {\n  servo.attach(9);\n}\n\nvoid loop() {\n  for (int angle = 0; angle <= 180; angle++) {\n    servo.write(angle);\n    delay(15);\n  }\n  for (int angle = 180; angle >= 0; angle--) {\n    servo.write(angle);\n    delay(15);\n  }\n}\n",
+  "circuit": {
+    "schemaVersion": 1,
+    "board": {
+      "id": "uno1",
+      "type": "arduino-uno-r3",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0
+    },
+    "components": [
+      {
+        "id": "servo1",
+        "type": "servo",
+        "position": {
+          "x": -12,
+          "y": 10
+        },
+        "rotation": 0,
+        "properties": {}
+      }
+    ],
+    "connections": [
+      {
+        "id": "w1",
+        "from": {
+          "componentId": "servo1",
+          "pinId": "SIG"
+        },
+        "to": {
+          "componentId": "uno1",
+          "pinId": "D9"
+        }
+      },
+      {
+        "id": "w2",
+        "from": {
+          "componentId": "servo1",
+          "pinId": "VCC"
+        },
+        "to": {
+          "componentId": "uno1",
+          "pinId": "5V"
+        }
+      },
+      {
+        "id": "w3",
+        "from": {
+          "componentId": "servo1",
+          "pinId": "GND"
+        },
+        "to": {
+          "componentId": "uno1",
+          "pinId": "GND1"
+        }
+      }
+    ]
+  }
+}

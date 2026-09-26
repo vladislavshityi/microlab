@@ -265,7 +265,7 @@ _command_route("reset", "Reset the simulated MCU (external reset)")
             "Invalid request or the simulator rejected the input (INVALID_SIMULATION_INPUT)."
         ),
     },
-    summary="Change a component input (e.g. press a button)",
+    summary="Change a component input (button, potentiometer position, illuminance)",
     operation_id="setSimulationInput",
 )
 async def set_input(

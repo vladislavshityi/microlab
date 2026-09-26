@@ -117,10 +117,13 @@ async def login(body: LoginRequest, request: Request, response: Response, db: Se
 
     user = await db.scalar(select(User).where(User.email == email))
     if user is None:
-        passwords.verify_unknown_user(body.password)
+        await passwords.verify_unknown_user_async(body.password)
         ok = False
     else:
-        ok = passwords.verify_password(user.password_hash, body.password) and user.is_active
+        ok = (
+            await passwords.verify_password_async(user.password_hash, body.password)
+            and user.is_active
+        )
     if user is None or not ok:
         limits.login_ip.hit(ip)
         limits.login_account.hit(email)
@@ -128,7 +131,7 @@ async def login(body: LoginRequest, request: Request, response: Response, db: Se
 
     limits.login_account.reset(email)
     if user.password_hash is not None and passwords.needs_rehash(user.password_hash):
-        user.password_hash = passwords.hash_password(body.password)
+        user.password_hash = await passwords.hash_password_async(body.password)
     user.last_login_at = now_utc()
     await _start_session(request, response, db, user)
     await db.commit()
@@ -169,7 +172,7 @@ async def register(
     user = User(
         email=body.email,
         display_name=body.display_name,
-        password_hash=passwords.hash_password(body.password),
+        password_hash=await passwords.hash_password_async(body.password),
         role=UserRole.STUDENT,
         is_active=True,
         must_change_password=False,
@@ -253,7 +256,7 @@ async def change_password(
     auth_session, user = auth
     limits = _limits(request)
     raise_if_limited(limits.login_account.retry_after(user.email))
-    if not passwords.verify_password(user.password_hash, body.current_password):
+    if not await passwords.verify_password_async(user.password_hash, body.current_password):
         limits.login_account.hit(user.email)
         raise ApiError(
             401,
@@ -275,7 +278,7 @@ async def change_password(
                 )
             ],
         )
-    user.password_hash = passwords.hash_password(body.new_password)
+    user.password_hash = await passwords.hash_password_async(body.new_password)
     user.must_change_password = False
     await delete_user_sessions(db, user.id, except_id=auth_session.id)
     await db.commit()

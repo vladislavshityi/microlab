@@ -46,6 +46,23 @@ describe("parseQuantity (other units)", () => {
   });
 });
 
+describe("parseQuantity (lux, microseconds, dimensionless)", () => {
+  it("parses illuminance with kilo prefix", () => {
+    expect(parseQuantity("350", "lux")).toBe(350);
+    expect(parseQuantity("1,5 клк", "lux")).toBe(1500);
+    expect(parseQuantity("10k lx", "lux")).toBe(10000);
+    expect(formatQuantityText(20000, "lux", "ru-RU")).toBe("20 клк");
+  });
+
+  it("parses pulse widths and plain numbers", () => {
+    expect(parseQuantity("544 мкс", "microsecond")).toBe(544);
+    expect(parseQuantity("2400us", "microsecond")).toBe(2400);
+    expect(parseQuantity("1k", "microsecond")).toBeNull();
+    expect(parseQuantity("0,7", "none")).toBe(0.7);
+    expect(formatQuantityText(0.7, "none", "ru-RU")).toBe("0,7");
+  });
+});
+
 describe("formatQuantity", () => {
   it("uses Ω, kΩ and MΩ with the locale decimal separator", () => {
     expect(formatQuantity(220, "ohm", "ru-RU")).toEqual({ value: "220", unit: "Ω" });

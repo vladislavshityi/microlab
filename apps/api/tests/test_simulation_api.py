@@ -63,7 +63,8 @@ class CompilerStub:
         self.calls = 0
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
-        self.calls += 1
+        if request.url.path == "/compile":
+            self.calls += 1
         body = {
             "success": self.success,
             "compilerOutput": "" if self.success else SYNTAX_ERROR_OUTPUT,
@@ -322,6 +323,29 @@ def test_lifecycle_commands_and_inputs(
     ]
     assert supervisor.received[4]["input"] == {"pressed": True}
     assert supervisor.received[6]["data"] == "привет\n"
+
+
+def test_potentiometer_and_illuminance_inputs(
+    make_client: ClientFactory, supervisor: FakeSupervisor
+) -> None:
+    client = make_client()
+    project_id = _create_project(client, _external_led())
+    assert client.post(_url(project_id, "start")).status_code == 200
+
+    for body in ({"position": 0.25}, {"illuminanceLux": 350}):
+        response = client.post(
+            _url(project_id, "input"), json={"componentId": "button1", "input": body}
+        )
+        assert response.status_code == 200
+    for body in ({"position": 1.5}, {"illuminanceLux": 0}, {"illuminanceLux": 200_000}):
+        response = client.post(
+            _url(project_id, "input"), json={"componentId": "button1", "input": body}
+        )
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+    inputs = [c["input"] for c in supervisor.received if c.get("type") == "set_component_input"]
+    assert inputs == [{"position": 0.25}, {"illuminanceLux": 350.0}]
 
 
 def test_restart_replaces_active_session(

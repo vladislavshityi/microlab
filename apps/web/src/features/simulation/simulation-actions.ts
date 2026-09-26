@@ -1,4 +1,5 @@
 import {
+  type ComponentInput,
   sendSerialInput,
   sendSimulationCommand,
   setComponentInput,
@@ -104,6 +105,46 @@ export async function setButtonPressed(componentId: string, pressed: boolean): P
   if (!ACTIVE_PHASES.has(useSimulationStore.getState().phase)) return;
   useSimulationStore.getState().setComponentLocal(componentId, { pressed });
   await withCommand((projectId) => setComponentInput(projectId, componentId, { pressed }));
+}
+
+/**
+ * Непрерывные входы (движок потенциометра, освещённость): пока запрос в пути, новые значения
+ * не отправляются, а запоминается только последнее — оно уходит после ответа. Так
+ * перетаскивание ползунка не создаёт очередь запросов, а итоговое значение не теряется.
+ */
+const pendingInputs = new Map<string, ComponentInput>();
+const inFlight = new Set<string>();
+
+async function sendLatest(componentId: string, input: ComponentInput): Promise<void> {
+  pendingInputs.set(componentId, input);
+  if (inFlight.has(componentId)) return;
+  inFlight.add(componentId);
+  try {
+    let next = pendingInputs.get(componentId);
+    while (next !== undefined) {
+      pendingInputs.delete(componentId);
+      const value = next;
+      await withCommand((projectId) => setComponentInput(projectId, componentId, value));
+      next = pendingInputs.get(componentId);
+    }
+  } finally {
+    inFlight.delete(componentId);
+  }
+}
+
+/** Положение движка потенциометра 0…1 во время симуляции (в проект не сохраняется). */
+export async function setPotentiometerPosition(componentId: string, position: number): Promise<void> {
+  if (!ACTIVE_PHASES.has(useSimulationStore.getState().phase)) return;
+  const value = Math.min(1, Math.max(0, position));
+  useSimulationStore.getState().setComponentLocal(componentId, { position: value });
+  await sendLatest(componentId, { position: value });
+}
+
+/** Освещённость фоторезистора во время симуляции, лк (в проект не сохраняется). */
+export async function setIlluminance(componentId: string, lux: number): Promise<void> {
+  if (!ACTIVE_PHASES.has(useSimulationStore.getState().phase)) return;
+  useSimulationStore.getState().setComponentLocal(componentId, { illuminanceLux: lux });
+  await sendLatest(componentId, { illuminanceLux: lux });
 }
 
 /** Отправка строки в Serial; true — отправлено. */

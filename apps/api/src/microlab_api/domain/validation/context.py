@@ -9,10 +9,15 @@ from microlab_api.circuit_schema.generated.circuit import CircuitDocument
 from microlab_api.circuit_schema.generated.component_definition import (
     BoardElectricalLimits,
     ComponentDefinition,
+    EnumPropertyDefinition,
+    LedArrayModel,
     LedModel,
     NumberPropertyDefinition,
+    PhotoresistorModel,
     PinDefinition,
+    PotentiometerModel,
     ResistorModel,
+    SwitchModel,
 )
 from microlab_api.domain.circuit.netlist import Net
 
@@ -100,12 +105,20 @@ class Element:
 
     ``terminals`` — ссылки на выводы; для светодиода это (анод, катод).
     ``value`` — сопротивление (Ом) для резистора, прямое напряжение (В) для светодиода.
+    Потенциометр даёт два резистора, фоторезистор — резистор, RGB-светодиод и
+    7-сегментный индикатор — по светодиоду на канал (``channel``).
     """
 
     instance_id: str
     kind: str
     terminals: tuple[str, str]
     value: float
+    channel: str | None = None
+
+    @property
+    def label(self) -> str:
+        """Имя элемента в сообщениях: компонент или «компонент (канал)»."""
+        return self.instance_id if self.channel is None else f"{self.instance_id} ({self.channel})"
 
 
 @dataclass(slots=True)
@@ -162,6 +175,81 @@ def _number(definition: ComponentDefinition, properties: dict[str, object], prop
     return float(value)
 
 
+# Наименьшее сопротивление части потенциометра — то же численное допущение, что в симуляторе.
+_POT_MIN_SEGMENT_OHMS = 1.0
+
+
+def _enum(definition: ComponentDefinition, properties: dict[str, object], prop_id: str) -> str:
+    """Значение enum-свойства; некорректное значение заменяется значением по умолчанию."""
+    prop = next(
+        p
+        for p in definition.properties
+        if isinstance(p, EnumPropertyDefinition) and p.id == prop_id
+    )
+    value = properties.get(prop_id)
+    if isinstance(value, str) and value in {o.value for o in prop.options}:
+        return value
+    return prop.default
+
+
+def _elements(
+    component_id: str, definition: ComponentDefinition, properties: dict[str, object]
+) -> list[Element]:
+    """Двухполюсные элементы компонента по его электрической модели.
+
+    Пьезоизлучатель и сервопривод не образуют пути тока между выводами: элементов нет.
+    """
+    model = definition.electrical_model
+
+    def ref(pin: str) -> str:
+        return f"{component_id}.{pin}"
+
+    def num(prop_id: str) -> float:
+        return _number(definition, properties, prop_id)
+
+    elements: list[Element] = []
+    match model:
+        case LedModel():
+            terminals = (ref(model.anode), ref(model.cathode))
+            elements.append(
+                Element(component_id, "led", terminals, num(model.forward_voltage_property))
+            )
+        case ResistorModel():
+            a, b = (ref(p.root) for p in model.terminals)
+            elements.append(
+                Element(component_id, "resistor", (a, b), num(model.resistance_property))
+            )
+        case SwitchModel():
+            a, b = (ref(p.root) for p in model.terminals)
+            elements.append(Element(component_id, "switch", (a, b), 0.0))
+        case PotentiometerModel():
+            total = num(model.resistance_property)
+            position = num(model.position_property) / 100
+            a, b = (ref(p.root) for p in model.terminals)
+            wiper = ref(model.wiper)
+            upper = max(total * position, _POT_MIN_SEGMENT_OHMS)
+            lower = max(total * (1 - position), _POT_MIN_SEGMENT_OHMS)
+            elements.append(Element(component_id, "resistor", (a, wiper), upper))
+            elements.append(Element(component_id, "resistor", (wiper, b), lower))
+        case PhotoresistorModel():
+            lux = num(model.illuminance_property)
+            resistance = num(model.resistance_at10_lux_property) * (lux / 10) ** -num(
+                model.gamma_property
+            )
+            a, b = (ref(p.root) for p in model.terminals)
+            elements.append(Element(component_id, "resistor", (a, b), resistance))
+        case LedArrayModel():
+            common_anode = _enum(definition, properties, model.polarity_property) == "common-anode"
+            for channel in model.channels:
+                pins = (ref(model.common), ref(channel.pin))
+                terminals = pins if common_anode else (pins[1], pins[0])
+                vf = num(channel.forward_voltage_property)
+                elements.append(Element(component_id, "led", terminals, vf, channel.id))
+        case _:
+            pass
+    return elements
+
+
 def build_context(
     document: CircuitDocument, registry: DefinitionRegistry, nets: list[Net]
 ) -> CircuitContext:
@@ -195,27 +283,7 @@ def build_context(
         if definition.socket:
             continue
         component_ids.append(component.id)
-        model = definition.electrical_model
-        properties: dict[str, object] = dict(component.properties)
-        if isinstance(model, LedModel):
-            elements.append(
-                Element(
-                    instance_id=component.id,
-                    kind="led",
-                    terminals=(f"{component.id}.{model.anode}", f"{component.id}.{model.cathode}"),
-                    value=_number(definition, properties, model.forward_voltage_property),
-                )
-            )
-        elif model is not None:
-            a, b = (f"{component.id}.{pin.root}" for pin in model.terminals)
-            value = (
-                _number(definition, properties, model.resistance_property)
-                if isinstance(model, ResistorModel)
-                else 0.0
-            )
-            elements.append(
-                Element(instance_id=component.id, kind=model.kind, terminals=(a, b), value=value)
-            )
+        elements.extend(_elements(component.id, definition, dict(component.properties)))
 
     infos = [
         NetInfo(

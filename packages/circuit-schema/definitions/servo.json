@@ -1,0 +1,106 @@
+{
+  "type": "servo",
+  "displayName": {
+    "key": "components.servo.displayName",
+    "ru": "Сервопривод"
+  },
+  "description": {
+    "key": "components.servo.description",
+    "ru": "Сервопривод класса SG90: угол вала задаётся длительностью управляющего импульса (библиотека Servo)."
+  },
+  "category": "output",
+  "pins": [
+    {
+      "id": "GND",
+      "name": "GND",
+      "electricalType": "ground"
+    },
+    {
+      "id": "VCC",
+      "name": "V+",
+      "electricalType": "power-input",
+      "voltageDomain": "5V"
+    },
+    {
+      "id": "SIG",
+      "name": "Сигнал",
+      "electricalType": "digital-input"
+    }
+  ],
+  "properties": [
+    {
+      "id": "minPulseUs",
+      "displayName": {
+        "key": "components.servo.properties.minPulseUs",
+        "ru": "Импульс для 0°"
+      },
+      "type": "number",
+      "unit": "microsecond",
+      "default": 544,
+      "minimum": 100,
+      "maximum": 3000,
+      "simulated": true
+    },
+    {
+      "id": "maxPulseUs",
+      "displayName": {
+        "key": "components.servo.properties.maxPulseUs",
+        "ru": "Импульс для 180°"
+      },
+      "type": "number",
+      "unit": "microsecond",
+      "default": 2400,
+      "minimum": 100,
+      "maximum": 3000,
+      "simulated": true
+    },
+    {
+      "id": "minSupplyVoltage",
+      "displayName": {
+        "key": "components.servo.properties.minSupplyVoltage",
+        "ru": "Минимальное напряжение питания"
+      },
+      "type": "number",
+      "unit": "volt",
+      "default": 4.5,
+      "minimum": 1,
+      "maximum": 6,
+      "simulated": true
+    }
+  ],
+  "simulationAccuracy": "BEHAVIORAL",
+  "electricalModel": {
+    "kind": "servo",
+    "signal": "SIG",
+    "power": "VCC",
+    "ground": "GND",
+    "minPulseProperty": "minPulseUs",
+    "maxPulseProperty": "maxPulseUs",
+    "minSupplyProperty": "minSupplyVoltage"
+  },
+  "limitations": [
+    "Угол линейно зависит от длительности импульса: 544 и 2400 мкс по умолчанию — значения MIN_PULSE_WIDTH и MAX_PULSE_WIDTH библиотеки Servo 1.3.0, а не характеристика конкретного сервопривода.",
+    "Минимальное напряжение питания 4,5 В — условное значение модели, не взятое из datasheet.",
+    "Вал поворачивается мгновенно: скорость, момент, нагрузка и механические упоры не моделируются.",
+    "Ток потребления двигателя не моделируется: выводы питания и сигнала не нагружают схему.",
+    "Импульсы длиннее удвоенного импульса для 180° не считаются управляющими; без импульсов вал сохраняет последний угол."
+  ],
+  "visual": {
+    "width": 6,
+    "height": 4,
+    "pins": {
+      "GND": {
+        "x": 0,
+        "y": 1
+      },
+      "VCC": {
+        "x": 0,
+        "y": 2
+      },
+      "SIG": {
+        "x": 0,
+        "y": 3
+      }
+    }
+  }
+}

@@ -54,13 +54,31 @@ class SimulationStartErrorResponse(ErrorResponse):
     )
 
 
+# Верхний предел освещённости фоторезистора совпадает с maximum свойства в определении.
+MAX_ILLUMINANCE_LUX = 100_000
+
+
 class ButtonInput(ApiModel):
+    """Кнопка: нажата или отпущена."""
+
     pressed: bool
+
+
+class PositionInput(ApiModel):
+    """Потенциометр: положение движка, 0 — у вывода 1, 1 — у вывода 2."""
+
+    position: float = Field(ge=0, le=1)
+
+
+class IlluminanceInput(ApiModel):
+    """Фоторезистор: освещённость, лк."""
+
+    illuminance_lux: float = Field(gt=0, le=MAX_ILLUMINANCE_LUX)
 
 
 class ComponentInputRequest(ApiModel):
     component_id: str = Field(min_length=1, max_length=64)
-    input: ButtonInput
+    input: ButtonInput | PositionInput | IlluminanceInput
 
 
 class SerialInputRequest(ApiModel):

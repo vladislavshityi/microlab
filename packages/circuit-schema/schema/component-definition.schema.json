@@ -244,7 +244,10 @@
       "enum": [
         "ohm",
         "volt",
-        "percent"
+        "percent",
+        "lux",
+        "microsecond",
+        "none"
       ]
     },
     "NumberPropertyDefinition": {
@@ -562,8 +565,206 @@
         },
         {
           "$ref": "#/$defs/SwitchModel"
+        },
+        {
+          "$ref": "#/$defs/PotentiometerModel"
+        },
+        {
+          "$ref": "#/$defs/PhotoresistorModel"
+        },
+        {
+          "$ref": "#/$defs/LedArrayModel"
+        },
+        {
+          "$ref": "#/$defs/PiezoModel"
+        },
+        {
+          "$ref": "#/$defs/ServoModel"
         }
       ]
+    },
+    "PotentiometerModel": {
+      "title": "PotentiometerModel",
+      "description": "Potentiometer: resistance between the end terminals, split by the wiper position (0 % = wiper at terminals[0]).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "terminals",
+        "wiper",
+        "resistanceProperty",
+        "positionProperty"
+      ],
+      "properties": {
+        "kind": {
+          "const": "potentiometer"
+        },
+        "terminals": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/PinId"
+          }
+        },
+        "wiper": {
+          "$ref": "#/$defs/PinId"
+        },
+        "resistanceProperty": {
+          "$ref": "#/$defs/PropertyId"
+        },
+        "positionProperty": {
+          "$ref": "#/$defs/PropertyId"
+        }
+      }
+    },
+    "PhotoresistorModel": {
+      "title": "PhotoresistorModel",
+      "description": "Photoresistor: R = R10 * (E / 10 lx)^(-gamma), all parameters are number properties.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "terminals",
+        "illuminanceProperty",
+        "resistanceAt10LuxProperty",
+        "gammaProperty"
+      ],
+      "properties": {
+        "kind": {
+          "const": "photoresistor"
+        },
+        "terminals": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/PinId"
+          }
+        },
+        "illuminanceProperty": {
+          "$ref": "#/$defs/PropertyId"
+        },
+        "resistanceAt10LuxProperty": {
+          "$ref": "#/$defs/PropertyId"
+        },
+        "gammaProperty": {
+          "$ref": "#/$defs/PropertyId"
+        }
+      }
+    },
+    "LedChannel": {
+      "title": "LedChannel",
+      "description": "One LED of an LED array: its own pin and forward voltage property.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "pin",
+        "forwardVoltageProperty"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]{0,15}$"
+        },
+        "pin": {
+          "$ref": "#/$defs/PinId"
+        },
+        "forwardVoltageProperty": {
+          "$ref": "#/$defs/PropertyId"
+        }
+      }
+    },
+    "LedArrayModel": {
+      "title": "LedArrayModel",
+      "description": "Several LEDs with one common terminal (RGB LED, 7-segment display). The enum property selects the polarity: common-cathode (channel pin = anode) or common-anode (channel pin = cathode).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "common",
+        "polarityProperty",
+        "channels"
+      ],
+      "properties": {
+        "kind": {
+          "const": "led-array"
+        },
+        "common": {
+          "$ref": "#/$defs/PinId"
+        },
+        "polarityProperty": {
+          "$ref": "#/$defs/PropertyId"
+        },
+        "channels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/LedChannel"
+          }
+        }
+      }
+    },
+    "PiezoModel": {
+      "title": "PiezoModel",
+      "description": "Passive piezo buzzer: no DC path between the terminals; sound frequency is measured from the voltage across it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "positive",
+        "negative"
+      ],
+      "properties": {
+        "kind": {
+          "const": "piezo"
+        },
+        "positive": {
+          "$ref": "#/$defs/PinId"
+        },
+        "negative": {
+          "$ref": "#/$defs/PinId"
+        }
+      }
+    },
+    "ServoModel": {
+      "title": "ServoModel",
+      "description": "Hobby servo: control pulse width on the signal pin sets the angle; power and ground pins must be supplied.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "signal",
+        "power",
+        "ground",
+        "minPulseProperty",
+        "maxPulseProperty",
+        "minSupplyProperty"
+      ],
+      "properties": {
+        "kind": {
+          "const": "servo"
+        },
+        "signal": {
+          "$ref": "#/$defs/PinId"
+        },
+        "power": {
+          "$ref": "#/$defs/PinId"
+        },
+        "ground": {
+          "$ref": "#/$defs/PinId"
+        },
+        "minPulseProperty": {
+          "$ref": "#/$defs/PropertyId"
+        },
+        "maxPulseProperty": {
+          "$ref": "#/$defs/PropertyId"
+        },
+        "minSupplyProperty": {
+          "$ref": "#/$defs/PropertyId"
+        }
+      }
     }
   }
 }

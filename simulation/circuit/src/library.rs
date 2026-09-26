@@ -14,6 +14,16 @@ const RESISTOR_JSON: &str =
 const LED_JSON: &str = include_str!("../../../packages/circuit-schema/definitions/led.json");
 const BUTTON_JSON: &str =
     include_str!("../../../packages/circuit-schema/definitions/push-button.json");
+const POT_JSON: &str =
+    include_str!("../../../packages/circuit-schema/definitions/potentiometer.json");
+const LDR_JSON: &str =
+    include_str!("../../../packages/circuit-schema/definitions/photoresistor.json");
+const RGB_JSON: &str = include_str!("../../../packages/circuit-schema/definitions/rgb-led.json");
+const SEVEN_SEG_JSON: &str =
+    include_str!("../../../packages/circuit-schema/definitions/seven-segment.json");
+const PIEZO_JSON: &str =
+    include_str!("../../../packages/circuit-schema/definitions/piezo-buzzer.json");
+const SERVO_JSON: &str = include_str!("../../../packages/circuit-schema/definitions/servo.json");
 
 /// Электрическая модель типа компонента.
 #[derive(Debug, Clone, PartialEq)]
@@ -33,6 +43,39 @@ pub enum Model {
     },
     /// Идеальный переключатель (кнопка).
     Switch { terminals: [String; 2] },
+    /// Потенциометр: два резистора, сопротивление делится положением движка.
+    Potentiometer {
+        terminals: [String; 2],
+        wiper: String,
+        resistance: String,
+        position: String,
+    },
+    /// Фоторезистор: сопротивление по степенной модели от освещённости.
+    Photoresistor {
+        terminals: [String; 2],
+        illuminance: String,
+        r10: String,
+        gamma: String,
+    },
+    /// Несколько светодиодов с общим выводом (RGB-светодиод, 7-сегментный индикатор).
+    LedArray {
+        common: String,
+        /// Enum-свойство полярности: `common-cathode` или `common-anode`.
+        polarity: String,
+        /// (id канала, вывод, свойство прямого напряжения).
+        channels: Vec<(String, String, String)>,
+    },
+    /// Пассивный пьезоизлучатель: без пути постоянного тока, наблюдается напряжение на выводах.
+    Piezo { positive: String, negative: String },
+    /// Сервопривод: наблюдаются сигнал и питание, нагрузки на схему нет.
+    Servo {
+        signal: String,
+        power: String,
+        ground: String,
+        min_pulse: String,
+        max_pulse: String,
+        min_supply: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -53,6 +96,8 @@ pub struct TypeDef {
     pub model: Model,
     /// Числовые свойства по умолчанию.
     pub defaults: BTreeMap<String, f64>,
+    /// Значения enum-свойств по умолчанию.
+    pub enum_defaults: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,10 +176,14 @@ fn parse_type(text: &str) -> (TypeDef, Value) {
         })
         .unwrap_or_default();
     let mut defaults = BTreeMap::new();
+    let mut enum_defaults = BTreeMap::new();
     if let Some(props) = json["properties"].as_array() {
         for p in props {
-            if let (Some(id), Some(d)) = (p["id"].as_str(), p["default"].as_f64()) {
+            let Some(id) = p["id"].as_str() else { continue };
+            if let Some(d) = p["default"].as_f64() {
                 defaults.insert(id.to_string(), d);
+            } else if let Some(d) = p["default"].as_str() {
+                enum_defaults.insert(id.to_string(), d.to_string());
             }
         }
     }
@@ -156,6 +205,40 @@ fn parse_type(text: &str) -> (TypeDef, Value) {
             Some("switch") => Model::Switch {
                 terminals: [s(&em["terminals"][0]), s(&em["terminals"][1])],
             },
+            Some("potentiometer") => Model::Potentiometer {
+                terminals: [s(&em["terminals"][0]), s(&em["terminals"][1])],
+                wiper: s(&em["wiper"]),
+                resistance: s(&em["resistanceProperty"]),
+                position: s(&em["positionProperty"]),
+            },
+            Some("photoresistor") => Model::Photoresistor {
+                terminals: [s(&em["terminals"][0]), s(&em["terminals"][1])],
+                illuminance: s(&em["illuminanceProperty"]),
+                r10: s(&em["resistanceAt10LuxProperty"]),
+                gamma: s(&em["gammaProperty"]),
+            },
+            Some("led-array") => Model::LedArray {
+                common: s(&em["common"]),
+                polarity: s(&em["polarityProperty"]),
+                channels: em["channels"]
+                    .as_array()
+                    .expect("channels")
+                    .iter()
+                    .map(|c| (s(&c["id"]), s(&c["pin"]), s(&c["forwardVoltageProperty"])))
+                    .collect(),
+            },
+            Some("piezo") => Model::Piezo {
+                positive: s(&em["positive"]),
+                negative: s(&em["negative"]),
+            },
+            Some("servo") => Model::Servo {
+                signal: s(&em["signal"]),
+                power: s(&em["power"]),
+                ground: s(&em["ground"]),
+                min_pulse: s(&em["minPulseProperty"]),
+                max_pulse: s(&em["maxPulseProperty"]),
+                min_supply: s(&em["minSupplyProperty"]),
+            },
             _ => Model::Connectivity,
         }
     };
@@ -166,6 +249,7 @@ fn parse_type(text: &str) -> (TypeDef, Value) {
             internal,
             model,
             defaults,
+            enum_defaults,
         },
         json,
     )
@@ -214,7 +298,18 @@ impl Library {
         };
         let board_type = board.type_name.clone();
         types.insert(board.type_name.clone(), board);
-        for text in [BREADBOARD_JSON, RESISTOR_JSON, LED_JSON, BUTTON_JSON] {
+        for text in [
+            BREADBOARD_JSON,
+            RESISTOR_JSON,
+            LED_JSON,
+            BUTTON_JSON,
+            POT_JSON,
+            LDR_JSON,
+            RGB_JSON,
+            SEVEN_SEG_JSON,
+            PIEZO_JSON,
+            SERVO_JSON,
+        ] {
             let (t, _) = parse_type(text);
             types.insert(t.type_name.clone(), t);
         }

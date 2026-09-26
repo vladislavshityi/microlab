@@ -1,11 +1,17 @@
 import type { NormalizedCircuit } from "./circuit-document";
 
-/** Короткие префиксы id по типу компонента: r1, led1, btn1. */
+/** Короткие префиксы id по типу компонента: r1, led1, btn1, pot1. */
 const ID_PREFIXES: Readonly<Record<string, string>> = {
   resistor: "r",
   led: "led",
   "push-button": "btn",
   breadboard: "bb",
+  potentiometer: "pot",
+  photoresistor: "ldr",
+  "rgb-led": "rgb",
+  "seven-segment": "seg",
+  "piezo-buzzer": "bz",
+  servo: "servo",
 };
 
 /** Префикс id соединений (проводов): w1, w2, … */

@@ -29,12 +29,13 @@ cargo build --release -p microlab-sim-worker                 # target/release/mi
 Toolchain закреплён в `rust-toolchain.toml`. Таблица выводов платы генерируется при сборке из
 `packages/circuit-schema/definitions/arduino-uno-r3.json` (путь можно переопределить переменной
 `MICROLAB_BOARD_DEFINITION`); несогласованное определение останавливает сборку. Решатель схемы встраивает
-определения платы, макетной платы, резистора, светодиода и кнопки из того же каталога (выводы, внутренние
+определения платы, макетной платы и всех компонентов (резистор, светодиод, кнопка, потенциометр,
+фоторезистор, RGB-светодиод, 7-сегментный индикатор, пьезоизлучатель, сервопривод) из того же каталога (выводы, внутренние
 соединения, свойства по умолчанию, пределы тока GPIO).
 
 ### Пересборка HEX-фикстур
 
-HEX собирается воркером компиляции (arduino-cli 1.5.1, `arduino:avr@1.8.8`, `arduino:avr:uno`):
+HEX собирается воркером компиляции (arduino-cli 1.5.1, `arduino:avr@1.8.8`, `arduino:avr:uno`, Servo 1.3.0):
 
 ```sh
 curl -s http://127.0.0.1:8081/compile -H 'Content-Type: application/json' \
@@ -54,7 +55,7 @@ curl -s http://127.0.0.1:8081/compile -H 'Content-Type: application/json' \
 | `set_input` | `pin` (`D0`…`D13`, `A0`…`A5`), `level`: `0`, `1` или `null` (не подключён); только без схемы | — |
 | `attach_circuit` | `board` `{id, type}`, `netlist` `[{id, members: ["компонент.вывод"]}]`, `components` `[{id, type, properties}]` | `nets`, `unsupportedComponents`, `fault`; начальные события схемы |
 | `detach_circuit` | — | входы MCU снова не подключены, АЦП 0 V |
-| `set_component_input` | `componentId`, `input`: `{pressed: bool}` (кнопка); `{position: 0…1}` — зарезервировано (потенциометр ещё не моделируется → `UNSUPPORTED_INPUT`) | `changed` |
+| `set_component_input` | `componentId`, `input`: `{pressed: bool}` (кнопка), `{position: 0…1}` (потенциометр), `{illuminanceLux: (0, 100000]}` (фоторезистор); вход, которого нет у компонента, → `UNSUPPORTED_INPUT` | `changed` |
 | `serial_input` | `data` (строка UTF-8) или `bytes` (0…255); ≤ 4096 байт | `accepted` |
 | `get_state` | — | `cycle`, `pc`, `sp`, `sreg`, `halted`, `pins.{name}.{mode,value,floating}` |
 | `stop` | — | ответ и завершение процесса |
@@ -75,7 +76,7 @@ curl -s http://127.0.0.1:8081/compile -H 'Content-Type: application/json' \
 | `serial_output` | `port` (`Serial`), `byte`; время — конец стоп-бита кадра |
 | `simulation_error` | `code` (`INVALID_OPCODE`, `UNSUPPORTED_INSTRUCTION`, `UNSUPPORTED_PERIPHERAL`, `DATA_ADDRESS_OUT_OF_RANGE`, `EVENT_BUFFER_OVERFLOW`), `severity` (`error` — CPU остановлен, `warning` — продолжает), `message`, `pc` |
 | `simulation_error` (схема, без `pc`) | warning: `GPIO_OVERCURRENT` (`pin`, `direction`, `currentMa`, `limitMa`), `GPIO_GROUP_OVERCURRENT` (`pins`, …), `FLOATING_INPUT` / `UNDEFINED_INPUT_LEVEL` (`pin`), `UNSUPPORTED_COMPONENT` (`componentId`) — каждое один раз за прошивку; error: `CIRCUIT_SHORT`, `CIRCUIT_NOT_CONVERGED`, `CIRCUIT_SINGULAR` — `run_for` отвечает `CIRCUIT_FAULT`, пока схема не изменится |
-| `component_state_changed` | `componentId`, `state`: LED — `on`, `currentMa` (средний), `brightness` (0…1); кнопка — `pressed` |
+| `component_state_changed` | `componentId`, `state`: LED — `on`, `currentMa` (средний), `brightness` (0…1); RGB-светодиод и 7-сегментный индикатор — `on`, `channels.{канал}` с полями LED; кнопка — `pressed`; потенциометр — `position`; фоторезистор — `illuminanceLux`, `resistanceOhms`; пьезоизлучатель — `active`, `frequencyHz`, `dutyCycle`; сервопривод — `powered`, `angle` (0…180 или null), `pulseUs` |
 | `analog_value_changed` | `board`, `pin` (`A0`…`A5`), `voltage` (В), `floating` |
 | `simulation_reset` | — |
 

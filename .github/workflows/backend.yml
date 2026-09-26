@@ -117,7 +117,7 @@ jobs:
       # Недоступный воркер — ошибка, а не пропуск тестов.
       MICROLAB_REQUIRE_COMPILER: "1"
       MICROLAB_LOG_FORMAT: json
-      # docker compose: dev-дополнение с шлюзом на 127.0.0.1:8081 (одноразовый пароль CI).
+      # docker compose: dev-дополнение с dev-шлюзом на 127.0.0.1:8081 (одноразовый пароль CI).
       COMPOSE_FILE: docker-compose.yml:docker-compose.dev.yml
       MICROLAB_POSTGRES_PASSWORD: microlab
 
@@ -131,13 +131,15 @@ jobs:
         with:
           context: services/compiler
           # Тег совпадает с image сервиса compiler в docker-compose.yml.
-          tags: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8
+          tags: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8-servo-1.3.0
           load: true
           cache-from: type=gha,scope=compiler
           cache-to: type=gha,scope=compiler,mode=max
 
       - name: Start compiler (internal network + dev gateway)
-        run: docker compose up -d --no-build --wait compiler compiler-gateway
+        run: |
+          docker compose up -d --no-build --wait compiler
+          docker compose up -d --no-build --no-deps --wait dev-gateway
 
       - name: Compiler has no network egress
         run: >-
@@ -167,4 +169,4 @@ jobs:
 
       - name: Compiler logs
         if: failure()
-        run: docker compose logs compiler compiler-gateway
+        run: docker compose logs compiler dev-gateway

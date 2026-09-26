@@ -3,7 +3,8 @@
 //   node scripts/gen.mjs          записать src/generated/*
 //   node scripts/gen.mjs --check  exit 1, если сгенерированные файлы устарели (git не нужен)
 //
-// Источник истины: schema/*.schema.json и definitions/*.json (сгенерированное вручную не править).
+// Источник истины: schema/*.schema.json, definitions/*.json и examples/templates/*.json
+// (сгенерированное вручную не править).
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
@@ -52,10 +53,35 @@ async function renderDefinitions() {
   ].join("\n");
 }
 
+async function renderTemplates() {
+  const dir = new URL("examples/templates/", ROOT);
+  const files = (await readdir(dir)).filter((name) => name.endsWith(".json")).sort();
+  const templates = [];
+  for (const name of files) {
+    const template = await readJson(new URL(name, dir));
+    if (`${template.id}.json` !== name) {
+      throw new Error(`${name}: id must match the file name`);
+    }
+    templates.push(template);
+  }
+  templates.sort((a, b) => a.order - b.order);
+  return [
+    BANNER,
+    "",
+    'import type { ProjectTemplate } from "../project-template";',
+    "",
+    "export const PROJECT_TEMPLATES: readonly ProjectTemplate[] = " +
+      JSON.stringify(templates, null, 2) +
+      ";",
+    "",
+  ].join("\n");
+}
+
 const outputs = new Map([
   ["circuit.ts", await compileSchema("circuit.schema.json")],
   ["component-definition.ts", await compileSchema("component-definition.schema.json")],
   ["definitions.ts", await renderDefinitions()],
+  ["templates.ts", await renderTemplates()],
 ]);
 
 let outdated = false;

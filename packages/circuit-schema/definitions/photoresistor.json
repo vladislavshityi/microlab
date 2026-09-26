@@ -1,0 +1,103 @@
+{
+  "type": "photoresistor",
+  "displayName": {
+    "key": "components.photoresistor.displayName",
+    "ru": "Фоторезистор"
+  },
+  "description": {
+    "key": "components.photoresistor.description",
+    "ru": "Фоторезистор (LDR): сопротивление уменьшается с ростом освещённости."
+  },
+  "category": "sensors",
+  "pins": [
+    {
+      "id": "1",
+      "name": "1",
+      "electricalType": "passive"
+    },
+    {
+      "id": "2",
+      "name": "2",
+      "electricalType": "passive"
+    }
+  ],
+  "properties": [
+    {
+      "id": "illuminanceLux",
+      "displayName": {
+        "key": "components.photoresistor.properties.illuminanceLux",
+        "ru": "Освещённость"
+      },
+      "type": "number",
+      "unit": "lux",
+      "default": 100,
+      "minimum": 0.1,
+      "maximum": 100000,
+      "presets": [
+        1,
+        10,
+        100,
+        1000,
+        10000
+      ],
+      "simulated": true
+    },
+    {
+      "id": "resistanceAt10Lux",
+      "displayName": {
+        "key": "components.photoresistor.properties.resistanceAt10Lux",
+        "ru": "Сопротивление при 10 лк"
+      },
+      "type": "number",
+      "unit": "ohm",
+      "default": 10000,
+      "minimum": 100,
+      "maximum": 10000000,
+      "simulated": true
+    },
+    {
+      "id": "gamma",
+      "displayName": {
+        "key": "components.photoresistor.properties.gamma",
+        "ru": "Показатель γ"
+      },
+      "type": "number",
+      "unit": "none",
+      "default": 0.7,
+      "minimum": 0.1,
+      "maximum": 2,
+      "simulated": true
+    }
+  ],
+  "simulationAccuracy": "BEHAVIORAL",
+  "electricalModel": {
+    "kind": "photoresistor",
+    "terminals": [
+      "1",
+      "2"
+    ],
+    "illuminanceProperty": "illuminanceLux",
+    "resistanceAt10LuxProperty": "resistanceAt10Lux",
+    "gammaProperty": "gamma"
+  },
+  "limitations": [
+    "Сопротивление — степенная модель R = R10 · (E / 10 лк)^(−γ).",
+    "Значения R10 = 10 kΩ и γ = 0,7 по умолчанию — условные типичные значения, не взятые из datasheet: задайте их по datasheet используемого фоторезистора.",
+    "Инерция (время отклика), спектральная чувствительность, разброс и температурная зависимость не моделируются.",
+    "Освещённость — начальное значение: во время симуляции её можно менять, не сохраняя в проект."
+  ],
+  "visual": {
+    "width": 4,
+    "height": 2,
+    "pins": {
+      "1": {
+        "x": 0,
+        "y": 1
+      },
+      "2": {
+        "x": 4,
+        "y": 1
+      }
+    }
+  }
+}

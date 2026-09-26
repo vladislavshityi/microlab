@@ -25,8 +25,19 @@ describe("ComponentsSidebar", () => {
       "Добавить на схему: Резистор",
     ]);
 
-    // Пустые категории не показываются; плата всегда на схеме и не добавляется повторно.
-    expect(screen.queryByRole("region", { name: "Датчики" })).not.toBeInTheDocument();
+    const output = screen.getByRole("region", { name: "Вывод" });
+    expect(
+      within(output)
+        .getAllByRole("button")
+        .map((item) => item.getAttribute("aria-label")),
+    ).toEqual([
+      "Добавить на схему: Пьезоизлучатель",
+      "Добавить на схему: RGB-светодиод",
+      "Добавить на схему: Сервопривод",
+    ]);
+    expect(within(screen.getByRole("region", { name: "Датчики" })).getByText("Фоторезистор")).toBeInTheDocument();
+
+    // Плата всегда на схеме и не добавляется повторно.
     expect(within(boards).queryByRole("button")).not.toBeInTheDocument();
     expect(within(boards).getByText("На схеме")).toBeInTheDocument();
   });
@@ -36,9 +47,14 @@ describe("ComponentsSidebar", () => {
     render(<ComponentsSidebar />);
     const search = screen.getByRole("searchbox", { name: "Поиск компонентов" });
 
-    await user.type(search, "рез");
+    await user.type(search, "кноп");
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByText("Резистор")).toBeInTheDocument();
+    expect(screen.getByText("Кнопка")).toBeInTheDocument();
+
+    // Поиск и по описанию: потенциометр — «переменный резистор».
+    await user.clear(search);
+    await user.type(search, "резистор");
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
 
     await user.clear(search);
     await user.type(search, "LED");

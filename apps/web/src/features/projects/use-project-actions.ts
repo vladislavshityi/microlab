@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ProjectTemplate } from "@microlab/circuit-schema";
 
 import { deleteProject } from "@/api/projects";
 import { useProjectStore } from "@/stores/project-store";
@@ -36,7 +37,10 @@ export function useProjectActions() {
     },
     ...common,
   });
-  const create = useMutation({ mutationFn: () => createAndOpenProject(), ...common });
+  const create = useMutation({
+    mutationFn: (template?: ProjectTemplate) => createAndOpenProject(template),
+    ...common,
+  });
   const remove = useMutation({
     mutationFn: async (id: string) => {
       await deleteProject(id);

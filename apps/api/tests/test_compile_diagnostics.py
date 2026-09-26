@@ -27,7 +27,7 @@ def test_syntax_error_maps_to_sketch_lines() -> None:
 
 def test_fatal_error_for_missing_library() -> None:
     assert parse_diagnostics(_output("missing_library"), failed=True) == [
-        Diagnostic("sketch.ino", 1, 10, "error", "Servo.h: No such file or directory"),
+        Diagnostic("sketch.ino", 1, 10, "error", "LiquidCrystal.h: No such file or directory"),
     ]
 
 

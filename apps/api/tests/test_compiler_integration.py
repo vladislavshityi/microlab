@@ -15,12 +15,20 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from microlab_api.app import create_app
+from microlab_api.circuit_schema.paths import package_dir
 from microlab_api.config import Settings, get_settings
 from tests.conftest import CSRF_HEADERS, authenticate_as, fake_student
 
 pytestmark = [pytest.mark.anyio, pytest.mark.compiler]
 
 FIXTURES = Path(__file__).parent / "fixtures" / "compiler"
+SERVO_SKETCH = (
+    Path(__file__).parents[3] / "simulation/tests/fixtures/servo_write/servo_write.ino"
+).read_text(encoding="utf-8")
+TEMPLATE_CODE = {
+    path.stem: json.loads(path.read_text(encoding="utf-8"))["code"]
+    for path in sorted((package_dir() / "examples" / "templates").glob("*.json"))
+}
 
 BLINK = """\
 void setup() {
@@ -115,13 +123,32 @@ async def test_syntax_error_reports_sketch_lines(client: AsyncClient) -> None:
     ]
 
 
+async def test_pinned_servo_library_is_available(client: AsyncClient) -> None:
+    first = await client.post("/api/v1/compile", json={"code": SERVO_SKETCH}, timeout=120)
+    second = await client.post("/api/v1/compile", json={"code": SERVO_SKETCH}, timeout=120)
+
+    assert first.json()["status"] == "success", first.json()["diagnostics"]
+    # Профиль закрепляет Servo 1.3.0: сборка воспроизводима.
+    assert first.json()["firmware"]["sha256"] == second.json()["firmware"]["sha256"]
+
+
+@pytest.mark.parametrize("template", sorted(TEMPLATE_CODE))
+async def test_project_template_compiles(client: AsyncClient, template: str) -> None:
+    code = TEMPLATE_CODE[template]
+    response = await client.post("/api/v1/compile", json={"code": code}, timeout=120)
+
+    body = response.json()
+    assert body["status"] == "success", body["diagnostics"]
+    assert [d for d in body["diagnostics"] if d["severity"] == "warning"] == []
+
+
 async def test_third_party_libraries_are_not_available(client: AsyncClient) -> None:
     source = (FIXTURES / "missing_library.ino").read_text(encoding="utf-8")
     response = await client.post("/api/v1/compile", json={"code": source}, timeout=120)
 
     body = response.json()
     assert body["status"] == "error"
-    assert body["diagnostics"][0]["message"] == "Servo.h: No such file or directory"
+    assert body["diagnostics"][0]["message"] == "LiquidCrystal.h: No such file or directory"
 
 
 async def test_worker_rejects_oversized_body(compiler_url: str) -> None:

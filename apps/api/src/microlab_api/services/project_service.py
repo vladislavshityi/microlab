@@ -12,6 +12,7 @@ from typing import Any, Final
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from microlab_api.api.errors import ApiError
 from microlab_api.circuit_schema.definitions import get_definition_registry
@@ -136,6 +137,8 @@ async def list_projects(session: AsyncSession, owner: User) -> list[Project]:
     result = await session.scalars(
         select(Project)
         .where(Project.owner_id == owner.id)
+        # Списку нужны только метаданные: код и схема (JSONB) не загружаются.
+        .options(defer(Project.code, raiseload=True), defer(Project.circuit, raiseload=True))
         .order_by(Project.updated_at.desc(), Project.id)
     )
     return list(result)
@@ -275,6 +278,10 @@ async def list_revisions(
     result = await session.scalars(
         select(ProjectRevision)
         .where(ProjectRevision.project_id == project_id)
+        .options(
+            defer(ProjectRevision.code, raiseload=True),
+            defer(ProjectRevision.circuit, raiseload=True),
+        )
         .order_by(ProjectRevision.revision.desc())
     )
     return list(result)

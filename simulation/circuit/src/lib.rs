@@ -11,6 +11,11 @@
 //!   (свойство компонента) с последовательным сопротивлением [`LED_SERIES_OHMS`] (допущение модели);
 //!   состояние подбирается итерациями до согласованности, число итераций ограничено;
 //! * кнопка — идеальный переключатель (объединение узлов), как указано в её определении;
+//! * потенциометр — два резистора R·p и R·(1 − p) (p — положение движка), каждый не меньше
+//!   [`POT_MIN_SEGMENT_OHMS`]; фоторезистор — резистор R10·(E / 10 лк)^(−γ);
+//! * RGB-светодиод и 7-сегментный индикатор — несколько светодиодов с общим выводом;
+//! * пьезоизлучатель и сервопривод — без элементов в цепи: решатель только сообщает напряжения
+//!   их выводов, поведение (частота, угол) вычисляется снаружи по фронтам этих напряжений;
 //! * шины 5V/IOREF и GND платы — идеальные источники напряжения (допущение: ток не ограничен);
 //!   3V3 — идеальный источник [`RAIL_3V3_VOLTS`];
 //! * выход MCU — источник Vcc/0 V с выходным сопротивлением, выведенным из гарантированных VOH/VOL
@@ -56,6 +61,26 @@ pub const VIH_FRACTION: f64 = 0.6;
 /// Последовательное сопротивление открытого светодиода. Допущение модели (численная
 /// регуляризация, а не параметр реального светодиода): прямое напряжение считается постоянным.
 pub const LED_SERIES_OHMS: f64 = 1.0;
+/// Наименьшее сопротивление части потенциометра. Допущение модели (численная регуляризация):
+/// движок в крайнем положении не даёт нулевого сопротивления.
+pub const POT_MIN_SEGMENT_OHMS: f64 = 1.0;
+/// Пределы сопротивления фоторезистора, Ом (численная защита степенной модели).
+pub const LDR_MIN_OHMS: f64 = 1.0;
+pub const LDR_MAX_OHMS: f64 = 1e12;
+
+/// Сопротивления частей потенциометра (вывод 1 — движок, движок — вывод 2).
+pub fn pot_segments(total: f64, position: f64) -> (f64, f64) {
+    let p = position.clamp(0.0, 1.0);
+    (
+        (total * p).max(POT_MIN_SEGMENT_OHMS),
+        (total * (1.0 - p)).max(POT_MIN_SEGMENT_OHMS),
+    )
+}
+
+/// Сопротивление фоторезистора по степенной модели R = R10 · (E / 10 лк)^(−γ).
+pub fn ldr_resistance(r10: f64, gamma: f64, lux: f64) -> f64 {
+    (r10 * (lux.max(1e-6) / 10.0).powf(-gamma)).clamp(LDR_MIN_OHMS, LDR_MAX_OHMS)
+}
 
 /// Состояние вывода MCU для решателя.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -144,6 +169,8 @@ pub struct PinResult {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LedResult {
     pub id: String,
+    /// Канал составного индикатора (`r`, `a`, …); `None` — одиночный светодиод.
+    pub channel: Option<String>,
     pub on: bool,
     /// Средний ток от анода к катоду, А.
     pub current_a: f64,
@@ -171,6 +198,46 @@ pub struct Solution {
     pub aref: Option<f64>,
     pub overcurrent: Vec<Overcurrent>,
     pub nets: Vec<(String, Option<f64>)>,
+    /// Напряжения выводов наблюдаемых компонентов (в порядке [`Circuit::monitors`]).
+    pub probes: Vec<Vec<Option<f64>>>,
+}
+
+/// Компонент, поведение которого вычисляется вне решателя по напряжениям его выводов.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MonitorKind {
+    /// Выводы: [+, −].
+    Piezo,
+    /// Выводы: [сигнал, питание, земля].
+    Servo {
+        min_pulse_us: f64,
+        max_pulse_us: f64,
+        min_supply_v: f64,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct Monitor {
+    pub id: String,
+    pub kind: MonitorKind,
+    pins: Vec<usize>,
+}
+
+#[derive(Debug, Clone)]
+struct Pot {
+    id: String,
+    total: f64,
+    position: f64,
+    /// Индексы двух резисторов.
+    r: [usize; 2],
+}
+
+#[derive(Debug, Clone)]
+struct Ldr {
+    id: String,
+    r10: f64,
+    gamma: f64,
+    lux: f64,
+    r: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -183,6 +250,7 @@ struct Resistor {
 #[derive(Debug, Clone)]
 struct Led {
     id: String,
+    channel: Option<String>,
     a: usize,
     k: usize,
     vf: f64,
@@ -211,6 +279,9 @@ pub struct Circuit {
     resistors: Vec<Resistor>,
     leds: Vec<Led>,
     switches: Vec<Switch>,
+    pots: Vec<Pot>,
+    ldrs: Vec<Ldr>,
+    monitors: Vec<Monitor>,
     gpio: Vec<Gpio>,
     rails: Vec<(usize, f64, String)>,
     aref: Option<usize>,
@@ -243,6 +314,20 @@ fn number(props: &serde_json::Map<String, Value>, key: &str, default: Option<f64
         Some(v) => v.as_f64(),
         None => default,
     }
+}
+
+/// Конечное числовое свойство компонента (или значение по умолчанию из определения).
+fn prop(c: &ComponentSpec, t: &library::TypeDef, key: &str, positive: bool) -> Result<f64, String> {
+    number(&c.properties, key, t.defaults.get(key).copied())
+        .filter(|v| v.is_finite() && (!positive || *v > 0.0))
+        .ok_or_else(|| {
+            let what = if positive {
+                "a positive number"
+            } else {
+                "a number"
+            };
+            format!("{}: {key} must be {what}", c.id)
+        })
 }
 
 struct Refs {
@@ -338,6 +423,9 @@ impl Circuit {
         let mut resistors = Vec::new();
         let mut leds = Vec::new();
         let mut switches = Vec::new();
+        let mut pots = Vec::new();
+        let mut ldrs = Vec::new();
+        let mut monitors = Vec::new();
         for c in &spec.components {
             let Some(Some(t)) = comp_types.get(c.id.as_str()) else {
                 continue;
@@ -367,6 +455,7 @@ impl Circuit {
                         .ok_or_else(|| format!("{}: {property} must be a positive number", c.id))?;
                     leds.push(Led {
                         id: c.id.clone(),
+                        channel: None,
                         a: pin(anode),
                         k: pin(cathode),
                         vf,
@@ -378,6 +467,118 @@ impl Circuit {
                     b: pin(&terminals[1]),
                     closed: false,
                 }),
+                Model::Potentiometer {
+                    terminals,
+                    wiper,
+                    resistance,
+                    position,
+                } => {
+                    let total = prop(c, t, resistance, true)?;
+                    let pos = prop(c, t, position, false)? / 100.0;
+                    let (r1, r2) = pot_segments(total, pos);
+                    let first = resistors.len();
+                    resistors.push(Resistor {
+                        a: pin(&terminals[0]),
+                        b: pin(wiper),
+                        g: 1.0 / r1,
+                    });
+                    resistors.push(Resistor {
+                        a: pin(wiper),
+                        b: pin(&terminals[1]),
+                        g: 1.0 / r2,
+                    });
+                    pots.push(Pot {
+                        id: c.id.clone(),
+                        total,
+                        position: pos.clamp(0.0, 1.0),
+                        r: [first, first + 1],
+                    });
+                }
+                Model::Photoresistor {
+                    terminals,
+                    illuminance,
+                    r10,
+                    gamma,
+                } => {
+                    let lux = prop(c, t, illuminance, true)?;
+                    let r10 = prop(c, t, r10, true)?;
+                    let gamma = prop(c, t, gamma, true)?;
+                    ldrs.push(Ldr {
+                        id: c.id.clone(),
+                        r10,
+                        gamma,
+                        lux,
+                        r: resistors.len(),
+                    });
+                    resistors.push(Resistor {
+                        a: pin(&terminals[0]),
+                        b: pin(&terminals[1]),
+                        g: 1.0 / ldr_resistance(r10, gamma, lux),
+                    });
+                }
+                Model::LedArray {
+                    common,
+                    polarity,
+                    channels,
+                } => {
+                    let kind = match c.properties.get(polarity) {
+                        Some(v) => v.as_str().map(str::to_string),
+                        None => t.enum_defaults.get(polarity).cloned(),
+                    };
+                    let common_anode = match kind.as_deref() {
+                        Some("common-cathode") => false,
+                        Some("common-anode") => true,
+                        _ => {
+                            return Err(format!(
+                                "{}: {polarity} must be common-cathode or common-anode",
+                                c.id
+                            ))
+                        }
+                    };
+                    for (ch, ch_pin, vf_prop) in channels {
+                        let vf = prop(c, t, vf_prop, true)?;
+                        let (a, k) = if common_anode {
+                            (pin(common), pin(ch_pin))
+                        } else {
+                            (pin(ch_pin), pin(common))
+                        };
+                        leds.push(Led {
+                            id: c.id.clone(),
+                            channel: Some(ch.clone()),
+                            a,
+                            k,
+                            vf,
+                        });
+                    }
+                }
+                Model::Piezo { positive, negative } => monitors.push(Monitor {
+                    id: c.id.clone(),
+                    kind: MonitorKind::Piezo,
+                    pins: vec![pin(positive), pin(negative)],
+                }),
+                Model::Servo {
+                    signal,
+                    power,
+                    ground,
+                    min_pulse,
+                    max_pulse,
+                    min_supply,
+                } => {
+                    let min_pulse_us = prop(c, t, min_pulse, true)?;
+                    let max_pulse_us = prop(c, t, max_pulse, true)?;
+                    if max_pulse_us <= min_pulse_us {
+                        return Err(format!("{}: {max_pulse} must be above {min_pulse}", c.id));
+                    }
+                    monitors.push(Monitor {
+                        id: c.id.clone(),
+                        kind: MonitorKind::Servo {
+                            min_pulse_us,
+                            max_pulse_us,
+                            min_supply_v: prop(c, t, min_supply, true)?,
+                        },
+                        pins: vec![pin(signal), pin(power), pin(ground)],
+                    });
+                }
                 Model::Board | Model::Connectivity => {}
             }
         }
@@ -429,6 +630,9 @@ impl Circuit {
             resistors,
             leds,
             switches,
+            pots,
+            ldrs,
+            monitors,
             gpio,
             rails,
             aref,
@@ -449,8 +653,55 @@ impl Circuit {
         self.gpio.iter().map(|g| g.name.as_str())
     }
 
-    pub fn led_ids(&self) -> impl Iterator<Item = &str> {
-        self.leds.iter().map(|l| l.id.as_str())
+    /// Светодиоды в порядке `Solution::leds`: (компонент, канал).
+    pub fn led_ids(&self) -> impl Iterator<Item = (&str, Option<&str>)> {
+        self.leds
+            .iter()
+            .map(|l| (l.id.as_str(), l.channel.as_deref()))
+    }
+
+    /// Наблюдаемые компоненты (пьезоизлучатели, сервоприводы) в порядке `Solution::probes`.
+    pub fn monitors(&self) -> &[Monitor] {
+        &self.monitors
+    }
+
+    /// Компонент моделируется решателем (есть элемент или наблюдение).
+    pub fn is_simulated(&self, id: &str) -> bool {
+        self.has_switch(id)
+            || self.leds.iter().any(|l| l.id == id)
+            || self.pots.iter().any(|p| p.id == id)
+            || self.ldrs.iter().any(|l| l.id == id)
+            || self.monitors.iter().any(|m| m.id == id)
+    }
+
+    pub fn has_position_input(&self, id: &str) -> bool {
+        self.pots.iter().any(|p| p.id == id)
+    }
+
+    pub fn has_illuminance_input(&self, id: &str) -> bool {
+        self.ldrs.iter().any(|l| l.id == id)
+    }
+
+    /// Положение движка потенциометра 0…1. Возвращает true, если оно изменилось.
+    pub fn set_position(&mut self, id: &str, position: f64) -> Option<bool> {
+        let pot = self.pots.iter_mut().find(|p| p.id == id)?;
+        let position = position.clamp(0.0, 1.0);
+        let changed = pot.position != position;
+        pot.position = position;
+        let (r1, r2) = pot_segments(pot.total, position);
+        self.resistors[pot.r[0]].g = 1.0 / r1;
+        self.resistors[pot.r[1]].g = 1.0 / r2;
+        Some(changed)
+    }
+
+    /// Освещённость фоторезистора, лк. Возвращает (изменилась ли, новое сопротивление, Ом).
+    pub fn set_illuminance(&mut self, id: &str, lux: f64) -> Option<(bool, f64)> {
+        let ldr = self.ldrs.iter_mut().find(|l| l.id == id)?;
+        let changed = ldr.lux != lux;
+        ldr.lux = lux;
+        let r = ldr_resistance(ldr.r10, ldr.gamma, lux);
+        self.resistors[ldr.r].g = 1.0 / r;
+        Some((changed, r))
     }
 
     pub fn has_switch(&self, id: &str) -> bool {
@@ -589,6 +840,7 @@ impl Circuit {
             let current_a = (d * hi.led_i[i] + (1.0 - d) * lo.led_i[i]).max(0.0);
             leds.push(LedResult {
                 id: l.id.clone(),
+                channel: l.channel.clone(),
                 on: current_a > 0.0,
                 current_a,
                 brightness: (current_a / full_scale).min(1.0),
@@ -655,6 +907,19 @@ impl Circuit {
             .iter()
             .map(|s| (s.id.clone(), s.closed))
             .collect();
+        let probes = self
+            .monitors
+            .iter()
+            .map(|m| {
+                m.pins
+                    .iter()
+                    .map(|&r| {
+                        let node = node_of[r];
+                        node_v(node, duty_of_node(node))
+                    })
+                    .collect()
+            })
+            .collect();
         Ok(Solution {
             pins,
             leds,
@@ -662,6 +927,7 @@ impl Circuit {
             aref,
             overcurrent,
             nets,
+            probes,
         })
     }
 

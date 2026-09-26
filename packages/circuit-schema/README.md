@@ -6,11 +6,15 @@
 ```text
 schema/circuit.schema.json               документ схемы (schemaVersion 1)
 schema/component-definition.schema.json  определение компонента или платы
-definitions/*.json                       arduino-uno-r3, breadboard, resistor, led, push-button
+definitions/*.json                       плата, макетная плата и компоненты (resistor, led, push-button,
+                                         potentiometer, photoresistor, rgb-led, seven-segment,
+                                         piezo-buzzer, servo)
 examples/*.json                          примеры документов схемы (используются в тестах)
 examples/netlists/*.json                 эталонный netlist примеров (общий для backend и frontend)
+examples/templates/*.json                шаблоны проектов меню «Новый проект»: схема + код
+src/project-template.ts                  тип шаблона проекта
 src/generated/                           TypeScript: типы и определения (генерируется)
-src/index.ts                             COMPONENT_DEFINITIONS, getComponentDefinition(type)
+src/index.ts                             COMPONENT_DEFINITIONS, PROJECT_TEMPLATES, getComponentDefinition(type)
 ```
 
 Координаты — в единицах сетки: целые числа, 1 единица = 2,54 мм (0,1 дюйма). Поворот — по часовой стрелке; повёрнутый символ вписывается в прямоугольник с левым верхним углом в `position`, поэтому выводы остаются в целых координатах.
@@ -26,7 +30,8 @@ src/index.ts                             COMPONENT_DEFINITIONS, getComponentDefi
 Макетная плата: 30 столбцов, в каждом a–e и f–j — два узла (канавка между e и f — 3 шага),
 четыре шины по 25 контактов (tp/tn сверху, bn/bp снизу), каждая — один сплошной узел.
 
-`electricalModel` (resistor / led / switch) и `board.electricalLimits` используются
+`electricalModel` (resistor / led / switch / potentiometer / photoresistor / led-array /
+piezo / servo) и `board.electricalLimits` используются
 проверкой схемы: рабочий предел тока GPIO и суммы по группам портов, не absolute maximum.
 
 ## Генерация

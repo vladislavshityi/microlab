@@ -1,11 +1,12 @@
 # Профиль сборки: копируется рядом с каждым sketch.ino перед компиляцией.
-# Версия платформы зафиксирована; libraries пуст — используются только
-# библиотеки, входящие в состав платформы arduino:avr.
+# Версии платформы и библиотек зафиксированы; кроме библиотек платформы arduino:avr
+# доступна только перечисленная здесь библиотека Servo.
 profiles:
   uno:
     fqbn: arduino:avr:uno
     platforms:
       - platform: arduino:avr (1.8.8)
-    libraries: []
+    libraries:
+      - Servo (1.3.0)
 
 default_profile: uno

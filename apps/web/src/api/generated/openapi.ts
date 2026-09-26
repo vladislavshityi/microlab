@@ -497,7 +497,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Change a component input (e.g. press a button) */
+        /** Change a component input (button, potentiometer position, illuminance) */
         post: operations["setSimulationInput"];
         delete?: never;
         options?: never;
@@ -707,7 +707,10 @@ export interface components {
         };
         /** @constant */
         BoardType: "arduino-uno-r3";
-        /** ButtonInput */
+        /**
+         * ButtonInput
+         * @description Кнопка: нажата или отпущена.
+         */
         ButtonInput: {
             /** Pressed */
             pressed: boolean;
@@ -821,7 +824,7 @@ export interface components {
             description: components["schemas"]["LocalizedText"];
             displayName: components["schemas"]["LocalizedText"];
             /** ElectricalModel */
-            electricalModel?: components["schemas"]["ResistorModel"] | components["schemas"]["LedModel"] | components["schemas"]["SwitchModel"] | null;
+            electricalModel?: components["schemas"]["ResistorModel"] | components["schemas"]["LedModel"] | components["schemas"]["SwitchModel"] | components["schemas"]["PotentiometerModel"] | components["schemas"]["PhotoresistorModel"] | components["schemas"]["LedArrayModel"] | components["schemas"]["PiezoModel"] | components["schemas"]["ServoModel"] | null;
             /** Internalconnections */
             internalConnections?: components["schemas"]["InternalConnection"][] | null;
             /** Limitations */
@@ -845,7 +848,8 @@ export interface components {
         ComponentInputRequest: {
             /** Componentid */
             componentId: string;
-            input: components["schemas"]["ButtonInput"];
+            /** Input */
+            input: components["schemas"]["ButtonInput"] | components["schemas"]["PositionInput"] | components["schemas"]["IlluminanceInput"];
         };
         /** DatabaseCheck */
         DatabaseCheck: {
@@ -1042,6 +1046,14 @@ export interface components {
             /** Version */
             version: string;
         };
+        /**
+         * IlluminanceInput
+         * @description Фоторезистор: освещённость, лк.
+         */
+        IlluminanceInput: {
+            /** Illuminancelux */
+            illuminanceLux: number;
+        };
         /** InternalConnection */
         InternalConnection: string[];
         /** InviteCreate */
@@ -1106,6 +1118,35 @@ export interface components {
             inviteCode: string;
         };
         /**
+         * LedArrayModel
+         * @description Several LEDs with one common terminal (RGB LED, 7-segment display). The enum property selects the polarity: common-cathode (channel pin = anode) or common-anode (channel pin = cathode).
+         */
+        LedArrayModel: {
+            /** Channels */
+            channels: components["schemas"]["LedChannel"][];
+            /** PinId */
+            common: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "led-array";
+            /** PropertyId */
+            polarityProperty: string;
+        };
+        /**
+         * LedChannel
+         * @description One LED of an LED array: its own pin and forward voltage property.
+         */
+        LedChannel: {
+            /** PropertyId */
+            forwardVoltageProperty: string;
+            /** Id */
+            id: string;
+            /** PinId */
+            pin: string;
+        };
+        /**
          * LedModel
          * @description Light-emitting diode; forward voltage in volts comes from a number property.
          */
@@ -1164,9 +1205,43 @@ export interface components {
              * PropertyUnit
              * @enum {string}
              */
-            unit: "ohm" | "volt" | "percent";
+            unit: "ohm" | "volt" | "percent" | "lux" | "microsecond" | "none";
         };
         Password: string;
+        /**
+         * PhotoresistorModel
+         * @description Photoresistor: R = R10 * (E / 10 lx)^(-gamma), all parameters are number properties.
+         */
+        PhotoresistorModel: {
+            /** PropertyId */
+            gammaProperty: string;
+            /** PropertyId */
+            illuminanceProperty: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "photoresistor";
+            /** PropertyId */
+            resistanceAt10LuxProperty: string;
+            /** Terminals */
+            terminals: components["schemas"]["PinId"][];
+        };
+        /**
+         * PiezoModel
+         * @description Passive piezo buzzer: no DC path between the terminals; sound frequency is measured from the voltage across it.
+         */
+        PiezoModel: {
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "piezo";
+            /** PinId */
+            negative: string;
+            /** PinId */
+            positive: string;
+        };
         /** PinDefinition */
         PinDefinition: {
             /** Arduinopin */
@@ -1198,6 +1273,33 @@ export interface components {
             x: number;
             /** Y */
             y: number;
+        };
+        /**
+         * PositionInput
+         * @description Потенциометр: положение движка, 0 — у вывода 1, 1 — у вывода 2.
+         */
+        PositionInput: {
+            /** Position */
+            position: number;
+        };
+        /**
+         * PotentiometerModel
+         * @description Potentiometer: resistance between the end terminals, split by the wiper position (0 % = wiper at terminals[0]).
+         */
+        PotentiometerModel: {
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "potentiometer";
+            /** PropertyId */
+            positionProperty: string;
+            /** PropertyId */
+            resistanceProperty: string;
+            /** Terminals */
+            terminals: components["schemas"]["PinId"][];
+            /** PinId */
+            wiper: string;
         };
         /** ProjectCreate */
         ProjectCreate: {
@@ -1410,6 +1512,29 @@ export interface components {
              * @description Text sent to UART0 RX as UTF-8 (at most 4096 bytes).
              */
             data: string;
+        };
+        /**
+         * ServoModel
+         * @description Hobby servo: control pulse width on the signal pin sets the angle; power and ground pins must be supplied.
+         */
+        ServoModel: {
+            /** PinId */
+            ground: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "servo";
+            /** PropertyId */
+            maxPulseProperty: string;
+            /** PropertyId */
+            minPulseProperty: string;
+            /** PropertyId */
+            minSupplyProperty: string;
+            /** PinId */
+            power: string;
+            /** PinId */
+            signal: string;
         };
         /**
          * Severity

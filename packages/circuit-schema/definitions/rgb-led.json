@@ -1,0 +1,152 @@
+{
+  "type": "rgb-led",
+  "displayName": {
+    "key": "components.rgb-led.displayName",
+    "ru": "RGB-светодиод"
+  },
+  "description": {
+    "key": "components.rgb-led.description",
+    "ru": "Три светодиода (красный, зелёный, синий) в одном корпусе с общим выводом."
+  },
+  "category": "output",
+  "pins": [
+    {
+      "id": "R",
+      "name": "Красный",
+      "electricalType": "passive"
+    },
+    {
+      "id": "COM",
+      "name": "Общий",
+      "electricalType": "passive"
+    },
+    {
+      "id": "G",
+      "name": "Зелёный",
+      "electricalType": "passive"
+    },
+    {
+      "id": "B",
+      "name": "Синий",
+      "electricalType": "passive"
+    }
+  ],
+  "properties": [
+    {
+      "id": "commonType",
+      "displayName": {
+        "key": "components.rgb-led.properties.commonType",
+        "ru": "Общий вывод"
+      },
+      "type": "enum",
+      "default": "common-cathode",
+      "options": [
+        {
+          "value": "common-cathode",
+          "label": {
+            "key": "components.rgb-led.properties.commonType.common-cathode",
+            "ru": "Общий катод"
+          }
+        },
+        {
+          "value": "common-anode",
+          "label": {
+            "key": "components.rgb-led.properties.commonType.common-anode",
+            "ru": "Общий анод"
+          }
+        }
+      ],
+      "simulated": true
+    },
+    {
+      "id": "forwardVoltageRed",
+      "displayName": {
+        "key": "components.rgb-led.properties.forwardVoltageRed",
+        "ru": "Прямое напряжение (R)"
+      },
+      "type": "number",
+      "unit": "volt",
+      "default": 2,
+      "minimum": 0.5,
+      "maximum": 5,
+      "simulated": true
+    },
+    {
+      "id": "forwardVoltageGreen",
+      "displayName": {
+        "key": "components.rgb-led.properties.forwardVoltageGreen",
+        "ru": "Прямое напряжение (G)"
+      },
+      "type": "number",
+      "unit": "volt",
+      "default": 3,
+      "minimum": 0.5,
+      "maximum": 5,
+      "simulated": true
+    },
+    {
+      "id": "forwardVoltageBlue",
+      "displayName": {
+        "key": "components.rgb-led.properties.forwardVoltageBlue",
+        "ru": "Прямое напряжение (B)"
+      },
+      "type": "number",
+      "unit": "volt",
+      "default": 3,
+      "minimum": 0.5,
+      "maximum": 5,
+      "simulated": true
+    }
+  ],
+  "simulationAccuracy": "BASIC_ELECTRICAL",
+  "electricalModel": {
+    "kind": "led-array",
+    "common": "COM",
+    "polarityProperty": "commonType",
+    "channels": [
+      {
+        "id": "r",
+        "pin": "R",
+        "forwardVoltageProperty": "forwardVoltageRed"
+      },
+      {
+        "id": "g",
+        "pin": "G",
+        "forwardVoltageProperty": "forwardVoltageGreen"
+      },
+      {
+        "id": "b",
+        "pin": "B",
+        "forwardVoltageProperty": "forwardVoltageBlue"
+      }
+    ]
+  },
+  "limitations": [
+    "Каждый канал — отдельный светодиод той же модели, что и одиночный светодиод.",
+    "Прямые напряжения по умолчанию (2 / 3 / 3 В) — условные значения, не взятые из datasheet: задайте их по datasheet используемого светодиода.",
+    "Порядок выводов R, COM, G, B — распространённый, но не единственный: сверьте его с datasheet.",
+    "Смешанный цвет на схеме — визуализация по токам каналов, а не колориметрия."
+  ],
+  "visual": {
+    "width": 3,
+    "height": 3,
+    "pins": {
+      "R": {
+        "x": 0,
+        "y": 3
+      },
+      "COM": {
+        "x": 1,
+        "y": 3
+      },
+      "G": {
+        "x": 2,
+        "y": 3
+      },
+      "B": {
+        "x": 3,
+        "y": 3
+      }
+    }
+  }
+}

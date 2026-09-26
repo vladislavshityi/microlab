@@ -5,7 +5,7 @@
 # Наружу публикуется только nginx (web). PostgreSQL, API, воркер компиляции и сервис
 # симуляции находятся во внутренних сетях без выхода в интернет.
 # Дополнительные файлы:
-#   docker-compose.dev.yml   — разработка: API и Vite на хосте (PostgreSQL и dev-шлюзы на 127.0.0.1)
+#   docker-compose.dev.yml   — разработка: API и Vite на хосте (PostgreSQL и dev-шлюз на 127.0.0.1)
 #   docker-compose.tls.yml   — HTTPS на сервере (порты 80/443)
 #   docker-compose.auth.yml  — basic auth на весь сайт
 name: microlab
@@ -44,10 +44,15 @@ services:
     networks: [db]
     logging: *logging
 
+  # Недоверенный код студентов обрабатывают два отдельных контейнера — compiler и simulator.
+  # Они не объединены в один «runner»: у них разные лимиты (память/CPU/pids/tmpfs), а в общем
+  # контейнере сборка чужого скетча имела бы доступ к процессам и /tmp активных сессий
+  # симуляции других пользователей. Раздельные контейнеры и внутренние сети сохраняют эту границу.
+
   # Воркер компиляции: выполняет недоверенный код (сборку скетча) без доступа в сеть.
   compiler:
     build: services/compiler
-    image: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8
+    image: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8-servo-1.3.0
     restart: unless-stopped
     # tini в роли PID 1 собирает осиротевшие процессы компилятора после таймаута.
     init: true
@@ -60,6 +65,11 @@ services:
       - /work:size=512m,mode=0700,uid=10001,gid=10001,noexec,nosuid,nodev
       - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
     # Только внутренняя сеть: нет выхода в интернет и нет опубликованных портов.
+    # Параллельные сборки: 3 на 2 CPU (сборка частично ждёт диск), очередь — до 20 с,
+    # затем COMPILER_BUSY. Таймаут API (90 с) больше таймаута сборки (60 с) + ожидания.
+    environment:
+      COMPILER_MAX_CONCURRENT: "3"
+      COMPILER_QUEUE_WAIT_SECONDS: "20"
     networks: [compiler-internal]
     logging: *logging
 
@@ -76,41 +86,16 @@ services:
     <<: *hardening
     mem_limit: 1g
     memswap_limit: 1g
-    cpus: 4
-    pids_limit: 64
+    # Одна сессия (blink) ≈ 0,13 CPU и ≈ 3 МБ: 24 сессии ≈ 3 CPU на сервере 4 CPU / 8 ГБ.
+    cpus: 3
+    pids_limit: 128
     tmpfs:
       - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
     environment:
-      SIM_MAX_SESSIONS: "8"
+      SIM_MAX_SESSIONS: "24"
       SIM_MAX_SESSION_SECONDS: "1800"
       SIM_IDLE_TIMEOUT_SECONDS: "300"
     networks: [simulator-internal]
-    logging: *logging
-
-  # Одноразовая задача: миграции БД.
-  migrate:
-    image: microlab-api:local
-    pull_policy: never
-    command: ["microlab-migrate"]
-    restart: "no"
-    <<: *hardening
-    tmpfs:
-      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
-    environment: &api-env
-      MICROLAB_ENV: ${MICROLAB_ENV:?задайте MICROLAB_ENV в .env}
-      MICROLAB_DATABASE_URL: postgresql+asyncpg://microlab:${MICROLAB_POSTGRES_PASSWORD}@postgres:5432/microlab
-      MICROLAB_LOG_LEVEL: ${MICROLAB_LOG_LEVEL:-INFO}
-      MICROLAB_LOG_FORMAT: json
-      MICROLAB_COMPILER_URL: http://compiler:8080
-      MICROLAB_SIMULATOR_URL: ws://simulator:8080
-      # X-Forwarded-* принимаются только от nginx (подсеть сети edge).
-      MICROLAB_FORWARDED_ALLOW_IPS: ${MICROLAB_EDGE_SUBNET:-10.253.83.0/29}
-      # Флаг Secure у cookie сессии; docker-compose.tls.yml включает его.
-      MICROLAB_SESSION_COOKIE_SECURE: ${MICROLAB_SESSION_COOKIE_SECURE:-false}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks: [db]
     logging: *logging
 
   api:
@@ -124,10 +109,21 @@ services:
     pids_limit: 64
     tmpfs:
       - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
-    environment: *api-env
+    # Миграции применяются при старте контейнера (entrypoint, advisory lock в PostgreSQL).
+    environment:
+      MICROLAB_ENV: ${MICROLAB_ENV:?задайте MICROLAB_ENV в .env}
+      MICROLAB_DATABASE_URL: postgresql+asyncpg://microlab:${MICROLAB_POSTGRES_PASSWORD}@postgres:5432/microlab
+      MICROLAB_LOG_LEVEL: ${MICROLAB_LOG_LEVEL:-INFO}
+      MICROLAB_LOG_FORMAT: json
+      MICROLAB_COMPILER_URL: http://compiler:8080
+      MICROLAB_SIMULATOR_URL: ws://simulator:8080
+      # X-Forwarded-* принимаются только от nginx (подсеть сети edge).
+      MICROLAB_FORWARDED_ALLOW_IPS: ${MICROLAB_EDGE_SUBNET:-10.253.83.0/29}
+      # Флаг Secure у cookie сессии; docker-compose.tls.yml включает его.
+      MICROLAB_SESSION_COOKIE_SECURE: ${MICROLAB_SESSION_COOKIE_SECURE:-false}
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       compiler:
         condition: service_healthy
       simulator:

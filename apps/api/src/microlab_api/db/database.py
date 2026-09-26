@@ -19,6 +19,13 @@ def create_engine(settings: Settings) -> AsyncEngine:
     return create_async_engine(
         settings.database_url.get_secret_value(),
         pool_pre_ping=True,
+        # Один процесс API: 10 постоянных соединений + 10 при пиках. PostgreSQL по умолчанию
+        # допускает 100 соединений; ожидание свободного соединения — не дольше 10 с.
+        pool_size=10,
+        max_overflow=10,
+        pool_timeout=10,
+        # Соединения периодически пересоздаются (перезапуск БД, сетевые таймауты).
+        pool_recycle=1800,
         # Никогда не выводить SQL/DSN в логи.
         echo=False,
         hide_parameters=True,

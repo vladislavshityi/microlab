@@ -6,6 +6,9 @@
 //! Событие: `{"version":1,"type":"<тип>","timestamp":<такт MCU>,"payload":{…}}`.
 //! `timestamp` — номер такта MCU (16 MHz) с момента запуска worker; время в мс = timestamp / 16000.
 //!
+//! Входы компонентов `set_component_input`: `pressed` (кнопка), `position` 0…1 (потенциометр),
+//! `illuminanceLux` (фоторезистор).
+//!
 //! Команды схемы (`attach_circuit`, `detach_circuit`, `set_component_input`) и события
 //! `component_state_changed`, `analog_value_changed` — обратно совместимые дополнения версии 1.
 
@@ -22,6 +25,17 @@ const MAX_RUN_CYCLES: u64 = 60 * CLOCK_HZ;
 const CHUNK_CYCLES: u64 = CYCLES_PER_MS;
 /// Предел байтов в одной команде serial_input.
 const MAX_SERIAL_INPUT: usize = 4096;
+/// Верхний предел освещённости входа фоторезистора, лк (совпадает с maximum свойства).
+const MAX_ILLUMINANCE_LUX: f64 = 100_000.0;
+
+fn unsupported_input(bridge: &Bridge, id: &str, input: &str) -> (&'static str, String) {
+    let msg = if bridge.circuit().is_simulated(id) {
+        format!("{id:?} has no {input} input")
+    } else {
+        format!("{id:?} is not a simulated component with a {input} input")
+    };
+    ("UNSUPPORTED_INPUT", msg)
+}
 
 pub struct Session {
     mcu: Mcu,
@@ -267,7 +281,8 @@ impl Session {
         if let Some(old) = self.circuit.take() {
             old.detach(&mut self.mcu);
         }
-        self.circuit = Some(Bridge::new(circuit, board_id));
+        let io_voltage = self.library.limits.io_voltage;
+        self.circuit = Some(Bridge::new(circuit, board_id, io_voltage));
         let cycle = self.mcu.cycles();
         self.flush_events(out);
         for id in &unsupported {
@@ -328,20 +343,62 @@ impl Session {
             }
             return Ok(json!({"cycle": cycle, "changed": changed}));
         }
-        if input.contains_key("position") {
-            let known =
-                bridge.circuit().has_switch(id) || bridge.circuit().led_ids().any(|l| l == id);
-            let msg = if known {
-                format!("{id:?} has no position input")
-            } else {
-                format!("{id:?} is not a simulated component with a position input")
-            };
-            return Err(("UNSUPPORTED_INPUT", msg));
+        if let Some(p) = input.get("position") {
+            let position = p.as_f64().filter(|v| (0.0..=1.0).contains(v)).ok_or((
+                "INVALID_ARGUMENT",
+                "position must be a number 0..1".to_string(),
+            ))?;
+            if !bridge.circuit().has_position_input(id) {
+                return Err(unsupported_input(bridge, id, "position"));
+            }
+            let changed = bridge.circuit_mut().set_position(id, position) == Some(true);
+            let state = json!({"position": position});
+            return Ok(self.input_applied(id, changed, state, out));
+        }
+        if let Some(l) = input.get("illuminanceLux") {
+            let lux = l
+                .as_f64()
+                .filter(|v| v.is_finite() && *v > 0.0 && *v <= MAX_ILLUMINANCE_LUX)
+                .ok_or((
+                    "INVALID_ARGUMENT",
+                    format!("illuminanceLux must be a number in (0, {MAX_ILLUMINANCE_LUX}]"),
+                ))?;
+            if !bridge.circuit().has_illuminance_input(id) {
+                return Err(unsupported_input(bridge, id, "illuminanceLux"));
+            }
+            let (changed, ohms) = bridge
+                .circuit_mut()
+                .set_illuminance(id, lux)
+                .unwrap_or((false, 0.0));
+            let state =
+                json!({"illuminanceLux": lux, "resistanceOhms": (ohms * 1000.0).round() / 1000.0});
+            return Ok(self.input_applied(id, changed, state, out));
         }
         Err((
             "INVALID_ARGUMENT",
-            "input must contain pressed or position".into(),
+            "input must contain pressed, position or illuminanceLux".into(),
         ))
+    }
+
+    /// Событие нового состояния входа компонента и пересчёт схемы.
+    fn input_applied(
+        &mut self,
+        id: &str,
+        changed: bool,
+        state: Value,
+        out: &mut impl Write,
+    ) -> Value {
+        let cycle = self.mcu.cycles();
+        if changed {
+            self.flush_events(out);
+            write_line(
+                out,
+                &json!({"version": PROTOCOL_VERSION, "type": "component_state_changed", "timestamp": cycle,
+                        "payload": {"componentId": id, "state": state}}),
+            );
+            self.resolve_circuit(out);
+        }
+        json!({"cycle": cycle, "changed": changed})
     }
 
     fn run_for(
@@ -396,6 +453,11 @@ impl Session {
             }
             if self.mcu.pending_events() > 0 {
                 self.flush_events(out);
+            }
+            if let Some(bridge) = self.circuit.as_mut() {
+                for e in bridge.tick(self.mcu.cycles()) {
+                    write_line(out, &e);
+                }
             }
         }
         Ok(json!({"cycle": self.mcu.cycles(), "halted": self.mcu.halted()}))

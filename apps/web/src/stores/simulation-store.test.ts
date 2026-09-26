@@ -64,6 +64,23 @@ describe("simulationStore event batches", () => {
     expect(state.components["led1"]?.on).toBe(false);
   });
 
+  it("parses channels, inputs and behavioral states of additional components", () => {
+    batch(10_000, [
+      ev("component_state_changed", 10_000, {
+        componentId: "rgb1",
+        state: { on: true, channels: { r: { on: true, brightness: 2, currentMa: 11.5 }, g: { bad: 1 } } },
+      }),
+      ev("component_state_changed", 10_000, { componentId: "pot1", state: { position: 0.25 } }),
+      ev("component_state_changed", 10_000, { componentId: "bz1", state: { active: true, frequencyHz: 440.14 } }),
+      ev("component_state_changed", 10_000, { componentId: "s1", state: { powered: true, angle: null } }),
+    ]);
+    const { components } = useSimulationStore.getState();
+    expect(components["rgb1"]?.channels).toEqual({ r: { on: true, brightness: 1, currentMa: 11.5 } });
+    expect(components["pot1"]?.position).toBe(0.25);
+    expect(components["bz1"]).toEqual({ active: true, frequencyHz: 440.14 });
+    expect(components["s1"]).toEqual({ powered: true, angle: null });
+  });
+
   it("records PWM duty cycle for the pin", () => {
     batch(1000, [
       ev("digital_pin_changed", 1000, { pin: "D9", mode: "pwm", value: 1 }),

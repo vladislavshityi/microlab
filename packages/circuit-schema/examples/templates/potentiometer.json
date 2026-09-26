@@ -1,0 +1,75 @@
+{
+  "id": "potentiometer",
+  "order": 4,
+  "name": {
+    "key": "templates.potentiometer.name",
+    "ru": "Потенциометр"
+  },
+  "description": {
+    "key": "templates.potentiometer.description",
+    "ru": "Потенциометр делит 5 В, analogRead(A0) выводится в монитор порта."
+  },
+  "code": "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int value = analogRead(A0);\n  Serial.println(value);\n  delay(200);\n}\n",
+  "circuit": {
+    "schemaVersion": 1,
+    "board": {
+      "id": "uno1",
+      "type": "arduino-uno-r3",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0
+    },
+    "components": [
+      {
+        "id": "pot1",
+        "type": "potentiometer",
+        "position": {
+          "x": -10,
+          "y": 8
+        },
+        "rotation": 0,
+        "properties": {
+          "resistanceOhms": 10000,
+          "positionPercent": 50
+        }
+      }
+    ],
+    "connections": [
+      {
+        "id": "w1",
+        "from": {
+          "componentId": "pot1",
+          "pinId": "1"
+        },
+        "to": {
+          "componentId": "uno1",
+          "pinId": "GND1"
+        }
+      },
+      {
+        "id": "w2",
+        "from": {
+          "componentId": "pot1",
+          "pinId": "2"
+        },
+        "to": {
+          "componentId": "uno1",
+          "pinId": "5V"
+        }
+      },
+      {
+        "id": "w3",
+        "from": {
+          "componentId": "pot1",
+          "pinId": "W"
+        },
+        "to": {
+          "componentId": "uno1",
+          "pinId": "A0"
+        }
+      }
+    ]
+  }
+}

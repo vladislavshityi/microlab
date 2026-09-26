@@ -39,6 +39,8 @@ interface UiState {
   componentSearchRequested: boolean;
   /** Запрос показать объекты на холсте (например, по щелчку на замечании); seq — номер запроса. */
   canvasFocus: { ids: readonly string[]; seq: number } | null;
+  /** Озвучивать пьезоизлучатели в браузере (выключено по умолчанию, не сохраняется). */
+  buzzerSound: boolean;
 
   setThemePreference: (preference: ThemePreference) => void;
   setResolvedTheme: (theme: ResolvedTheme) => void;
@@ -50,6 +52,7 @@ interface UiState {
   requestComponentSearch: () => void;
   consumeComponentSearch: () => void;
   focusCanvasOn: (ids: readonly string[]) => void;
+  setBuzzerSound: (enabled: boolean) => void;
 }
 
 let nextNoticeId = 1;
@@ -75,6 +78,7 @@ export const useUiStore = create<UiState>()((set) => ({
   canvasCenter: null,
   componentSearchRequested: false,
   canvasFocus: null,
+  buzzerSound: false,
 
   // Класс темы меняется синхронно, до перерисовки React: компоненты, читающие значения
   // CSS-токенов (редактор кода), получают уже актуальные цвета.
@@ -112,6 +116,9 @@ export const useUiStore = create<UiState>()((set) => ({
   },
   consumeComponentSearch: () => {
     set({ componentSearchRequested: false });
+  },
+  setBuzzerSound: (enabled) => {
+    set({ buzzerSound: enabled });
   },
   focusCanvasOn: (ids) => {
     set((state) => ({ canvasFocus: { ids, seq: (state.canvasFocus?.seq ?? 0) + 1 } }));

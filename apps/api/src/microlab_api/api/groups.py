@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from microlab_api.api.current_user import CurrentUser, StaffUser
 from microlab_api.api.errors import ApiError
@@ -337,6 +338,7 @@ async def list_group_projects(
         .join(User, User.id == Project.owner_id)
         .join(GroupMember, GroupMember.user_id == User.id)
         .where(GroupMember.group_id == group_id)
+        .options(defer(Project.code, raiseload=True), defer(Project.circuit, raiseload=True))
         .order_by(Project.updated_at.desc(), Project.id)
     )
     return GroupProjectList(

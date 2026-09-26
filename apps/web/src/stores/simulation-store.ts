@@ -49,11 +49,39 @@ export interface PinState {
 }
 
 /** Состояние компонента по событиям симулятора (светодиод, кнопка). */
+/** Канал составного индикатора (RGB-светодиод, сегмент индикатора). */
+export interface LedChannelState {
+  on: boolean;
+  brightness: number;
+  currentMa: number;
+}
+
 export interface ComponentSimState {
   on?: boolean;
   brightness?: number;
   currentMa?: number;
   pressed?: boolean;
+  /** Каналы RGB-светодиода и сегменты индикатора. */
+  channels?: Readonly<Record<string, LedChannelState>>;
+  /** Положение движка потенциометра 0…1. */
+  position?: number;
+  /** Освещённость фоторезистора, лк. */
+  illuminanceLux?: number;
+  /** Пьезоизлучатель: звучит ли и с какой частотой. */
+  active?: boolean;
+  frequencyHz?: number;
+  /** Сервопривод: угол вала (null — импульсов ещё не было) и наличие питания. */
+  angle?: number | null;
+  powered?: boolean;
+}
+
+function channelState(raw: unknown): LedChannelState | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const record = raw as Record<string, unknown>;
+  if (typeof record["on"] !== "boolean") return null;
+  const brightness = typeof record["brightness"] === "number" ? Math.min(1, Math.max(0, record["brightness"])) : 0;
+  const currentMa = typeof record["currentMa"] === "number" ? record["currentMa"] : 0;
+  return { on: record["on"], brightness, currentMa };
 }
 
 /** Замечание симулятора во время выполнения (simulation_error). */
@@ -249,6 +277,23 @@ function componentState(event: SimulationEvent): ComponentSimState {
   if (typeof record["pressed"] === "boolean") state.pressed = record["pressed"];
   if (typeof record["brightness"] === "number") state.brightness = Math.min(1, Math.max(0, record["brightness"]));
   if (typeof record["currentMa"] === "number") state.currentMa = record["currentMa"];
+  const channels = record["channels"];
+  if (typeof channels === "object" && channels !== null) {
+    const parsed: Record<string, LedChannelState> = {};
+    for (const [id, value] of Object.entries(channels as Record<string, unknown>)) {
+      const channel = channelState(value);
+      if (channel !== null) parsed[id] = channel;
+    }
+    state.channels = parsed;
+  }
+  for (const key of ["position", "illuminanceLux", "frequencyHz"] as const) {
+    const value = record[key];
+    if (typeof value === "number" && Number.isFinite(value)) state[key] = value;
+  }
+  if (typeof record["active"] === "boolean") state.active = record["active"];
+  if (typeof record["powered"] === "boolean") state.powered = record["powered"];
+  const angle = record["angle"];
+  if (angle === null || (typeof angle === "number" && Number.isFinite(angle))) state.angle = angle;
   return state;
 }
 

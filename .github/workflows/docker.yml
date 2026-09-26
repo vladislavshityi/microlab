@@ -35,7 +35,7 @@ jobs:
         uses: docker/build-push-action@v7.4.0
         with:
           context: services/compiler
-          tags: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8
+          tags: microlab-compiler:arduino-cli-1.5.1-avr-1.8.8-servo-1.3.0
           load: true
           cache-from: type=gha,scope=compiler
           cache-to: type=gha,scope=compiler,mode=max
@@ -99,19 +99,35 @@ jobs:
           curl -fsS -D asset-headers.txt -o /dev/null "${BASE_URL}${asset}"
           grep -qi '^cache-control: public, max-age=31536000, immutable' asset-headers.txt
 
-      - name: Project and compilation through nginx
+      - name: Migrations applied by the API container
+        run: docker compose logs api | grep -q 'alembic.runtime.migration'
+
+      - name: CI admin password
         run: |
-          project="$(curl -fsS -X POST "${BASE_URL}/api/v1/projects" \
-            -H 'Content-Type: application/json' -d '{"name":"CI smoke"}' | jq -r .id)"
+          # Одноразовый пароль CI; передаётся через окружение, а не аргументом.
+          echo "ADMIN_PASSWORD=ci-$(openssl rand -hex 12)" >> "${GITHUB_ENV}"
+
+      - name: Project, compilation and simulation through nginx
+        run: |
+          docker compose exec -T -e MICROLAB_ADMIN_PASSWORD="${ADMIN_PASSWORD}" api \
+            python -m microlab_api.scripts.create_admin --email ci@example.edu
+          H=(-H 'Content-Type: application/json' -H 'X-MicroLab-Request: 1' -H "Origin: ${BASE_URL}" -b jar -c jar)
+          jq -n --arg p "${ADMIN_PASSWORD}" '{email: "ci@example.edu", password: $p}' \
+            | curl -fsS "${H[@]}" -X POST "${BASE_URL}/api/v1/auth/login" -d @- > /dev/null
+          code="$(printf 'void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(1000);\n  digitalWrite(13, LOW);\n  delay(1000);\n}\n')"
+          project="$(jq -n --arg code "${code}" '{name: "CI smoke", code: $code}' \
+            | curl -fsS "${H[@]}" -X POST "${BASE_URL}/api/v1/projects" -d @- | jq -r .id)"
           echo "PROJECT_ID=${project}" >> "${GITHUB_ENV}"
-          jq -n --arg code "$(printf 'void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(1000);\n  digitalWrite(13, LOW);\n  delay(1000);\n}\n')" '{code: $code}' \
-            | curl -fsS -X POST "${BASE_URL}/api/v1/compile" -H 'Content-Type: application/json' -d @- \
+          jq -n --arg code "${code}" '{code: $code}' \
+            | curl -fsS "${H[@]}" -X POST "${BASE_URL}/api/v1/compile" -d @- \
             | jq -e '.status == "success"'
+          curl -fsS "${H[@]}" -X POST "${BASE_URL}/api/v1/projects/${project}/simulation/start" \
+            | jq -e '.session.status == "running"'
 
       - name: WebSocket handshake through nginx
         run: |
           # 101 Switching Protocols; затем соединение остаётся открытым до --max-time.
-          code="$(curl -s -o /dev/null -w '%{http_code}' --http1.1 --max-time 5 \
+          code="$(curl -s -o /dev/null -w '%{http_code}' --http1.1 --max-time 5 -b jar \
             -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
             -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
             -H 'Origin: http://127.0.0.1:8080' \

@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
-    # docker compose: dev-дополнение с шлюзом на 127.0.0.1:8082 (одноразовые значения CI).
+    # docker compose: dev-дополнение с dev-шлюзом на 127.0.0.1:8082 (одноразовые значения CI).
     env:
       COMPOSE_FILE: docker-compose.yml:docker-compose.dev.yml
       MICROLAB_ENV: test
@@ -81,7 +81,9 @@ jobs:
           cache-to: type=gha,scope=simulator,mode=max
 
       - name: Start simulator (internal network + dev gateway)
-        run: docker compose up -d --no-build --wait simulator simulator-gateway
+        run: |
+          docker compose up -d --no-build --wait simulator
+          docker compose up -d --no-build --no-deps --wait dev-gateway
 
       - name: Simulator has no network egress
         run: >-
@@ -108,4 +110,4 @@ jobs:
 
       - name: Simulator logs
         if: failure()
-        run: docker compose logs simulator simulator-gateway
+        run: docker compose logs simulator dev-gateway

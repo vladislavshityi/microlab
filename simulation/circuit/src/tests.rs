@@ -258,6 +258,163 @@ fn rejects_unknown_pins_and_duplicates() {
     assert!(Circuit::build(&lib, &dup).is_err());
     let bad = spec(&[], &[("r1", "resistor", json!({"resistanceOhms": -5}))]);
     assert!(Circuit::build(&lib, &bad).is_err());
-    let c = Circuit::build(&lib, &spec(&[], &[("s1", "servo", json!({}))])).unwrap();
-    assert_eq!(c.unsupported(), ["s1"]);
+    let c = Circuit::build(&lib, &spec(&[], &[("u1", "hc-sr04", json!({}))])).unwrap();
+    assert_eq!(c.unsupported(), ["u1"]);
+    let rgb = spec(
+        &[],
+        &[("rgb1", "rgb-led", json!({"commonType": "common-both"}))],
+    );
+    assert!(Circuit::build(&lib, &rgb).is_err());
+    let servo = spec(
+        &[],
+        &[(
+            "s1",
+            "servo",
+            json!({"minPulseUs": 2000, "maxPulseUs": 1000}),
+        )],
+    );
+    assert!(Circuit::build(&lib, &servo).is_err());
+}
+
+fn pot_divider(position_percent: f64) -> Circuit {
+    Circuit::build(
+        &Library::builtin(),
+        &spec(
+            &[
+                &["uno1.GND1", "p1.1"],
+                &["uno1.5V", "p1.2"],
+                &["uno1.A0", "p1.W"],
+            ],
+            &[(
+                "p1",
+                "potentiometer",
+                json!({"resistanceOhms": 10000, "positionPercent": position_percent}),
+            )],
+        ),
+    )
+    .unwrap()
+}
+
+/// Потенциометр 10 kΩ между GND и 5V: напряжение движка = 5 · p (с поправкой на 1 Ω у концов).
+#[test]
+fn potentiometer_divides_supply_by_position() {
+    for (p, expect) in [
+        (0.0, 5.0 * 1.0 / 10001.0),
+        (50.0, 2.5),
+        (100.0, 5.0 * 10000.0 / 10001.0),
+    ] {
+        let mut c = pot_divider(p);
+        let s = c.solve(&drives(&c, &[])).unwrap();
+        let v = pin(&s, "A0").voltage.unwrap();
+        assert!((v - expect).abs() < 1e-9, "p={p}: {v}");
+    }
+    let mut c = pot_divider(0.0);
+    assert_eq!(c.set_position("p1", 0.25), Some(true));
+    assert_eq!(c.set_position("p1", 0.25), Some(false));
+    assert_eq!(c.set_position("nope", 0.25), None);
+    let s = c.solve(&drives(&c, &[])).unwrap();
+    assert!((pin(&s, "A0").voltage.unwrap() - 1.25).abs() < 1e-9);
+}
+
+/// Фоторезистор в делителе с 10 kΩ к 5V: R = R10 · (E/10)^−γ.
+#[test]
+fn photoresistor_follows_power_law() {
+    assert!((ldr_resistance(10_000.0, 0.7, 10.0) - 10_000.0).abs() < 1e-9);
+    assert!((ldr_resistance(10_000.0, 0.7, 100.0) - 10_000.0 * 10f64.powf(-0.7)).abs() < 1e-6);
+    let mut c = Circuit::build(
+        &Library::builtin(),
+        &spec(
+            &[
+                &["uno1.5V", "r1.1"],
+                &["r1.2", "ldr1.1", "uno1.A1"],
+                &["ldr1.2", "uno1.GND1"],
+            ],
+            &[
+                ("r1", "resistor", json!({"resistanceOhms": 10000})),
+                ("ldr1", "photoresistor", json!({"illuminanceLux": 10})),
+            ],
+        ),
+    )
+    .unwrap();
+    let s = c.solve(&drives(&c, &[])).unwrap();
+    assert!((pin(&s, "A1").voltage.unwrap() - 2.5).abs() < 1e-9);
+    let (changed, r) = c.set_illuminance("ldr1", 1000.0).unwrap();
+    assert!(changed);
+    let s = c.solve(&drives(&c, &[])).unwrap();
+    let expect = 5.0 * r / (r + 10_000.0);
+    assert!((pin(&s, "A1").voltage.unwrap() - expect).abs() < 1e-9);
+}
+
+/// RGB-светодиод с общим катодом и общим анодом: каналы — отдельные светодиоды.
+#[test]
+fn rgb_led_channels_follow_polarity() {
+    let build = |kind: &str, com: &str| {
+        Circuit::build(
+            &Library::builtin(),
+            &spec(
+                &[
+                    &["uno1.D9", "r1.1"],
+                    &["r1.2", "rgb1.R"],
+                    &["uno1.D10", "r2.1"],
+                    &["r2.2", "rgb1.G"],
+                    &["rgb1.COM", com],
+                ],
+                &[
+                    ("r1", "resistor", json!({"resistanceOhms": 220})),
+                    ("r2", "resistor", json!({"resistanceOhms": 220})),
+                    ("rgb1", "rgb-led", json!({"commonType": kind})),
+                ],
+            ),
+        )
+        .unwrap()
+    };
+    let mut cc = build("common-cathode", "uno1.GND1");
+    let s = cc
+        .solve(&drives(&cc, &[("D9", Drive::High), ("D10", Drive::Low)]))
+        .unwrap();
+    let on: Vec<(Option<&str>, bool)> = s
+        .leds
+        .iter()
+        .map(|l| (l.channel.as_deref(), l.on))
+        .collect();
+    assert_eq!(
+        on,
+        [(Some("r"), true), (Some("g"), false), (Some("b"), false)]
+    );
+    let mut ca = build("common-anode", "uno1.5V");
+    let s = ca
+        .solve(&drives(&ca, &[("D9", Drive::High), ("D10", Drive::Low)]))
+        .unwrap();
+    let on: Vec<bool> = s.leds.iter().map(|l| l.on).collect();
+    assert_eq!(on, [false, true, false]);
+    // (5 − 3) / (220 + 45 + 1) — выход LOW принимает ток зелёного канала.
+    assert!((s.leds[1].current_a - 2.0 / 266.0).abs() < 1e-9);
+}
+
+/// Пьезоизлучатель и сервопривод не нагружают схему, решатель сообщает напряжения их выводов.
+#[test]
+fn monitors_report_pin_voltages() {
+    let mut c = Circuit::build(
+        &Library::builtin(),
+        &spec(
+            &[
+                &["uno1.D8", "bz1.P"],
+                &["bz1.N", "uno1.GND1", "s1.GND"],
+                &["uno1.5V", "s1.VCC"],
+                &["uno1.D9", "s1.SIG"],
+            ],
+            &[
+                ("bz1", "piezo-buzzer", json!({})),
+                ("s1", "servo", json!({})),
+            ],
+        ),
+    )
+    .unwrap();
+    assert_eq!(c.monitors().len(), 2);
+    let s = c
+        .solve(&drives(&c, &[("D8", Drive::High), ("D9", Drive::Low)]))
+        .unwrap();
+    assert_eq!(s.probes[0], [Some(5.0), Some(0.0)]);
+    assert_eq!(s.probes[1], [Some(0.0), Some(5.0), Some(0.0)]);
+    assert!(pin(&s, "D8").current_a.abs() < 1e-12);
 }

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Воркер компиляции Arduino-скетчей: arduino-cli + arduino:avr 1.8.8, без сети во время работы.
+# Воркер компиляции Arduino-скетчей: arduino-cli + arduino:avr 1.8.8 + Servo 1.3.0, без сети во время работы.
 
 ARG BASE_IMAGE=python:3.13.15-slim-trixie@sha256:8d9d0b8bcf6506481eae4907c18f5e3e7902e629f5f6d684f9e7c32e85e3ddf0
 
@@ -13,6 +13,8 @@ ARG ARDUINO_CLI_SHA256_AMD64=28a8e119c498a25607821c36cb2dc49e8463941b261a0d99091
 ARG ARDUINO_CLI_SHA256_ARM64=1e69e077479f300614d4551334e0a33f08ee40b04315d83b8e7e0e94f0d0ee62
 # SHA-256 архива avr-1.8.8.tar.bz2 из package_index.json.
 ARG ARDUINO_AVR_SHA256=a234c2a43dcd01ce54be665806f183b8e6ec4e966d2e3e0c3358b63023d6390c
+# SHA-256 архива Servo-1.3.0.zip из library_index.json.
+ARG SERVO_SHA256=d25b0d77f10a810d24876c570410f32cc3129f9cc3d0370c861a278b969b4b38
 
 WORKDIR /build
 RUN set -eu; \
@@ -31,16 +33,18 @@ RUN set -eu; \
 COPY arduino-cli.yaml sketch.yaml /opt/arduino/
 COPY warmup.ino /build/sketch/sketch.ino
 
-# Сборка с профилем устанавливает платформу и toolchain ровно тех версий, что указаны
-# в sketch.yaml (arduino-cli проверяет контрольные суммы по package_index.json).
-# Затем дополнительно сверяется SHA-256 архива ядра.
+# Сборка с профилем устанавливает платформу, toolchain и библиотеки ровно тех версий, что
+# указаны в sketch.yaml (arduino-cli проверяет контрольные суммы по package_index.json и
+# library_index.json). Затем дополнительно сверяются SHA-256 архивов ядра и библиотеки Servo.
 RUN set -eu; \
     mkdir -p /opt/arduino/data /opt/arduino/downloads /opt/arduino/user; \
     cp /opt/arduino/sketch.yaml /build/sketch/sketch.yaml; \
     arduino-cli --config-file /opt/arduino/arduino-cli.yaml compile \
       --profile uno --build-path /build/out /build/sketch; \
     echo "${ARDUINO_AVR_SHA256}  /opt/arduino/downloads/packages/avr-1.8.8.tar.bz2" | sha256sum -c -; \
+    echo "${SERVO_SHA256}  /opt/arduino/downloads/libraries/Servo-1.3.0.zip" | sha256sum -c -; \
     test -d /opt/arduino/data/internal/arduino_avr_1.8.8_*; \
+    test -d /opt/arduino/data/internal/Servo_1.3.0_*; \
     rm -rf /opt/arduino/downloads/* /opt/arduino/data/tmp
 
 # --- Этап 2: рабочий образ ---

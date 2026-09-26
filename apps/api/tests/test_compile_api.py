@@ -94,7 +94,7 @@ async def test_success_returns_firmware_sizes_and_warnings(
         "message": "unused variable 'x' [-Wunused-variable]",
     }
     # Воркер получает исходник в поле source; в URL и заголовках его нет.
-    (sent,) = requests_seen
+    (sent,) = [r for r in requests_seen if r.url.path == "/compile"]
     assert sent.url.path == "/compile"
     assert json.loads(sent.content) == {"source": "void setup(){}"}
 

@@ -1,4 +1,4 @@
-import type { CircuitDocument } from "@microlab/circuit-schema";
+import type { CircuitDocument, ProjectTemplate } from "@microlab/circuit-schema";
 
 import {
   createProject,
@@ -13,6 +13,7 @@ import {
   normalizeCircuit,
   parseCircuitDocument,
 } from "@/features/circuit-model/circuit-document";
+import { localized } from "@/i18n/localized";
 import { t } from "@/i18n/t";
 import { readStorage, writeStorage } from "@/lib/storage";
 import { useCircuitStore } from "@/stores/circuit-store";
@@ -271,9 +272,13 @@ export async function switchToProject(id: string): Promise<boolean> {
 }
 
 /** Создаёт проект и открывает его (после сохранения текущего). */
-export async function createAndOpenProject(): Promise<boolean> {
+export async function createAndOpenProject(template?: ProjectTemplate): Promise<boolean> {
   if (!(await flushBeforeLeave())) return false;
-  return openProject(await createProject({ name: t("projects.defaultName") }));
+  const data =
+    template === undefined
+      ? { name: t("projects.defaultName") }
+      : { name: localized(template.name), code: template.code, circuit: template.circuit };
+  return openProject(await createProject(data));
 }
 
 /** Проект с последнего запуска, иначе последний изменённый, иначе новый. */

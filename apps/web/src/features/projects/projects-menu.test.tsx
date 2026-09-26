@@ -52,6 +52,28 @@ describe("ProjectsMenu", () => {
     stop();
   });
 
+  it("creates a project from an example template", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+
+    await user.click(screen.getByRole("button", { name: "Проекты" }));
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(
+      expect.arrayContaining(["Blink", "Кнопка", "PWM-светодиод", "Потенциометр", "Сервопривод: качание", "7-сегментный счётчик"]),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Сервопривод: качание" }));
+
+    await waitFor(() => {
+      expect(server.projects.size).toBe(2);
+    });
+    const created = [...server.projects.values()].find((p) => p.name === "Сервопривод: качание");
+    expect(created?.code).toContain("#include <Servo.h>");
+    expect(created?.circuit["components"]).toEqual([expect.objectContaining({ id: "servo1", type: "servo" })]);
+    await waitFor(() => {
+      expect(useEditorStore.getState().code).toContain("servo.attach(9)");
+    });
+  });
+
   it("lists and opens projects", async () => {
     const other = server.add({ name: "Второй", code: "// second" });
     const user = userEvent.setup();

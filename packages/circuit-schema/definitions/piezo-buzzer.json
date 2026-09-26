@@ -1,0 +1,51 @@
+{
+  "type": "piezo-buzzer",
+  "displayName": {
+    "key": "components.piezo-buzzer.displayName",
+    "ru": "Пьезоизлучатель"
+  },
+  "description": {
+    "key": "components.piezo-buzzer.description",
+    "ru": "Пассивный пьезоизлучатель: звучит, когда напряжение на нём переключается, например функцией tone()."
+  },
+  "category": "output",
+  "pins": [
+    {
+      "id": "P",
+      "name": "+",
+      "electricalType": "passive"
+    },
+    {
+      "id": "N",
+      "name": "−",
+      "electricalType": "passive"
+    }
+  ],
+  "properties": [],
+  "simulationAccuracy": "BEHAVIORAL",
+  "electricalModel": {
+    "kind": "piezo",
+    "positive": "P",
+    "negative": "N"
+  },
+  "limitations": [
+    "Электрически — разрыв цепи: ёмкость пьезоэлемента и токи перезаряда не моделируются.",
+    "Частота определяется по переключениям напряжения на выводах (порог — половина напряжения питания платы); аппаратный PWM (analogWrite) звуком не считается.",
+    "Громкость, резонансная частота и акустика не моделируются.",
+    "Звук в браузере — только иллюстрация частоты: он выключен по умолчанию."
+  ],
+  "visual": {
+    "width": 4,
+    "height": 3,
+    "pins": {
+      "P": {
+        "x": 1,
+        "y": 3
+      },
+      "N": {
+        "x": 3,
+        "y": 3
+      }
+    }
+  }
+}

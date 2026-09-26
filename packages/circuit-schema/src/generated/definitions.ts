@@ -4850,6 +4850,264 @@ export const COMPONENT_DEFINITIONS: readonly ComponentDefinition[] = [
     }
   },
   {
+    "type": "photoresistor",
+    "displayName": {
+      "key": "components.photoresistor.displayName",
+      "ru": "Фоторезистор"
+    },
+    "description": {
+      "key": "components.photoresistor.description",
+      "ru": "Фоторезистор (LDR): сопротивление уменьшается с ростом освещённости."
+    },
+    "category": "sensors",
+    "pins": [
+      {
+        "id": "1",
+        "name": "1",
+        "electricalType": "passive"
+      },
+      {
+        "id": "2",
+        "name": "2",
+        "electricalType": "passive"
+      }
+    ],
+    "properties": [
+      {
+        "id": "illuminanceLux",
+        "displayName": {
+          "key": "components.photoresistor.properties.illuminanceLux",
+          "ru": "Освещённость"
+        },
+        "type": "number",
+        "unit": "lux",
+        "default": 100,
+        "minimum": 0.1,
+        "maximum": 100000,
+        "presets": [
+          1,
+          10,
+          100,
+          1000,
+          10000
+        ],
+        "simulated": true
+      },
+      {
+        "id": "resistanceAt10Lux",
+        "displayName": {
+          "key": "components.photoresistor.properties.resistanceAt10Lux",
+          "ru": "Сопротивление при 10 лк"
+        },
+        "type": "number",
+        "unit": "ohm",
+        "default": 10000,
+        "minimum": 100,
+        "maximum": 10000000,
+        "simulated": true
+      },
+      {
+        "id": "gamma",
+        "displayName": {
+          "key": "components.photoresistor.properties.gamma",
+          "ru": "Показатель γ"
+        },
+        "type": "number",
+        "unit": "none",
+        "default": 0.7,
+        "minimum": 0.1,
+        "maximum": 2,
+        "simulated": true
+      }
+    ],
+    "simulationAccuracy": "BEHAVIORAL",
+    "electricalModel": {
+      "kind": "photoresistor",
+      "terminals": [
+        "1",
+        "2"
+      ],
+      "illuminanceProperty": "illuminanceLux",
+      "resistanceAt10LuxProperty": "resistanceAt10Lux",
+      "gammaProperty": "gamma"
+    },
+    "limitations": [
+      "Сопротивление — степенная модель R = R10 · (E / 10 лк)^(−γ).",
+      "Значения R10 = 10 kΩ и γ = 0,7 по умолчанию — условные типичные значения, не взятые из datasheet: задайте их по datasheet используемого фоторезистора.",
+      "Инерция (время отклика), спектральная чувствительность, разброс и температурная зависимость не моделируются.",
+      "Освещённость — начальное значение: во время симуляции её можно менять, не сохраняя в проект."
+    ],
+    "visual": {
+      "width": 4,
+      "height": 2,
+      "pins": {
+        "1": {
+          "x": 0,
+          "y": 1
+        },
+        "2": {
+          "x": 4,
+          "y": 1
+        }
+      }
+    }
+  },
+  {
+    "type": "piezo-buzzer",
+    "displayName": {
+      "key": "components.piezo-buzzer.displayName",
+      "ru": "Пьезоизлучатель"
+    },
+    "description": {
+      "key": "components.piezo-buzzer.description",
+      "ru": "Пассивный пьезоизлучатель: звучит, когда напряжение на нём переключается, например функцией tone()."
+    },
+    "category": "output",
+    "pins": [
+      {
+        "id": "P",
+        "name": "+",
+        "electricalType": "passive"
+      },
+      {
+        "id": "N",
+        "name": "−",
+        "electricalType": "passive"
+      }
+    ],
+    "properties": [],
+    "simulationAccuracy": "BEHAVIORAL",
+    "electricalModel": {
+      "kind": "piezo",
+      "positive": "P",
+      "negative": "N"
+    },
+    "limitations": [
+      "Электрически — разрыв цепи: ёмкость пьезоэлемента и токи перезаряда не моделируются.",
+      "Частота определяется по переключениям напряжения на выводах (порог — половина напряжения питания платы); аппаратный PWM (analogWrite) звуком не считается.",
+      "Громкость, резонансная частота и акустика не моделируются.",
+      "Звук в браузере — только иллюстрация частоты: он выключен по умолчанию."
+    ],
+    "visual": {
+      "width": 4,
+      "height": 3,
+      "pins": {
+        "P": {
+          "x": 1,
+          "y": 3
+        },
+        "N": {
+          "x": 3,
+          "y": 3
+        }
+      }
+    }
+  },
+  {
+    "type": "potentiometer",
+    "displayName": {
+      "key": "components.potentiometer.displayName",
+      "ru": "Потенциометр"
+    },
+    "description": {
+      "key": "components.potentiometer.description",
+      "ru": "Переменный резистор с тремя выводами: движок W делит сопротивление между выводами 1 и 2."
+    },
+    "category": "passive",
+    "pins": [
+      {
+        "id": "1",
+        "name": "1",
+        "electricalType": "passive"
+      },
+      {
+        "id": "W",
+        "name": "Движок",
+        "electricalType": "passive"
+      },
+      {
+        "id": "2",
+        "name": "2",
+        "electricalType": "passive"
+      }
+    ],
+    "properties": [
+      {
+        "id": "resistanceOhms",
+        "displayName": {
+          "key": "components.potentiometer.properties.resistanceOhms",
+          "ru": "Полное сопротивление"
+        },
+        "type": "number",
+        "unit": "ohm",
+        "default": 10000,
+        "minimum": 100,
+        "maximum": 1000000,
+        "presets": [
+          1000,
+          10000,
+          100000
+        ],
+        "simulated": true
+      },
+      {
+        "id": "positionPercent",
+        "displayName": {
+          "key": "components.potentiometer.properties.positionPercent",
+          "ru": "Положение движка"
+        },
+        "type": "number",
+        "unit": "percent",
+        "default": 50,
+        "minimum": 0,
+        "maximum": 100,
+        "presets": [
+          0,
+          25,
+          50,
+          75,
+          100
+        ],
+        "simulated": true
+      }
+    ],
+    "simulationAccuracy": "BASIC_ELECTRICAL",
+    "electricalModel": {
+      "kind": "potentiometer",
+      "terminals": [
+        "1",
+        "2"
+      ],
+      "wiper": "W",
+      "resistanceProperty": "resistanceOhms",
+      "positionProperty": "positionPercent"
+    },
+    "limitations": [
+      "Линейная характеристика: сопротивление между выводом 1 и движком пропорционально положению (0 % — движок у вывода 1).",
+      "Сопротивление каждой части не меньше 1 Ω — численное допущение модели, а не параметр реального потенциометра.",
+      "Допуск, остаточное сопротивление, дребезг движка и рассеиваемая мощность не моделируются.",
+      "Положение — начальное значение: во время симуляции его можно менять на схеме или в свойствах, не сохраняя в проект."
+    ],
+    "visual": {
+      "width": 4,
+      "height": 3,
+      "pins": {
+        "1": {
+          "x": 0,
+          "y": 2
+        },
+        "2": {
+          "x": 4,
+          "y": 2
+        },
+        "W": {
+          "x": 2,
+          "y": 0
+        }
+      }
+    }
+  },
+  {
     "type": "push-button",
     "displayName": {
       "key": "components.push-button.displayName",
@@ -4994,6 +5252,522 @@ export const COMPONENT_DEFINITIONS: readonly ComponentDefinition[] = [
         "2": {
           "x": 4,
           "y": 1
+        }
+      }
+    }
+  },
+  {
+    "type": "rgb-led",
+    "displayName": {
+      "key": "components.rgb-led.displayName",
+      "ru": "RGB-светодиод"
+    },
+    "description": {
+      "key": "components.rgb-led.description",
+      "ru": "Три светодиода (красный, зелёный, синий) в одном корпусе с общим выводом."
+    },
+    "category": "output",
+    "pins": [
+      {
+        "id": "R",
+        "name": "Красный",
+        "electricalType": "passive"
+      },
+      {
+        "id": "COM",
+        "name": "Общий",
+        "electricalType": "passive"
+      },
+      {
+        "id": "G",
+        "name": "Зелёный",
+        "electricalType": "passive"
+      },
+      {
+        "id": "B",
+        "name": "Синий",
+        "electricalType": "passive"
+      }
+    ],
+    "properties": [
+      {
+        "id": "commonType",
+        "displayName": {
+          "key": "components.rgb-led.properties.commonType",
+          "ru": "Общий вывод"
+        },
+        "type": "enum",
+        "default": "common-cathode",
+        "options": [
+          {
+            "value": "common-cathode",
+            "label": {
+              "key": "components.rgb-led.properties.commonType.common-cathode",
+              "ru": "Общий катод"
+            }
+          },
+          {
+            "value": "common-anode",
+            "label": {
+              "key": "components.rgb-led.properties.commonType.common-anode",
+              "ru": "Общий анод"
+            }
+          }
+        ],
+        "simulated": true
+      },
+      {
+        "id": "forwardVoltageRed",
+        "displayName": {
+          "key": "components.rgb-led.properties.forwardVoltageRed",
+          "ru": "Прямое напряжение (R)"
+        },
+        "type": "number",
+        "unit": "volt",
+        "default": 2,
+        "minimum": 0.5,
+        "maximum": 5,
+        "simulated": true
+      },
+      {
+        "id": "forwardVoltageGreen",
+        "displayName": {
+          "key": "components.rgb-led.properties.forwardVoltageGreen",
+          "ru": "Прямое напряжение (G)"
+        },
+        "type": "number",
+        "unit": "volt",
+        "default": 3,
+        "minimum": 0.5,
+        "maximum": 5,
+        "simulated": true
+      },
+      {
+        "id": "forwardVoltageBlue",
+        "displayName": {
+          "key": "components.rgb-led.properties.forwardVoltageBlue",
+          "ru": "Прямое напряжение (B)"
+        },
+        "type": "number",
+        "unit": "volt",
+        "default": 3,
+        "minimum": 0.5,
+        "maximum": 5,
+        "simulated": true
+      }
+    ],
+    "simulationAccuracy": "BASIC_ELECTRICAL",
+    "electricalModel": {
+      "kind": "led-array",
+      "common": "COM",
+      "polarityProperty": "commonType",
+      "channels": [
+        {
+          "id": "r",
+          "pin": "R",
+          "forwardVoltageProperty": "forwardVoltageRed"
+        },
+        {
+          "id": "g",
+          "pin": "G",
+          "forwardVoltageProperty": "forwardVoltageGreen"
+        },
+        {
+          "id": "b",
+          "pin": "B",
+          "forwardVoltageProperty": "forwardVoltageBlue"
+        }
+      ]
+    },
+    "limitations": [
+      "Каждый канал — отдельный светодиод той же модели, что и одиночный светодиод.",
+      "Прямые напряжения по умолчанию (2 / 3 / 3 В) — условные значения, не взятые из datasheet: задайте их по datasheet используемого светодиода.",
+      "Порядок выводов R, COM, G, B — распространённый, но не единственный: сверьте его с datasheet.",
+      "Смешанный цвет на схеме — визуализация по токам каналов, а не колориметрия."
+    ],
+    "visual": {
+      "width": 3,
+      "height": 3,
+      "pins": {
+        "R": {
+          "x": 0,
+          "y": 3
+        },
+        "COM": {
+          "x": 1,
+          "y": 3
+        },
+        "G": {
+          "x": 2,
+          "y": 3
+        },
+        "B": {
+          "x": 3,
+          "y": 3
+        }
+      }
+    }
+  },
+  {
+    "type": "servo",
+    "displayName": {
+      "key": "components.servo.displayName",
+      "ru": "Сервопривод"
+    },
+    "description": {
+      "key": "components.servo.description",
+      "ru": "Сервопривод класса SG90: угол вала задаётся длительностью управляющего импульса (библиотека Servo)."
+    },
+    "category": "output",
+    "pins": [
+      {
+        "id": "GND",
+        "name": "GND",
+        "electricalType": "ground"
+      },
+      {
+        "id": "VCC",
+        "name": "V+",
+        "electricalType": "power-input",
+        "voltageDomain": "5V"
+      },
+      {
+        "id": "SIG",
+        "name": "Сигнал",
+        "electricalType": "digital-input"
+      }
+    ],
+    "properties": [
+      {
+        "id": "minPulseUs",
+        "displayName": {
+          "key": "components.servo.properties.minPulseUs",
+          "ru": "Импульс для 0°"
+        },
+        "type": "number",
+        "unit": "microsecond",
+        "default": 544,
+        "minimum": 100,
+        "maximum": 3000,
+        "simulated": true
+      },
+      {
+        "id": "maxPulseUs",
+        "displayName": {
+          "key": "components.servo.properties.maxPulseUs",
+          "ru": "Импульс для 180°"
+        },
+        "type": "number",
+        "unit": "microsecond",
+        "default": 2400,
+        "minimum": 100,
+        "maximum": 3000,
+        "simulated": true
+      },
+      {
+        "id": "minSupplyVoltage",
+        "displayName": {
+          "key": "components.servo.properties.minSupplyVoltage",
+          "ru": "Минимальное напряжение питания"
+        },
+        "type": "number",
+        "unit": "volt",
+        "default": 4.5,
+        "minimum": 1,
+        "maximum": 6,
+        "simulated": true
+      }
+    ],
+    "simulationAccuracy": "BEHAVIORAL",
+    "electricalModel": {
+      "kind": "servo",
+      "signal": "SIG",
+      "power": "VCC",
+      "ground": "GND",
+      "minPulseProperty": "minPulseUs",
+      "maxPulseProperty": "maxPulseUs",
+      "minSupplyProperty": "minSupplyVoltage"
+    },
+    "limitations": [
+      "Угол линейно зависит от длительности импульса: 544 и 2400 мкс по умолчанию — значения MIN_PULSE_WIDTH и MAX_PULSE_WIDTH библиотеки Servo 1.3.0, а не характеристика конкретного сервопривода.",
+      "Минимальное напряжение питания 4,5 В — условное значение модели, не взятое из datasheet.",
+      "Вал поворачивается мгновенно: скорость, момент, нагрузка и механические упоры не моделируются.",
+      "Ток потребления двигателя не моделируется: выводы питания и сигнала не нагружают схему.",
+      "Импульсы длиннее удвоенного импульса для 180° не считаются управляющими; без импульсов вал сохраняет последний угол."
+    ],
+    "visual": {
+      "width": 6,
+      "height": 4,
+      "pins": {
+        "GND": {
+          "x": 0,
+          "y": 1
+        },
+        "VCC": {
+          "x": 0,
+          "y": 2
+        },
+        "SIG": {
+          "x": 0,
+          "y": 3
+        }
+      }
+    }
+  },
+  {
+    "type": "seven-segment",
+    "displayName": {
+      "key": "components.seven-segment.displayName",
+      "ru": "7-сегментный индикатор"
+    },
+    "description": {
+      "key": "components.seven-segment.description",
+      "ru": "Одноразрядный индикатор: семь сегментов a–g и точка DP — светодиоды с общим выводом."
+    },
+    "category": "displays",
+    "pins": [
+      {
+        "id": "a",
+        "name": "A",
+        "electricalType": "passive"
+      },
+      {
+        "id": "b",
+        "name": "B",
+        "electricalType": "passive"
+      },
+      {
+        "id": "c",
+        "name": "C",
+        "electricalType": "passive"
+      },
+      {
+        "id": "d",
+        "name": "D",
+        "electricalType": "passive"
+      },
+      {
+        "id": "e",
+        "name": "E",
+        "electricalType": "passive"
+      },
+      {
+        "id": "f",
+        "name": "F",
+        "electricalType": "passive"
+      },
+      {
+        "id": "g",
+        "name": "G",
+        "electricalType": "passive"
+      },
+      {
+        "id": "dp",
+        "name": "DP",
+        "electricalType": "passive"
+      },
+      {
+        "id": "COM1",
+        "name": "Общий",
+        "electricalType": "passive"
+      },
+      {
+        "id": "COM2",
+        "name": "Общий",
+        "electricalType": "passive"
+      }
+    ],
+    "internalConnections": [
+      [
+        "COM1",
+        "COM2"
+      ]
+    ],
+    "properties": [
+      {
+        "id": "commonType",
+        "displayName": {
+          "key": "components.seven-segment.properties.commonType",
+          "ru": "Общий вывод"
+        },
+        "type": "enum",
+        "default": "common-cathode",
+        "options": [
+          {
+            "value": "common-cathode",
+            "label": {
+              "key": "components.seven-segment.properties.commonType.common-cathode",
+              "ru": "Общий катод"
+            }
+          },
+          {
+            "value": "common-anode",
+            "label": {
+              "key": "components.seven-segment.properties.commonType.common-anode",
+              "ru": "Общий анод"
+            }
+          }
+        ],
+        "simulated": true
+      },
+      {
+        "id": "forwardVoltage",
+        "displayName": {
+          "key": "components.seven-segment.properties.forwardVoltage",
+          "ru": "Прямое напряжение сегмента"
+        },
+        "type": "number",
+        "unit": "volt",
+        "default": 2,
+        "minimum": 0.5,
+        "maximum": 5,
+        "simulated": true
+      },
+      {
+        "id": "color",
+        "displayName": {
+          "key": "components.seven-segment.properties.color",
+          "ru": "Цвет"
+        },
+        "type": "enum",
+        "default": "red",
+        "options": [
+          {
+            "value": "red",
+            "label": {
+              "key": "components.seven-segment.properties.color.red",
+              "ru": "Красный"
+            }
+          },
+          {
+            "value": "green",
+            "label": {
+              "key": "components.seven-segment.properties.color.green",
+              "ru": "Зелёный"
+            }
+          },
+          {
+            "value": "yellow",
+            "label": {
+              "key": "components.seven-segment.properties.color.yellow",
+              "ru": "Жёлтый"
+            }
+          },
+          {
+            "value": "blue",
+            "label": {
+              "key": "components.seven-segment.properties.color.blue",
+              "ru": "Синий"
+            }
+          },
+          {
+            "value": "white",
+            "label": {
+              "key": "components.seven-segment.properties.color.white",
+              "ru": "Белый"
+            }
+          }
+        ],
+        "simulated": false
+      }
+    ],
+    "simulationAccuracy": "BASIC_ELECTRICAL",
+    "electricalModel": {
+      "kind": "led-array",
+      "common": "COM1",
+      "polarityProperty": "commonType",
+      "channels": [
+        {
+          "id": "a",
+          "pin": "a",
+          "forwardVoltageProperty": "forwardVoltage"
+        },
+        {
+          "id": "b",
+          "pin": "b",
+          "forwardVoltageProperty": "forwardVoltage"
+        },
+        {
+          "id": "c",
+          "pin": "c",
+          "forwardVoltageProperty": "forwardVoltage"
+        },
+        {
+          "id": "d",
+          "pin": "d",
+          "forwardVoltageProperty": "forwardVoltage"
+        },
+        {
+          "id": "e",
+          "pin": "e",
+          "forwardVoltageProperty": "forwardVoltage"
+        },
+        {
+          "id": "f",
+          "pin": "f",
+          "forwardVoltageProperty": "forwardVoltage"
+        },
+        {
+          "id": "g",
+          "pin": "g",
+          "forwardVoltageProperty": "forwardVoltage"
+        },
+        {
+          "id": "dp",
+          "pin": "dp",
+          "forwardVoltageProperty": "forwardVoltage"
+        }
+      ]
+    },
+    "limitations": [
+      "Каждый сегмент — светодиод той же модели, что и одиночный светодиод; сегмент из нескольких кристаллов не моделируется.",
+      "Прямое напряжение по умолчанию (2 В) — условное значение, не взятое из datasheet.",
+      "Расположение выводов (G F COM A B сверху, E D COM C DP снизу) — распространённое, но зависит от производителя.",
+      "Цвет — только визуальные метаданные."
+    ],
+    "visual": {
+      "width": 4,
+      "height": 6,
+      "pins": {
+        "g": {
+          "x": 0,
+          "y": 0
+        },
+        "f": {
+          "x": 1,
+          "y": 0
+        },
+        "COM1": {
+          "x": 2,
+          "y": 0
+        },
+        "a": {
+          "x": 3,
+          "y": 0
+        },
+        "b": {
+          "x": 4,
+          "y": 0
+        },
+        "e": {
+          "x": 0,
+          "y": 6
+        },
+        "d": {
+          "x": 1,
+          "y": 6
+        },
+        "COM2": {
+          "x": 2,
+          "y": 6
+        },
+        "c": {
+          "x": 3,
+          "y": 6
+        },
+        "dp": {
+          "x": 4,
+          "y": 6
         }
       }
     }
