@@ -34,6 +34,8 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: apiProxyTarget,
           changeOrigin: false,
+          // Поток событий симуляции (WebSocket /api/v1/ws/...).
+          ws: true,
         },
       },
     },

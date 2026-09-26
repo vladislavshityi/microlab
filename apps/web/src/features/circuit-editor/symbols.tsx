@@ -3,6 +3,7 @@ import type { ComponentDefinition, ComponentInstance, Rotation } from "@microlab
 
 import { localized } from "@/i18n/localized";
 
+import { LED_FILL } from "./led-colors";
 import { rotationTransform } from "./rotation";
 
 /**
@@ -13,14 +14,6 @@ import { rotationTransform } from "./rotation";
 
 const STROKE = 0.1;
 
-/** Цвет заливки корпуса светодиода по значению свойства color. */
-const LED_FILL: Readonly<Record<string, string>> = {
-  red: "#ef4444",
-  green: "#22c55e",
-  yellow: "#eab308",
-  blue: "#3b82f6",
-  white: "#f5f5f5",
-};
 
 function Lead({ x1, x2, y }: { x1: number; x2: number; y: number }) {
   return <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--foreground)" strokeWidth={STROKE} />;

@@ -24,7 +24,7 @@ from microlab_api.schemas.compile import (
     Toolchain,
 )
 from microlab_api.schemas.errors import ErrorResponse
-from microlab_api.services.compiler_service import CompilerClient, CompilerError
+from microlab_api.services.compiler_service import CompileOutcome, CompilerClient, CompilerError
 
 router = APIRouter(tags=["compile"])
 
@@ -64,7 +64,10 @@ async def run_compilation(compiler: CompilerClient, code: str) -> CompileRespons
         outcome = await compiler.compile(code)
     except CompilerError as exc:
         return error_response(exc.status_code, exc.code, exc.message)
+    return compile_response(outcome)
 
+
+def compile_response(outcome: CompileOutcome) -> CompileResponse:
     result = outcome.result
     firmware = (
         Firmware(format="ihex", data=result.hex, sha256=outcome.firmware_sha256)

@@ -3,16 +3,14 @@ import { getComponentDefinition } from "@microlab/circuit-schema";
 import { ProjectName } from "@/features/projects/project-name";
 import { ProjectsMenu } from "@/features/projects/projects-menu";
 import { SaveStatusControl } from "@/features/projects/save-status";
+import { SimulationControls } from "@/features/simulation/simulation-controls";
 import { localized } from "@/i18n/localized";
 import { t } from "@/i18n/t";
 import { useCircuitStore } from "@/stores/circuit-store";
 
 import { ThemeMenu } from "./theme-menu";
 
-/**
- * Верхняя панель: проекты, название, плата, состояние сохранения. Кнопок запуска и
- * остановки нет, пока нет симуляции, чтобы не создавать видимость работающих действий.
- */
+/** Верхняя панель: проекты, название, плата, управление симуляцией, состояние сохранения. */
 export function Toolbar() {
   const boardType = useCircuitStore((state) => state.board.type);
   const board = getComponentDefinition(boardType);
@@ -25,6 +23,7 @@ export function Toolbar() {
         <ProjectName />
         <span className="truncate text-xs text-muted-foreground">{board === undefined ? t("workspace.board.none") : localized(board.displayName)}</span>
       </div>
+      <SimulationControls />
       <div className="flex items-center gap-2">
         <SaveStatusControl />
         <ThemeMenu />

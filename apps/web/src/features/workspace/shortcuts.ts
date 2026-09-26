@@ -1,6 +1,6 @@
 import { saveNow } from "@/features/projects/project-session";
+import { runSimulation } from "@/features/simulation/simulation-actions";
 import { useCircuitStore } from "@/stores/circuit-store";
-import { useUiStore } from "@/stores/ui-store";
 
 /** Глобальные сочетания клавиш рабочего пространства. */
 export type ShortcutAction = "save" | "run";
@@ -24,12 +24,12 @@ export function matchShortcut(event: KeyboardEvent): ShortcutAction | null {
   return null;
 }
 
-/** Сохранение выполняется сразу; запуск ещё не реализован — честное уведомление. */
+/** Сохранение выполняется сразу; запуск сохраняет проект и запускает симуляцию. */
 export function runShortcut(action: ShortcutAction): void {
   if (action === "save") {
     void saveNow();
   } else {
-    useUiStore.getState().showNotice("notice.runUnavailable");
+    void runSimulation();
   }
 }
 

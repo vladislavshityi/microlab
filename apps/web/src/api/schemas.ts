@@ -20,6 +20,12 @@ export type ProjectDetail = components["schemas"]["ProjectDetail"];
 export type ProjectList = components["schemas"]["ProjectList"];
 export type ProjectCreate = components["schemas"]["ProjectCreate"];
 export type ProjectUpdate = components["schemas"]["ProjectUpdate"];
+export type CompileDiagnostic = components["schemas"]["CompileDiagnostic"];
+export type CompileResponse = components["schemas"]["CompileResponse"];
+export type SimulationInfo = components["schemas"]["SimulationInfo"];
+export type SimulationStartResponse = components["schemas"]["SimulationStartResponse"];
+export type SimulationStartErrorResponse = components["schemas"]["SimulationStartErrorResponse"];
+export type SimulationCommandResponse = components["schemas"]["SimulationCommandResponse"];
 
 // Tolerant reader: неизвестные лишние ключи отбрасываются, а не отвергаются, чтобы
 // аддитивное обратно совместимое изменение backend не превращало исправную систему
@@ -56,6 +62,13 @@ export const ErrorCodeSchema = z.enum([
   "REVISION_NOT_FOUND",
   "REVISION_CONFLICT",
   "INVALID_CIRCUIT",
+  "CIRCUIT_HAS_ERRORS",
+  "COMPILATION_FAILED",
+  "SIMULATOR_UNAVAILABLE",
+  "SIMULATOR_BUSY",
+  "SIMULATION_NOT_RUNNING",
+  "SIMULATION_START_FAILED",
+  "INVALID_SIMULATION_INPUT",
 ]) satisfies z.ZodType<ErrorCode>;
 
 export const ErrorResponseSchema = z.object({
@@ -140,6 +153,65 @@ export const ProjectDetailSchema = ProjectSummarySchema.extend({
 export const ProjectListSchema = z.object({
   items: z.array(ProjectSummarySchema),
 }) satisfies z.ZodType<ProjectList>;
+
+export const CompileDiagnosticSchema = z.object({
+  file: z.string().nullable(),
+  line: z.number().int().nullable(),
+  column: z.number().int().nullable(),
+  severity: z.enum(["error", "warning", "note"]),
+  message: z.string(),
+}) satisfies z.ZodType<CompileDiagnostic>;
+
+export const CompileResponseSchema = z.object({
+  status: z.enum(["success", "error"]),
+  diagnostics: z.array(CompileDiagnosticSchema),
+  sizes: z
+    .object({
+      flashBytes: z.number().int(),
+      flashMaxBytes: z.number().int(),
+      ramBytes: z.number().int(),
+      ramMaxBytes: z.number().int(),
+    })
+    .nullable(),
+  firmware: z
+    .object({
+      format: z.literal("ihex"),
+      data: z.string(),
+      sha256: z.string(),
+    })
+    .nullable(),
+  compilerOutput: z.string(),
+  compilerOutputTruncated: z.boolean(),
+  toolchain: z.object({ arduinoCli: z.string(), platform: z.string(), fqbn: z.string() }),
+  durationMs: z.number().int(),
+}) satisfies z.ZodType<CompileResponse>;
+
+export const SimulationInfoSchema = z.object({
+  simulationId: z.string(),
+  projectId: z.string(),
+  status: z.enum(["starting", "running", "paused", "stopped", "failed"]),
+  startTime: z.string(),
+  endTime: z.string().nullable(),
+  errorCode: z.string().nullable(),
+  timestamp: z.number().int(),
+  cycle: z.number().int(),
+}) satisfies z.ZodType<SimulationInfo>;
+
+export const SimulationStartResponseSchema = z.object({
+  session: SimulationInfoSchema,
+  validation: CircuitValidationResponseSchema,
+  compilation: CompileResponseSchema,
+}) satisfies z.ZodType<SimulationStartResponse>;
+
+export const SimulationStartErrorResponseSchema = ErrorResponseSchema.extend({
+  validation: CircuitValidationResponseSchema.nullable().exactOptional(),
+  compilation: CompileResponseSchema.nullable().exactOptional(),
+}) satisfies z.ZodType<SimulationStartErrorResponse>;
+
+export const SimulationCommandResponseSchema = z.object({
+  session: SimulationInfoSchema,
+  appliedCycle: z.number().int().nullable(),
+}) satisfies z.ZodType<SimulationCommandResponse>;
 
 /**
  * Код ошибки в том виде, в каком его видит пользователь: известный {@link ErrorCode} или более

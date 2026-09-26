@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AnyHttpUrl, Field, SecretStr
+from pydantic import AnyHttpUrl, AnyWebsocketUrl, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _API_PROJECT_MARKER = Path("apps") / "api" / "pyproject.toml"
@@ -64,6 +64,14 @@ class Settings(BaseSettings):
     # Общий таймаут запроса к воркеру; больше таймаута компиляции в воркере (60 с)
     # и ожидания в его очереди (10 с).
     compiler_timeout_seconds: float = Field(default=90.0, gt=0)
+    # Адрес сервиса симуляции (services/simulator, WebSocket). Не задан — симуляция
+    # недоступна (503 SIMULATOR_UNAVAILABLE).
+    simulator_url: AnyWebsocketUrl | None = None
+    simulator_connect_timeout_seconds: float = Field(default=5.0, gt=0)
+    # Ожидание ответа на команду; больше таймаута вызова worker в сервисе симуляции (10 с).
+    simulator_command_timeout_seconds: float = Field(default=20.0, gt=0)
+    # Сессия без подписчиков WebSocket останавливается через это время.
+    simulation_idle_timeout_seconds: float = Field(default=300.0, gt=0)
 
 
 @lru_cache(maxsize=1)

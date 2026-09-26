@@ -72,6 +72,20 @@
         "const": "arduino-uno-r3",
         "type": "string"
       },
+      "ButtonInput": {
+        "additionalProperties": false,
+        "properties": {
+          "pressed": {
+            "title": "Pressed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pressed"
+        ],
+        "title": "ButtonInput",
+        "type": "object"
+      },
       "CircuitIssue": {
         "additionalProperties": false,
         "properties": {
@@ -477,6 +491,26 @@
         "title": "ComponentDefinition",
         "type": "object"
       },
+      "ComponentInputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "componentId": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Componentid",
+            "type": "string"
+          },
+          "input": {
+            "$ref": "#/components/schemas/ButtonInput"
+          }
+        },
+        "required": [
+          "componentId",
+          "input"
+        ],
+        "title": "ComponentInputRequest",
+        "type": "object"
+      },
       "DatabaseCheck": {
         "additionalProperties": false,
         "properties": {
@@ -609,7 +643,14 @@
           "PROJECT_NOT_FOUND",
           "REVISION_NOT_FOUND",
           "REVISION_CONFLICT",
-          "INVALID_CIRCUIT"
+          "INVALID_CIRCUIT",
+          "CIRCUIT_HAS_ERRORS",
+          "COMPILATION_FAILED",
+          "SIMULATOR_UNAVAILABLE",
+          "SIMULATOR_BUSY",
+          "SIMULATION_NOT_RUNNING",
+          "SIMULATION_START_FAILED",
+          "INVALID_SIMULATION_INPUT"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -1449,6 +1490,23 @@
         "title": "ResistorModel",
         "type": "object"
       },
+      "SerialInputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "description": "Text sent to UART0 RX as UTF-8 (at most 4096 bytes).",
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SerialInputRequest",
+        "type": "object"
+      },
       "Severity": {
         "description": "Issue severity: ERROR blocks compilation and simulation, WARNING and INFO do not.",
         "enum": [
@@ -1457,6 +1515,190 @@
           "INFO"
         ],
         "title": "Severity",
+        "type": "string"
+      },
+      "SimulationCommandResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedCycle": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cycle at which the simulator applied the command (time-slice boundary).",
+            "title": "Appliedcycle"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SimulationInfo"
+          }
+        },
+        "required": [
+          "session",
+          "appliedCycle"
+        ],
+        "title": "SimulationCommandResponse",
+        "type": "object"
+      },
+      "SimulationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "cycle": {
+            "description": "MCU clock cycle (16 MHz) of the last known state.",
+            "title": "Cycle",
+            "type": "integer"
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endtime"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Code of the error that ended the session.",
+            "title": "Errorcode"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "simulationId": {
+            "title": "Simulationid",
+            "type": "string"
+          },
+          "startTime": {
+            "format": "date-time",
+            "title": "Starttime",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SimulationStatus"
+          },
+          "timestamp": {
+            "description": "Simulated time in microseconds since power-on.",
+            "title": "Timestamp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "simulationId",
+          "projectId",
+          "status",
+          "startTime",
+          "endTime",
+          "errorCode",
+          "timestamp",
+          "cycle"
+        ],
+        "title": "SimulationInfo",
+        "type": "object"
+      },
+      "SimulationStartErrorResponse": {
+        "additionalProperties": false,
+        "description": "Error envelope of the start endpoint with the result that blocked the start.",
+        "properties": {
+          "compilation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompileResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present for COMPILATION_FAILED."
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          },
+          "validation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CircuitValidationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present for CIRCUIT_HAS_ERRORS."
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "SimulationStartErrorResponse",
+        "type": "object"
+      },
+      "SimulationStartResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "compilation": {
+            "$ref": "#/components/schemas/CompileResponse",
+            "description": "Compilation result; firmware is always null here (it is sent to the simulator only)."
+          },
+          "session": {
+            "$ref": "#/components/schemas/SimulationInfo"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/CircuitValidationResponse",
+            "description": "Circuit issues (warnings and infos only: errors block the start)."
+          }
+        },
+        "required": [
+          "session",
+          "validation",
+          "compilation"
+        ],
+        "title": "SimulationStartResponse",
+        "type": "object"
+      },
+      "SimulationState": {
+        "additionalProperties": false,
+        "properties": {
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimulationInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Active or last session; null if none."
+          }
+        },
+        "required": [
+          "session"
+        ],
+        "title": "SimulationState",
+        "type": "object"
+      },
+      "SimulationStatus": {
+        "enum": [
+          "starting",
+          "running",
+          "paused",
+          "stopped",
+          "failed"
+        ],
         "type": "string"
       },
       "SwitchModel": {
@@ -2493,6 +2735,850 @@
         "summary": "Get a stored revision of a project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/simulation": {
+      "get": {
+        "operationId": "getSimulation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Project not found (PROJECT_NOT_FOUND)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is not configured (AUTH_NOT_CONFIGURED)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
+          }
+        },
+        "summary": "Get the active or last simulation session of a project",
+        "tags": [
+          "simulation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/simulation/input": {
+      "post": {
+        "operationId": "setSimulationInput",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentInputRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationCommandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Project not found (PROJECT_NOT_FOUND)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is not configured (AUTH_NOT_CONFIGURED)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
+          }
+        },
+        "summary": "Change a component input (e.g. press a button)",
+        "tags": [
+          "simulation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/simulation/pause": {
+      "post": {
+        "operationId": "pauseSimulation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationCommandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Project not found (PROJECT_NOT_FOUND)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is not configured (AUTH_NOT_CONFIGURED)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
+          }
+        },
+        "summary": "Pause the active simulation",
+        "tags": [
+          "simulation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/simulation/reset": {
+      "post": {
+        "operationId": "resetSimulation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationCommandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Project not found (PROJECT_NOT_FOUND)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is not configured (AUTH_NOT_CONFIGURED)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
+          }
+        },
+        "summary": "Reset the simulated MCU (external reset)",
+        "tags": [
+          "simulation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/simulation/resume": {
+      "post": {
+        "operationId": "resumeSimulation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationCommandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Project not found (PROJECT_NOT_FOUND)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is not configured (AUTH_NOT_CONFIGURED)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
+          }
+        },
+        "summary": "Resume the paused simulation",
+        "tags": [
+          "simulation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/simulation/serial": {
+      "post": {
+        "operationId": "sendSimulationSerial",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SerialInputRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationCommandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Project not found (PROJECT_NOT_FOUND)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is not configured (AUTH_NOT_CONFIGURED)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
+          }
+        },
+        "summary": "Send data to the simulated UART0 (Serial) input",
+        "tags": [
+          "simulation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/simulation/start": {
+      "post": {
+        "operationId": "startSimulation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Project not found (PROJECT_NOT_FOUND)."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Source exceeds 256 KiB (SOURCE_TOO_LARGE)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationStartErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is not configured (AUTH_NOT_CONFIGURED)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Time limit exceeded (COMPILATION_TIMEOUT)."
+          }
+        },
+        "summary": "Validate, compile and start simulating the stored project",
+        "tags": [
+          "simulation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/simulation/stop": {
+      "post": {
+        "operationId": "stopSimulation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationCommandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Project not found (PROJECT_NOT_FOUND)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected server error."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication is not configured (AUTH_NOT_CONFIGURED)."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE)."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY)."
+          }
+        },
+        "summary": "Stop the active simulation",
+        "tags": [
+          "simulation"
         ]
       }
     },

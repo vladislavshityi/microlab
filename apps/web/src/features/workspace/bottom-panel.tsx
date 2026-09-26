@@ -1,12 +1,16 @@
 import { PanelBottomClose, PanelBottomOpen } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CodeEditorPanel } from "@/features/code-editor/code-editor-panel";
+import { countDiagnostics } from "@/features/problems/compile-diagnostics";
+import { CompileProblems } from "@/features/problems/compile-problems";
 import { countIssues } from "@/features/problems/issue-format";
 import { ProblemCountsBadge, ProblemsPanel } from "@/features/problems/problems-panel";
 import { useCircuitValidation } from "@/features/problems/use-circuit-validation";
+import { SerialMonitor } from "@/features/serial-monitor/serial-monitor";
+import { ConsolePanel } from "@/features/simulation/console-panel";
 import { t, type PlainTranslationKey } from "@/i18n/t";
+import { useSimulationStore } from "@/stores/simulation-store";
 import { BOTTOM_TABS, useUiStore, type BottomTab } from "@/stores/ui-store";
 
 import { IconButton } from "./icon-button";
@@ -17,9 +21,6 @@ const TAB_LABEL: Record<BottomTab, PlainTranslationKey> = {
   serial: "bottom.tab.serial",
   problems: "bottom.tab.problems",
 };
-
-/** Вкладки, функциональность которых ещё не реализована. */
-const COMING_SOON: ReadonlySet<BottomTab> = new Set(["serial"]);
 
 function isBottomTab(value: string): value is BottomTab {
   return BOTTOM_TABS.some((tab) => tab === value);
@@ -37,7 +38,14 @@ export function BottomPanel({ collapsed, onCollapse, onExpand }: BottomPanelProp
   const setBottomTab = useUiStore((state) => state.setBottomTab);
   // Проверка схемы идёт независимо от активной вкладки: счётчики видны на вкладке всегда.
   const validation = useCircuitValidation();
-  const counts = countIssues(validation.data?.issues ?? []);
+  const diagnostics = useSimulationStore((state) => state.compilation?.diagnostics);
+  const circuitCounts = countIssues(validation.data?.issues ?? []);
+  const compileCounts = countDiagnostics(diagnostics ?? []);
+  const counts = {
+    errors: circuitCounts.errors + compileCounts.errors,
+    warnings: circuitCounts.warnings + compileCounts.warnings,
+    infos: circuitCounts.infos + compileCounts.infos,
+  };
 
   return (
     <Tabs
@@ -60,11 +68,6 @@ export function BottomPanel({ collapsed, onCollapse, onExpand }: BottomPanelProp
             >
               {t(TAB_LABEL[value])}
               {value === "problems" && <ProblemCountsBadge counts={counts} />}
-              {COMING_SOON.has(value) && (
-                <Badge variant="outline" className="px-1 py-0 text-[11px] font-normal text-muted-foreground">
-                  {t("bottom.comingSoon")}
-                </Badge>
-              )}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -83,13 +86,15 @@ export function BottomPanel({ collapsed, onCollapse, onExpand }: BottomPanelProp
       <TabsContent value="code" forceMount className="min-h-0 data-[state=inactive]:hidden">
         <CodeEditorPanel />
       </TabsContent>
-      <TabsContent value="console" className="min-h-0 overflow-auto">
-        <p className="px-3 py-2 font-mono text-[13px] text-muted-foreground">{t("console.empty")}</p>
+      <TabsContent value="console" className="min-h-0">
+        <ConsolePanel />
       </TabsContent>
-      <TabsContent value="serial" className="min-h-0 overflow-auto">
-        <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("serial.comingSoon")}</p>
+      {/* Монитор порта не размонтируется: сохраняются прокрутка и введённая строка. */}
+      <TabsContent value="serial" forceMount className="min-h-0 data-[state=inactive]:hidden">
+        <SerialMonitor />
       </TabsContent>
       <TabsContent value="problems" className="min-h-0 overflow-auto">
+        <CompileProblems />
         <ProblemsPanel
           data={validation.data}
           error={validation.error}

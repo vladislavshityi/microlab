@@ -1,13 +1,16 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 import { useCircuitStore } from "@/stores/circuit-store";
 import { resetProjectSession } from "@/features/projects/project-session";
 import { useEditorStore } from "@/stores/editor-store";
 import { useProjectStore } from "@/stores/project-store";
+import { useSimulationStore } from "@/stores/simulation-store";
 import { useUiStore } from "@/stores/ui-store";
+
+import { FakeWebSocket } from "./fake-websocket";
 
 // jsdom не реализует API, которые используют панели и холст схемы.
 class ResizeObserverStub {
@@ -56,7 +59,10 @@ beforeEach(() => {
   useEditorStore.setState(initialEditorState, true);
   useCircuitStore.setState(initialCircuitState, true);
   useProjectStore.setState(initialProjectState, true);
+  useSimulationStore.getState().resetForProject();
   resetProjectSession();
+  FakeWebSocket.instances = [];
+  vi.stubGlobal("WebSocket", FakeWebSocket);
 });
 
 afterEach(() => {

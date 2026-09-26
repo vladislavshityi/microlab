@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -56,19 +56,22 @@ describe("Workspace", () => {
       expect(screen.getByRole("separator", { name })).toHaveAttribute("tabindex", "0");
     }
 
-    // Нереализованных действий нет в интерфейсе.
-    for (const name of [/запуск/i, /стоп/i, /пауза/i]) {
-      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    // Управление симуляцией: до запуска доступен только запуск (после открытия проекта).
+    const controls = screen.getByRole("group", { name: "Управление симуляцией" });
+    for (const name of ["Пауза", "Остановить", "Reset микроконтроллера"]) {
+      expect(within(controls).getByRole("button", { name })).toBeDisabled();
     }
+    expect(within(controls).getByRole("status")).toHaveTextContent("Не запущена");
     expect(await screen.findByRole("textbox", { name: "Редактор кода скетча" })).toBeInTheDocument();
     expect(await screen.findByText("Все системы работают")).toBeInTheDocument();
     // При первом запуске создаётся проект, и документ сразу сохранён.
     expect(await screen.findByRole("button", { name: "Переименовать проект: Новый проект" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Сохранить/ })).toBeInTheDocument();
     expect(screen.getByText("Сохранено")).toBeInTheDocument();
+    expect(within(controls).getByRole("button", { name: /Проверить, скомпилировать и запустить/ })).toBeEnabled();
   });
 
-  it("switches bottom tabs; unfinished tabs are labelled as coming soon", async () => {
+  it("switches bottom tabs", async () => {
     const user = userEvent.setup();
     renderApp();
     const tabs = screen.getByRole("tablist", { name: "Вкладки нижней панели" });
@@ -83,16 +86,12 @@ describe("Workspace", () => {
     expect(screen.getByRole("tabpanel", { name: "Консоль" })).toHaveTextContent("Нет сообщений");
 
     const serial = within(tabs).getByRole("tab", { name: /Монитор порта/ });
-    expect(serial).toHaveTextContent("Скоро");
     await user.keyboard("{ArrowRight}");
     expect(serial).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel", { name: /Монитор порта/ })).toHaveTextContent(
-      "Монитор порта появится вместе с симуляцией.",
-    );
+    expect(screen.getByRole("tabpanel", { name: /Монитор порта/ })).toHaveTextContent("Вывода пока нет");
 
     // «Проблемы» работает: проверка схемы идёт на backend.
     const problems = within(tabs).getByRole("tab", { name: /Проблемы/ });
-    expect(problems).not.toHaveTextContent("Скоро");
     await user.keyboard("{ArrowRight}");
     expect(problems).toHaveAttribute("aria-selected", "true");
     expect(
@@ -124,20 +123,23 @@ describe("Workspace", () => {
     expect(stored?.code).toBe("// изменено");
   });
 
-  it("Cmd+Enter is intercepted and explained", () => {
-    vi.useFakeTimers();
-    try {
-      renderApp();
-      const message = "Запуск появится в следующих версиях";
-      expect(fireEvent.keyDown(window, { key: "Enter", code: "Enter", metaKey: true })).toBe(false);
-      expect(screen.getByText(message)).toBeInTheDocument();
-      act(() => {
-        vi.advanceTimersByTime(5000);
-      });
-      expect(screen.queryByText(message)).not.toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
+  it("Cmd+Enter saves the project and starts the simulation", async () => {
+    renderApp();
+    const editor = await screen.findByRole("textbox", { name: "Редактор кода скетча" });
+    await screen.findByText("Сохранено");
+    fireEvent.change(editor, { target: { value: "void setup(){}\nvoid loop(){}\n" } });
+
+    expect(fireEvent.keyDown(window, { key: "Enter", code: "Enter", metaKey: true })).toBe(false);
+
+    const controls = screen.getByRole("group", { name: "Управление симуляцией" });
+    await waitFor(() => {
+      expect(within(controls).getByRole("status")).toHaveTextContent("Симуляция идёт");
+    });
+    // Сначала сохранение, затем запуск сохранённого проекта.
+    const methods = server.requests.map((request) => `${request.method} ${request.url.replace(/[0-9a-f-]{36}/, "{id}")}`);
+    expect(methods.slice(-2)).toEqual(["PATCH /api/v1/projects/{id}", "POST /api/v1/projects/{id}/simulation/start"]);
+    expect(within(controls).getByRole("button", { name: "Пауза" })).toBeEnabled();
+    expect(within(controls).getByRole("button", { name: "Остановить" })).toBeEnabled();
   });
 
   it("does not intercept other shortcuts", () => {

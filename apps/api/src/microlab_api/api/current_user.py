@@ -24,6 +24,11 @@ async def get_current_user(
     request: Request, session: Annotated[AsyncSession, Depends(get_session)]
 ) -> User:
     settings: Settings = request.app.state.settings
+    return await resolve_user(settings, session)
+
+
+async def resolve_user(settings: Settings, session: AsyncSession) -> User:
+    """Пользователь запроса; используется и для подключений WebSocket (без ``Request``)."""
     if settings.env not in ("development", "test"):
         raise ApiError(
             501,

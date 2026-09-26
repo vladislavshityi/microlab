@@ -10,7 +10,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Body
 
 from microlab_api.circuit_schema.definitions import get_definition_registry
-from microlab_api.domain.validation import validate_circuit
+from microlab_api.domain.validation import ValidationResult, validate_circuit
 from microlab_api.schemas.errors import ErrorResponse
 from microlab_api.schemas.validation import (
     CircuitIssue,
@@ -43,7 +43,10 @@ async def validate(
 
 
 def build_validation_response(document: object) -> CircuitValidationResponse:
-    result = validate_circuit(document, get_definition_registry())
+    return validation_response(validate_circuit(document, get_definition_registry()))
+
+
+def validation_response(result: ValidationResult) -> CircuitValidationResponse:
     return CircuitValidationResponse(
         issues=[
             CircuitIssue(

@@ -44,7 +44,7 @@ def empty_circuit(board: str) -> dict[str, Any]:
     }
 
 
-def _issue_detail(issue: Issue) -> ErrorDetail:
+def issue_detail(issue: Issue) -> ErrorDetail:
     ref = issue.refs[0] if issue.refs else None
     if ref is None:
         field = "circuit"
@@ -76,13 +76,13 @@ def check_circuit(raw: dict[str, Any], board: str) -> dict[str, Any]:
         )
     parsed = parse_circuit(raw)
     if parsed.document is None:
-        raise _invalid_circuit([_issue_detail(issue) for issue in parsed.issues])
+        raise _invalid_circuit([issue_detail(issue) for issue in parsed.issues])
     errors = [
         issue
         for issue in check_references(parsed.document, get_definition_registry())
         if issue.severity is Severity.ERROR
     ]
-    details = [_issue_detail(issue) for issue in errors]
+    details = [issue_detail(issue) for issue in errors]
     if parsed.document.board.type != board:
         details.append(
             ErrorDetail(

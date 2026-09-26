@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "sqlalchemy[asyncio]>=2.1.0",
     "uvicorn>=0.54.0",
+    "websockets==17.1",
 ]
 
 [build-system]
@@ -82,6 +83,11 @@ pythonpath = ["src"]
 addopts = ["-ra", "--strict-markers", "--strict-config"]
 markers = [
     "compiler: интеграционные тесты с реальным воркером компиляции (нужен MICROLAB_COMPILER_URL)",
+    "simulator: интеграционные тесты с реальным сервисом симуляции (нужен MICROLAB_SIMULATOR_URL)",
 ]
 xfail_strict = true
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # TestClient (тесты WebSocket) пока работает поверх httpx; переход на httpx2 — отдельное изменение.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:UserWarning",
+]

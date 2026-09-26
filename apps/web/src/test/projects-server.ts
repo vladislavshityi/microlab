@@ -20,6 +20,40 @@ const EMPTY_CIRCUIT = {
   connections: [],
 };
 
+export const SIMULATION_ID = "sim-00000000-0001";
+
+export function simulationInfo(projectId: string, status: "starting" | "running" | "paused" | "stopped" | "failed") {
+  return {
+    simulationId: SIMULATION_ID,
+    projectId,
+    status,
+    startTime: "2026-09-26T10:00:00.000Z",
+    endTime: status === "stopped" || status === "failed" ? "2026-09-26T10:01:00.000Z" : null,
+    errorCode: null,
+    timestamp: 0,
+    cycle: 0,
+  };
+}
+
+export const COMPILATION = {
+  status: "success",
+  diagnostics: [],
+  sizes: { flashBytes: 1024, flashMaxBytes: 32256, ramBytes: 200, ramMaxBytes: 2048 },
+  firmware: null,
+  compilerOutput: "",
+  compilerOutputTruncated: false,
+  toolchain: { arduinoCli: "1.5.1", platform: "arduino:avr@1.8.8", fqbn: "arduino:avr:uno" },
+  durationMs: 700,
+} as const;
+
+export function simulationStartResponse(projectId: string) {
+  return {
+    session: simulationInfo(projectId, "running"),
+    validation: { issues: [], nets: [] },
+    compilation: COMPILATION,
+  };
+}
+
 function error(status: number, code: string) {
   return jsonResponse({ error: { code, message: code, details: [] } }, status);
 }
@@ -35,6 +69,17 @@ export class FakeProjectsServer {
   private clock = 0;
   /** Если задано, следующий ответ будет этой ошибкой (однократно). */
   failNext: (() => Response | Promise<Response>) | null = null;
+  /** Ответ на команды симуляции (`start`, `pause`, …); по умолчанию — успешный. */
+  simulation: (action: string, projectId: string, body: unknown) => Response = (action, projectId) =>
+    action === "start"
+      ? jsonResponse(simulationStartResponse(projectId), 200)
+      : jsonResponse(
+          {
+            session: simulationInfo(projectId, action === "pause" ? "paused" : action === "stop" ? "stopped" : "running"),
+            appliedCycle: 160_000,
+          },
+          200,
+        );
 
   add(data: Partial<StoredProject> = {}): StoredProject {
     const now = new Date(Date.UTC(2026, 8, 26, 10, 0, this.clock++)).toISOString();
@@ -75,6 +120,8 @@ export class FakeProjectsServer {
       this.failNext = null;
       return fail();
     }
+    const simulation = /^\/api\/v1\/projects\/([^/]+)\/simulation\/(\w+)$/.exec(url);
+    if (simulation !== null) return this.simulation(simulation[2] ?? "", decodeURIComponent(simulation[1] ?? ""), body);
     const id = /^\/api\/v1\/projects\/([^/]+)$/.exec(url)?.[1];
     if (id === undefined) {
       if (method === "GET") {

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from microlab_api.app import create_app
 from microlab_api.config import Settings, get_settings
 from microlab_api.db.database import create_engine
+from microlab_api.scripts.seed_dev_user import seed_dev_user
 
 API_DIR = Path(__file__).resolve().parents[1]
 # На loopback порт 1 никто не слушает: соединения отклоняются сразу.
@@ -121,3 +122,19 @@ def unreachable_settings() -> Settings:
         log_level="INFO",
         log_format="json",
     )
+
+
+@pytest.fixture
+def seeded_db(test_database_url: str) -> None:
+    """Чистая база с dev-user для синхронных тестов (TestClient со своим event loop)."""
+
+    async def prepare() -> None:
+        engine = create_async_engine(test_database_url)
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("TRUNCATE users, projects RESTART IDENTITY CASCADE"))
+            await seed_dev_user(engine)
+        finally:
+            await engine.dispose()
+
+    asyncio.run(prepare())

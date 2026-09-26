@@ -11,6 +11,7 @@ import { usePinActions } from "./canvas-context";
 import { componentSummary, PIN_HIT_PX, pinLayouts, type CircuitFlowNode, type PinLayout } from "./flow-model";
 import { ELECTRICAL_TYPE_LABELS } from "./pin-labels";
 import { SelectionFrame } from "./selection-frame";
+import { SimulationOverlay } from "./simulation-overlay";
 import { ComponentSymbol } from "./symbols";
 
 interface PinHandleProps {
@@ -90,6 +91,14 @@ const NodeBody = memo(function NodeBody({
   return (
     <div className="circuit-node relative" style={{ width, height }}>
       <ComponentSymbol
+        definition={definition}
+        rotation={rotation}
+        properties={properties}
+        widthPx={width}
+        heightPx={height}
+      />
+      <SimulationOverlay
+        componentId={componentId}
         definition={definition}
         rotation={rotation}
         properties={properties}

@@ -177,6 +177,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/simulation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the active or last simulation session of a project */
+        get: operations["getSimulation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/simulation/input": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change a component input (e.g. press a button) */
+        post: operations["setSimulationInput"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/simulation/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause the active simulation */
+        post: operations["pauseSimulation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/simulation/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset the simulated MCU (external reset) */
+        post: operations["resetSimulation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/simulation/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume the paused simulation */
+        post: operations["resumeSimulation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/simulation/serial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send data to the simulated UART0 (Serial) input */
+        post: operations["sendSimulationSerial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/simulation/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate, compile and start simulating the stored project */
+        post: operations["startSimulation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/simulation/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop the active simulation */
+        post: operations["stopSimulation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/validate": {
         parameters: {
             query?: never;
@@ -222,6 +358,11 @@ export interface components {
         };
         /** @constant */
         BoardType: "arduino-uno-r3";
+        /** ButtonInput */
+        ButtonInput: {
+            /** Pressed */
+            pressed: boolean;
+        };
         /** CircuitIssue */
         CircuitIssue: {
             code: components["schemas"]["IssueCode"];
@@ -346,6 +487,12 @@ export interface components {
             type: string;
             visual: components["schemas"]["VisualModel"];
         };
+        /** ComponentInputRequest */
+        ComponentInputRequest: {
+            /** Componentid */
+            componentId: string;
+            input: components["schemas"]["ButtonInput"];
+        };
         /** DatabaseCheck */
         DatabaseCheck: {
             /**
@@ -395,7 +542,7 @@ export interface components {
          * @description Stable machine-readable error codes. The UI relies only on these values.
          * @enum {string}
          */
-        ErrorCode: "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "VALIDATION_ERROR" | "HTTP_ERROR" | "INTERNAL_ERROR" | "DATABASE_UNAVAILABLE" | "UNKNOWN_COMPONENT_TYPE" | "SOURCE_TOO_LARGE" | "COMPILER_UNAVAILABLE" | "COMPILER_BUSY" | "COMPILATION_TIMEOUT" | "COMPILER_OUTPUT_TOO_LARGE" | "AUTH_NOT_CONFIGURED" | "DEV_USER_MISSING" | "PROJECT_NOT_FOUND" | "REVISION_NOT_FOUND" | "REVISION_CONFLICT" | "INVALID_CIRCUIT";
+        ErrorCode: "NOT_FOUND" | "METHOD_NOT_ALLOWED" | "VALIDATION_ERROR" | "HTTP_ERROR" | "INTERNAL_ERROR" | "DATABASE_UNAVAILABLE" | "UNKNOWN_COMPONENT_TYPE" | "SOURCE_TOO_LARGE" | "COMPILER_UNAVAILABLE" | "COMPILER_BUSY" | "COMPILATION_TIMEOUT" | "COMPILER_OUTPUT_TOO_LARGE" | "AUTH_NOT_CONFIGURED" | "DEV_USER_MISSING" | "PROJECT_NOT_FOUND" | "REVISION_NOT_FOUND" | "REVISION_CONFLICT" | "INVALID_CIRCUIT" | "CIRCUIT_HAS_ERRORS" | "COMPILATION_FAILED" | "SIMULATOR_UNAVAILABLE" | "SIMULATOR_BUSY" | "SIMULATION_NOT_RUNNING" | "SIMULATION_START_FAILED" | "INVALID_SIMULATION_INPUT";
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -736,12 +883,88 @@ export interface components {
             /** Terminals */
             terminals: components["schemas"]["PinId"][];
         };
+        /** SerialInputRequest */
+        SerialInputRequest: {
+            /**
+             * Data
+             * @description Text sent to UART0 RX as UTF-8 (at most 4096 bytes).
+             */
+            data: string;
+        };
         /**
          * Severity
          * @description Issue severity: ERROR blocks compilation and simulation, WARNING and INFO do not.
          * @enum {string}
          */
         Severity: "ERROR" | "WARNING" | "INFO";
+        /** SimulationCommandResponse */
+        SimulationCommandResponse: {
+            /**
+             * Appliedcycle
+             * @description Cycle at which the simulator applied the command (time-slice boundary).
+             */
+            appliedCycle: number | null;
+            session: components["schemas"]["SimulationInfo"];
+        };
+        /** SimulationInfo */
+        SimulationInfo: {
+            /**
+             * Cycle
+             * @description MCU clock cycle (16 MHz) of the last known state.
+             */
+            cycle: number;
+            /** Endtime */
+            endTime: string | null;
+            /**
+             * Errorcode
+             * @description Code of the error that ended the session.
+             */
+            errorCode: string | null;
+            /**
+             * Projectid
+             * Format: uuid
+             */
+            projectId: string;
+            /** Simulationid */
+            simulationId: string;
+            /**
+             * Starttime
+             * Format: date-time
+             */
+            startTime: string;
+            status: components["schemas"]["SimulationStatus"];
+            /**
+             * Timestamp
+             * @description Simulated time in microseconds since power-on.
+             */
+            timestamp: number;
+        };
+        /**
+         * SimulationStartErrorResponse
+         * @description Error envelope of the start endpoint with the result that blocked the start.
+         */
+        SimulationStartErrorResponse: {
+            /** @description Present for COMPILATION_FAILED. */
+            compilation?: components["schemas"]["CompileResponse"] | null;
+            error: components["schemas"]["ErrorBody"];
+            /** @description Present for CIRCUIT_HAS_ERRORS. */
+            validation?: components["schemas"]["CircuitValidationResponse"] | null;
+        };
+        /** SimulationStartResponse */
+        SimulationStartResponse: {
+            /** @description Compilation result; firmware is always null here (it is sent to the simulator only). */
+            compilation: components["schemas"]["CompileResponse"];
+            session: components["schemas"]["SimulationInfo"];
+            /** @description Circuit issues (warnings and infos only: errors block the start). */
+            validation: components["schemas"]["CircuitValidationResponse"];
+        };
+        /** SimulationState */
+        SimulationState: {
+            /** @description Active or last session; null if none. */
+            session: components["schemas"]["SimulationInfo"] | null;
+        };
+        /** @enum {string} */
+        SimulationStatus: "starting" | "running" | "paused" | "stopped" | "failed";
         /**
          * SwitchModel
          * @description Switch between two terminals; open or closed at run time.
@@ -1563,6 +1786,694 @@ export interface operations {
                 };
             };
             /** @description Database is unavailable or the development user is missing (DEV_USER_MISSING). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationState"];
+                };
+            };
+            /** @description Project not found (PROJECT_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setSimulationInput: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComponentInputRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationCommandResponse"];
+                };
+            };
+            /** @description Project not found (PROJECT_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pauseSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationCommandResponse"];
+                };
+            };
+            /** @description Project not found (PROJECT_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    resetSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationCommandResponse"];
+                };
+            };
+            /** @description Project not found (PROJECT_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    resumeSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationCommandResponse"];
+                };
+            };
+            /** @description Project not found (PROJECT_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sendSimulationSerial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SerialInputRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationCommandResponse"];
+                };
+            };
+            /** @description Project not found (PROJECT_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationStartResponse"];
+                };
+            };
+            /** @description Project not found (PROJECT_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Source exceeds 256 KiB (SOURCE_TOO_LARGE). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationStartErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Time limit exceeded (COMPILATION_TIMEOUT). */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    stopSimulation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationCommandResponse"];
+                };
+            };
+            /** @description Project not found (PROJECT_NOT_FOUND). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No active simulation or wrong state for the command (SIMULATION_NOT_RUNNING). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication is not configured (AUTH_NOT_CONFIGURED). */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Simulator rejected the command (SIMULATION_START_FAILED, SIMULATOR_UNAVAILABLE). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database or simulator is unavailable (SIMULATOR_UNAVAILABLE), or all simulation slots are in use (SIMULATOR_BUSY). */
             503: {
                 headers: {
                     [name: string]: unknown;

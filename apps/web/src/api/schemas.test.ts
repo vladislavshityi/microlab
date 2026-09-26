@@ -1,7 +1,18 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { z } from "zod";
 
+import type {
+  CompileResponseSchema,
+  SimulationCommandResponseSchema,
+  SimulationInfoSchema,
+  SimulationStartErrorResponseSchema,
+  SimulationStartResponseSchema} from "./schemas";
 import {
+  type CompileResponse,
+  type SimulationCommandResponse,
+  type SimulationInfo,
+  type SimulationStartErrorResponse,
+  type SimulationStartResponse,
   CircuitValidationResponseSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
@@ -26,6 +37,11 @@ describe("HealthResponseSchema", () => {
     expectTypeOf<z.infer<typeof ProjectSummarySchema>>().toEqualTypeOf<ProjectSummary>();
     expectTypeOf<z.infer<typeof ProjectDetailSchema>>().toEqualTypeOf<ProjectDetail>();
     expectTypeOf<z.infer<typeof ProjectListSchema>>().toEqualTypeOf<ProjectList>();
+    expectTypeOf<z.infer<typeof CompileResponseSchema>>().toEqualTypeOf<CompileResponse>();
+    expectTypeOf<z.infer<typeof SimulationInfoSchema>>().toEqualTypeOf<SimulationInfo>();
+    expectTypeOf<z.infer<typeof SimulationStartResponseSchema>>().toEqualTypeOf<SimulationStartResponse>();
+    expectTypeOf<z.infer<typeof SimulationStartErrorResponseSchema>>().toEqualTypeOf<SimulationStartErrorResponse>();
+    expectTypeOf<z.infer<typeof SimulationCommandResponseSchema>>().toEqualTypeOf<SimulationCommandResponse>();
   });
 
   it("accepts the 200 and 503 bodies from the contract", () => {

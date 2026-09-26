@@ -14,6 +14,7 @@ from microlab_api.config import Settings, get_settings
 from microlab_api.db.database import Database
 from microlab_api.logging import configure_logging
 from microlab_api.services.compiler_service import CompilerClient
+from microlab_api.services.simulation_service import SimulationManager
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -21,10 +22,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(settings.log_level, settings.log_format)
     database = Database(settings)
     compiler = CompilerClient(settings)
+    simulations = SimulationManager(settings)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         yield
+        await simulations.aclose()
         await compiler.aclose()
         await database.dispose()
 
@@ -39,6 +42,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.database = database
     app.state.compiler = compiler
+    app.state.simulations = simulations
 
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)

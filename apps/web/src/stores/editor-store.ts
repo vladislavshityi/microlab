@@ -14,17 +14,24 @@ interface EditorState {
    * проекта). Редактор кода по нему заменяет содержимое и сбрасывает свою историю правок.
    */
   documentVersion: number;
+  /** Запрос перейти к позиции в редакторе (щелчок по диагностике); seq — номер запроса. */
+  reveal: { line: number; column: number; seq: number } | null;
   setCode: (code: string) => void;
   loadCode: (code: string) => void;
+  revealPosition: (line: number, column: number) => void;
 }
 
 export const useEditorStore = create<EditorState>()((set) => ({
   code: DEFAULT_SKETCH,
   documentVersion: 0,
+  reveal: null,
   setCode: (code) => {
     set({ code });
   },
   loadCode: (code) => {
     set((state) => ({ code, documentVersion: state.documentVersion + 1 }));
+  },
+  revealPosition: (line, column) => {
+    set((state) => ({ reveal: { line, column, seq: (state.reveal?.seq ?? 0) + 1 } }));
   },
 }));

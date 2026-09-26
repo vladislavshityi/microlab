@@ -3,8 +3,10 @@ import { useEffect, useRef } from "react";
 import { t } from "@/i18n/t";
 import { runShortcut } from "@/features/workspace/shortcuts";
 import { useEditorStore } from "@/stores/editor-store";
+import { useSimulationStore } from "@/stores/simulation-store";
 import { useUiStore } from "@/stores/ui-store";
 
+import { diagnosticsToMarkers, MARKER_OWNER } from "./markers";
 import { applyEditorTheme, monaco } from "./monaco";
 
 /** Моноширинный шрифт интерфейса — тот же, что в токене --font-code. */
@@ -67,7 +69,38 @@ export default function CodeEditor() {
       }
     });
 
+    // Диагностики последней компиляции — маркеры в тексте. Правка кода их не снимает
+    // (как в других IDE): они обновляются при следующей компиляции.
+    const applyMarkers = () => {
+      const model = editor.getModel();
+      if (model === null) return;
+      const diagnostics = useSimulationStore.getState().compilation?.diagnostics ?? [];
+      monaco.editor.setModelMarkers(
+        model,
+        MARKER_OWNER,
+        diagnosticsToMarkers(diagnostics, monaco.MarkerSeverity, model.getLineCount(), (line) =>
+          model.getLineMaxColumn(line),
+        ),
+      );
+    };
+    applyMarkers();
+    const unsubscribeMarkers = useSimulationStore.subscribe((state, previous) => {
+      if (state.compilation !== previous.compilation) applyMarkers();
+    });
+
+    // Переход к строке диагностики из панели «Проблемы».
+    const unsubscribeReveal = useEditorStore.subscribe((state, previous) => {
+      const reveal = state.reveal;
+      if (reveal === null || reveal === previous.reveal) return;
+      const position = { lineNumber: reveal.line, column: reveal.column };
+      editor.setPosition(position);
+      editor.revealPositionInCenter(position);
+      editor.focus();
+    });
+
     return () => {
+      unsubscribeReveal();
+      unsubscribeMarkers();
       unsubscribe();
       subscription.dispose();
       editor.getModel()?.dispose();

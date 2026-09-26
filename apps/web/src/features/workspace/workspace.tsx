@@ -14,6 +14,7 @@ import { ConflictDialog } from "@/features/projects/conflict-dialog";
 import { LoadErrorBanner } from "@/features/projects/load-error-banner";
 import { useProjectBootstrap } from "@/features/projects/use-project-bootstrap";
 import { PropertiesPanel } from "@/features/properties-panel/properties-panel";
+import { useSimulationStream } from "@/features/simulation/use-simulation-stream";
 import { t } from "@/i18n/t";
 import { useUiStore, type CollapsiblePanel } from "@/stores/ui-store";
 
@@ -82,6 +83,7 @@ function useCollapsible(panel: CollapsiblePanel, panelRef: RefObject<PanelImpera
  */
 export function Workspace() {
   useProjectBootstrap();
+  useSimulationStream();
   // Сохранённые размеры читаются один раз при монтировании.
   const [horizontalLayout] = useState(() => readLayout(HORIZONTAL_GROUP, HORIZONTAL_PANELS));
   const [verticalLayout] = useState(() => readLayout(VERTICAL_GROUP, VERTICAL_PANELS));
